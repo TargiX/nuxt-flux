@@ -8,6 +8,8 @@ interface Tag {
   selected: boolean
   x: number
   y: number
+  fx: number | null
+  fy: number | null
   secondaryTags?: Tag[]
 }
 
@@ -73,6 +75,8 @@ export const useTagStore = defineStore('tags', {
           selected: false,
           x: 0,
           y: 0,
+          fx: null,
+          fy: null,
           secondaryTags: tagData.secondaryTags.map((secondaryText, secIndex) => ({
             id: `${zone}-${index}-${secIndex}`,
             text: secondaryText,
@@ -80,7 +84,9 @@ export const useTagStore = defineStore('tags', {
             size: 30, // Smaller size for secondary tags
             selected: false,
             x: 0,
-            y: 0
+            y: 0,
+            fx: null,
+            fy: null
           }))
         }))
       );
@@ -90,6 +96,9 @@ export const useTagStore = defineStore('tags', {
       if (tag) {
         tag.selected = !tag.selected
         tag.size = tag.selected ? 80 : 40 // Adjust size based on selection
+        // Reset fixed position when toggling
+        tag.fx = null
+        tag.fy = null
       }
     },
     toggleSecondaryTag(primaryId: string, secondaryId: string) {
@@ -99,7 +108,34 @@ export const useTagStore = defineStore('tags', {
         if (secondaryTag) {
           secondaryTag.selected = !secondaryTag.selected
           secondaryTag.size = secondaryTag.selected ? 60 : 30
+          // Reset fixed position when toggling
+          secondaryTag.fx = null
+          secondaryTag.fy = null
         }
+      }
+    },
+    updateTagPosition(id: string, x: number, y: number) {
+      const tag = this.tags.find(t => t.id === id) || 
+                  this.tags.flatMap(t => t.secondaryTags || []).find(t => t.id === id)
+      if (tag) {
+        tag.x = x
+        tag.y = y
+      }
+    },
+    fixTagPosition(id: string, x: number, y: number) {
+      const tag = this.tags.find(t => t.id === id) || 
+                  this.tags.flatMap(t => t.secondaryTags || []).find(t => t.id === id)
+      if (tag) {
+        tag.fx = x
+        tag.fy = y
+      }
+    },
+    unfixTagPosition(id: string) {
+      const tag = this.tags.find(t => t.id === id) || 
+                  this.tags.flatMap(t => t.secondaryTags || []).find(t => t.id === id)
+      if (tag) {
+        tag.fx = null
+        tag.fy = null
       }
     }
   },
@@ -114,6 +150,12 @@ export const useTagStore = defineStore('tags', {
       return state.tags.flatMap(tag => 
         tag.secondaryTags ? tag.secondaryTags.filter(secTag => secTag.selected) : []
       )
+    },
+    allTags: (state) => {
+      return [
+        ...state.tags,
+        ...state.tags.flatMap(tag => tag.secondaryTags || [])
+      ]
     }
   }
 })
