@@ -247,18 +247,21 @@ function updateNodeAppearance(d) {
   const color = d3.scaleOrdinal(d3.schemeCategory10);
   const node = zoneGraph.svg.select(`.nodes g`).filter(n => n.id === d.id);
   
+  const baseSize = d.zone.includes('-secondary') ? 30 : 40;
+  const newSize = d.selected ? baseSize * 1.2 : baseSize;
+  
   // Update only the specific node
   node.select("circle")
     .attr("fill", d.selected ? "#4CAF50" : color(d.zone))
-    .attr("r", d.selected ? d.r * 1.2 : d.r); // Slightly increase size when selected
+    .attr("r", newSize / 2);
   
   node.select("text")
-    .attr("y", d.selected ? d.r * 1.2 + 10 : d.r + 10);
+    .attr("y", newSize / 2 + 10);
 
-  // Update the node data in the simulation without restarting
+  // Update the node data in the simulation
   const index = zoneGraph.nodes.findIndex(n => n.id === d.id);
   if (index !== -1) {
-    zoneGraph.nodes[index] = { ...zoneGraph.nodes[index], ...d };
+    zoneGraph.nodes[index] = { ...zoneGraph.nodes[index], ...d, size: newSize };
     zoneGraph.simulation.nodes(zoneGraph.nodes);
   }
 
