@@ -7,6 +7,7 @@
         :height="300" 
         :zone="zone" 
         @tagSelected="handleTagSelection"
+        @secondaryTagSelected="handleSecondaryTagSelection"
       />
     </div>
     <div class="prompt-container">
@@ -36,6 +37,13 @@ onMounted(async () => {
 
 const handleTagSelection = (tagId: string) => {
   tagStore.toggleTag(tagId)
+}
+
+const handleSecondaryTagSelection = (tagId: string) => {
+  const primaryTag = tagStore.tags.find(tag => tag.secondaryTags?.some(secTag => secTag.id === tagId))
+  if (primaryTag) {
+    tagStore.toggleSecondaryTag(primaryTag.id, tagId)
+  }
 }
 
 const generatedPrompt = computed(() => {

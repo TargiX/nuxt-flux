@@ -13,7 +13,7 @@ const props = defineProps<{
   zone: string;
 }>();
 
-const emit = defineEmits(['tagSelected']);
+const emit = defineEmits(['tagSelected', 'secondaryTagSelected']);
 
 const chartContainer = ref<HTMLElement | null>(null);
 const tagStore = useTagStore();
@@ -97,7 +97,11 @@ function createForceGraph() {
     .call(drag(zoneGraph.simulation))
     .on("click", (event, d) => {
       event.stopPropagation();
-      emit('tagSelected', d.id);
+      if (d.zone.includes('-secondary')) {
+        emit('secondaryTagSelected', d.id);
+      } else {
+        emit('tagSelected', d.id);
+      }
       updateNodeAppearance(d);
     });
 
@@ -119,13 +123,13 @@ function createForceGraph() {
 
   zoneGraph.simulation.on("tick", () => {
     link
-      .attr("x1", d => Math.max(d.r, Math.min(width - d.r, d.source.x)))
-      .attr("y1", d => Math.max(d.r, Math.min(height - d.r, d.source.y)))
-      .attr("x2", d => Math.max(d.r, Math.min(width - d.r, d.target.x)))
-      .attr("y2", d => Math.max(d.r, Math.min(height - d.r, d.target.y)));
+      .attr("x1", d => d.source.x)
+      .attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x)
+      .attr("y2", d => d.target.y);
 
     node
-      .attr("transform", d => `translate(${Math.max(d.r, Math.min(width - d.r, d.x))},${Math.max(d.r, Math.min(height - d.r, d.y))})`);
+      .attr("transform", d => `translate(${d.x},${d.y})`);
   });
 
   // Add zoom behavior
@@ -188,7 +192,11 @@ function updateGraph() {
     .call(drag(zoneGraph.simulation))
     .on("click", (event, d) => {
       event.stopPropagation();
-      emit('tagSelected', d.id);
+      if (d.zone.includes('-secondary')) {
+        emit('secondaryTagSelected', d.id);
+      } else {
+        emit('tagSelected', d.id);
+      }
       updateNodeAppearance(d);
     });
 
@@ -242,10 +250,10 @@ function updateNodeAppearance(d) {
   // Update only the specific node
   node.select("circle")
     .attr("fill", d.selected ? "#4CAF50" : color(d.zone))
-    .attr("r", d.r);
+    .attr("r", d.selected ? d.r * 1.2 : d.r); // Slightly increase size when selected
   
   node.select("text")
-    .attr("y", d.r + 10);
+    .attr("y", d.selected ? d.r * 1.2 + 10 : d.r + 10);
 
   // Update the node data in the simulation without restarting
   const index = zoneGraph.nodes.findIndex(n => n.id === d.id);

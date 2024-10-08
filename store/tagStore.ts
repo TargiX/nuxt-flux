@@ -95,7 +95,7 @@ export const useTagStore = defineStore('tags', {
       const tag = this.tags.find(t => t.id === id)
       if (tag) {
         tag.selected = !tag.selected
-        tag.size = tag.selected ? 80 : 40 // Adjust size based on selection
+        tag.size = tag.selected ? tag.size * 1.2 : 40 // Increase size by 20% when selected
         // Reset fixed position when toggling
         tag.fx = null
         tag.fy = null
@@ -107,10 +107,7 @@ export const useTagStore = defineStore('tags', {
         const secondaryTag = primaryTag.secondaryTags.find(t => t.id === secondaryId)
         if (secondaryTag) {
           secondaryTag.selected = !secondaryTag.selected
-          secondaryTag.size = secondaryTag.selected ? 60 : 30
-          // Reset fixed position when toggling
-          secondaryTag.fx = null
-          secondaryTag.fy = null
+          secondaryTag.size = secondaryTag.selected ? 36 : 30 // Slightly increase size when selected
         }
       }
     },
