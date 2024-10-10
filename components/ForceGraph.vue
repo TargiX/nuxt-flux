@@ -18,7 +18,7 @@ const emit = defineEmits(['tagSelected', 'secondaryTagSelected']);
 const chartContainer = ref<HTMLElement | null>(null);
 const tagStore = useTagStore();
 
-// Reactive state for the current zone's graph
+// Reactive state for the current zone's graphP
 const zoneGraph = reactive({
   nodes: [],
   links: [],
@@ -36,28 +36,148 @@ function createForceGraph() {
   if (!chartContainer.value) return;
 
   const { width, height, zone } = props;
+  
+  // Setup SVG and simulation
+  setupSvgAndSimulation(width, height);
+
+  // Create initial nodes and links
+  updateNodesAndLinks();
+
+  // Add zoom behavior
+  addZoomBehavior();
+
+  // Prevent collapsing when clicking on empty space
+  preventCollapseOnEmptyClick();
+}
+
+function updateGraph() {
+  if (!zoneGraph.simulation || !zoneGraph.svg) return;
+
+  // Update nodes and links
+  updateNodesAndLinks();
+
+  // Gently reheat the simulation
+  zoneGraph.simulation.alpha(0.1).restart();
+}
+
+function updateNodesAndLinks() {
+  const color = d3.scaleOrdinal(d3.schemeCategory10);
+  const zoneTags = tagStore.tagsByZone(props.zone);
+  const secondaryTags = zoneTags.flatMap(tag => tag.secondaryTags || []);
+
+  // Preserve existing node positions
+  const oldNodes = new Map(zoneGraph.nodes.map(d => [d.id, d]));
+  zoneGraph.nodes = [...zoneTags].map(tag => ({
+    ...tag,
+    r: tag.size / 2,
+    x: oldNodes.get(tag.id)?.x,
+    y: oldNodes.get(tag.id)?.y,
+    vx: oldNodes.get(tag.id)?.vx,
+    vy: oldNodes.get(tag.id)?.vy,
+  }));
+
+  // zoneGraph.links = zoneTags.flatMap(tag => 
+  //   tag.secondaryTags?.map(secTag => ({
+  //     source: tag.id,
+  //     target: secTag.id,
+  //     value: 1,
+  //   })) || []
+  // );
+
+  // Update simulation
+  zoneGraph.simulation.nodes(zoneGraph.nodes);
+  // zoneGraph.simulation.force("link").links(zoneGraph.links);
+
+  // Update nodes
+  const node = zoneGraph.svg.select(".nodes").selectAll("g")
+    .data(zoneGraph.nodes, d => d.id);
+
+  const nodeEnter = node.enter().append("g")
+    .call(drag(zoneGraph.simulation))
+    .on("click", handleNodeClick);
+
+  // Add circle to entering nodes
+  nodeEnter.append("circle")
+    .attr("r", d => d.r)
+    .attr("fill", d => d.selected ? "#4CAF50" : color(d.zone))
+    .attr("stroke", "#fff")
+    .attr("stroke-width", 1.5);
+
+  // Add text to entering nodes
+  nodeEnter.append("text")
+    .text(d => d.text)
+    .attr("x", 0)
+    .attr("y", d => d.r + 10)
+    .attr("text-anchor", "middle")
+    .attr("font-size", "10px");
+
+  // Add title to entering nodes
+  nodeEnter.append("title")
+    .text(d => d.id);
+
+  // Update existing nodes
+  node.merge(nodeEnter)
+    .select("circle")
+    .attr("r", d => d.r)
+    .attr("fill", d => d.selected ? "#4CAF50" : color(d.zone));
+
+  node.merge(nodeEnter)
+    .select("text")
+    .attr("y", d => d.r + 10);
+
+  // Remove exiting nodes
+  node.exit().remove();
+
+  // Update links
+  updateLinks();
+}
+
+function handleNodeClick(event, d) {
+  event.stopPropagation();
+  if (d.zone.includes('-secondary')) {
+    emit('secondaryTagSelected', d.id);
+  } else {
+    emit('tagSelected', d.id);
+  }
+  updateNodeAppearance(d);
+}
+
+function updateLinks() {
+  const link = zoneGraph.svg.select(".links").selectAll("line")
+    .data(zoneGraph.links, d => `${d.source.id}-${d.target.id}`);
+
+  link.enter()
+    .append("line")
+    .attr("stroke", "#999")
+    .attr("stroke-opacity", 0.6)
+    .attr("stroke-width", d => Math.sqrt(d.value));
+
+  link.exit().remove();
+}
+
+function setupSvgAndSimulation(width, height) {
   const color = d3.scaleOrdinal(d3.schemeCategory10);
 
   // Filter tags for the current zone
-  const zoneTags = tagStore.tagsByZone(zone);
+  const zoneTags = tagStore.tagsByZone(props.zone);
   const secondaryTags = zoneTags.flatMap(tag => tag.secondaryTags || []);
 
   // Prepare nodes and links
-  zoneGraph.nodes = [...zoneTags, ...secondaryTags].map(tag => ({
+  zoneGraph.nodes = [...zoneTags].map(tag => ({
     ...tag,
     r: tag.size / 2,
   }));
 
-  zoneGraph.links = zoneTags.flatMap(tag => 
-    tag.secondaryTags?.map(secTag => ({
-      source: tag.id,
-      target: secTag.id,
-      value: 1,
-    })) || []
-  );
+  // zoneGraph.links = zoneTags.flatMap(tag => 
+  //   tag.secondaryTags?.map(secTag => ({
+  //     source: tag.id,
+  //     target: secTag.id,
+  //     value: 1,
+  //   })) || []
+  // );
 
   zoneGraph.simulation = d3.forceSimulation(zoneGraph.nodes)
-    .force("link", d3.forceLink(zoneGraph.links).id(d => d.id).distance(50))
+    // .force("link", d3.forceLink(zoneGraph.links).id(d => d.id).distance(50))
     .force("charge", d3.forceManyBody().strength(-200))
     .force("center", d3.forceCenter(width / 2, height / 2))
     .force("collision", d3.forceCollide().radius(d => d.r + 5))
@@ -95,15 +215,7 @@ function createForceGraph() {
     .data(zoneGraph.nodes)
     .join("g")
     .call(drag(zoneGraph.simulation))
-    .on("click", (event, d) => {
-      event.stopPropagation();
-      if (d.zone.includes('-secondary')) {
-        emit('secondaryTagSelected', d.id);
-      } else {
-        emit('tagSelected', d.id);
-      }
-      updateNodeAppearance(d);
-    });
+    .on("click", handleNodeClick);
 
   node.append("circle")
     .attr("r", d => d.r)
@@ -131,116 +243,26 @@ function createForceGraph() {
     node
       .attr("transform", d => `translate(${d.x},${d.y})`);
   });
+}
 
+function addZoomBehavior() {
   // Add zoom behavior
   const zoom = d3.zoom()
     .scaleExtent([0.5, 2])
     .on("zoom", (event) => {
-      g.attr("transform", event.transform);
+      zoneGraph.svg.select("g").attr("transform", event.transform);
     });
 
   zoneGraph.svg.call(zoom);
+}
 
+function preventCollapseOnEmptyClick() {
   // Prevent collapsing when clicking on empty space
   zoneGraph.svg.on("click", (event) => {
     if (event.target.tagName === "svg" || event.target.tagName === "rect") {
       event.stopPropagation();
     }
   });
-}
-
-function updateGraph() {
-  if (!zoneGraph.simulation || !zoneGraph.svg) return;
-
-  const color = d3.scaleOrdinal(d3.schemeCategory10);
-
-  // Update nodes and links
-  const zoneTags = tagStore.tagsByZone(props.zone);
-  const secondaryTags = zoneTags.flatMap(tag => tag.secondaryTags || []);
-
-  // Preserve existing node positions
-  const oldNodes = new Map(zoneGraph.nodes.map(d => [d.id, d]));
-  zoneGraph.nodes = [...zoneTags, ...secondaryTags].map(tag => {
-    const oldNode = oldNodes.get(tag.id);
-    return {
-      ...tag,
-      r: tag.size / 2,
-      x: oldNode ? oldNode.x : undefined,
-      y: oldNode ? oldNode.y : undefined,
-      vx: oldNode ? oldNode.vx : undefined,
-      vy: oldNode ? oldNode.vy : undefined,
-    };
-  });
-
-  zoneGraph.links = zoneTags.flatMap(tag => 
-    tag.secondaryTags?.map(secTag => ({
-      source: tag.id,
-      target: secTag.id,
-      value: 1,
-    })) || []
-  );
-
-  // Update simulation without restarting
-  zoneGraph.simulation.nodes(zoneGraph.nodes);
-  zoneGraph.simulation.force("link").links(zoneGraph.links);
-
-  // Update nodes
-  const node = zoneGraph.svg.select(".nodes").selectAll("g")
-    .data(zoneGraph.nodes, d => d.id);
-
-  const nodeEnter = node.enter().append("g")
-    .call(drag(zoneGraph.simulation))
-    .on("click", (event, d) => {
-      event.stopPropagation();
-      if (d.zone.includes('-secondary')) {
-        emit('secondaryTagSelected', d.id);
-      } else {
-        emit('tagSelected', d.id);
-      }
-      updateNodeAppearance(d);
-    });
-
-  nodeEnter.append("circle")
-    .attr("r", d => d.r)
-    .attr("fill", d => d.selected ? "#4CAF50" : color(d.zone))
-    .attr("stroke", "#fff")
-    .attr("stroke-width", 1.5);
-
-  nodeEnter.append("text")
-    .text(d => d.text)
-    .attr("x", 0)
-    .attr("y", d => d.r + 10)
-    .attr("text-anchor", "middle")
-    .attr("font-size", "10px");
-
-  nodeEnter.append("title")
-    .text(d => d.id);
-
-  node.merge(nodeEnter)
-    .select("circle")
-    .attr("r", d => d.r)
-    .attr("fill", d => d.selected ? "#4CAF50" : color(d.zone));
-
-  node.merge(nodeEnter)
-    .select("text")
-    .attr("y", d => d.r + 10);
-
-  node.exit().remove();
-
-  // Update links
-  const link = zoneGraph.svg.select(".links").selectAll("line")
-    .data(zoneGraph.links, d => `${d.source.id}-${d.target.id}`);
-
-  link.enter()
-    .append("line")
-    .attr("stroke", "#999")
-    .attr("stroke-opacity", 0.6)
-    .attr("stroke-width", d => Math.sqrt(d.value));
-
-  link.exit().remove();
-
-  // Gently reheat the simulation
-  zoneGraph.simulation.alpha(0.1).restart();
 }
 
 function updateNodeAppearance(d) {

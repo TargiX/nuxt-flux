@@ -140,6 +140,12 @@ export const useTagStore = defineStore('tags', {
     tagsByZone: (state) => {
       return (zone: string) => state.tags.filter(tag => tag.zone === zone)
     },
+    getSecondaryTagsByZoneAndTag: (state) => {
+      return (zone: string, tag: string) => {
+        const primaryTag = state.tags.find(t => t.zone === zone && t.text === tag)
+        return primaryTag ? primaryTag.secondaryTags : []
+      }
+    },
     selectedTags: (state) => {
       return state.tags.filter(tag => tag.selected)
     },

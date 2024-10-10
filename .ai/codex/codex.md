@@ -59,10 +59,5 @@ Application: Need to properly type D3.js elements and event handlers
 Impact: Improved type safety and code quality in visualization components
 Related: None
 
-L004:
-Context: components/ForceGraph.vue and store/tagStore.ts
-Insight: Importance of consistent sizing logic between store and component
-Application: Ensure size calculations are centralized or consistently applied
-Impact: More predictable and maintainable node sizing behavior
-Related: L002
+
 
