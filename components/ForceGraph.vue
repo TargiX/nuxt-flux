@@ -67,16 +67,39 @@ function createForceGraph() {
 function updateGraph() {
   if (!zoneGraph.simulation || !zoneGraph.svg) return;
 
+  // Stop the simulation
+  zoneGraph.simulation.stop();
+
   zoneGraph.links = zoneGraph.links.map(link => ({
     source: typeof link.source === 'object' ? link.source.id : link.source,
     target: typeof link.target === 'object' ? link.target.id : link.target,
     value: link.value,
   }));
+
   // Update nodes and links
   updateNodesAndLinks();
 
-  // Gently reheat the simulation
-  zoneGraph.simulation.alpha(1).restart();
+  // Position nodes immediately
+  zoneGraph.simulation.tick(100);
+
+  // Update node and link positions without animation
+  updateNodeAndLinkPositions();
+
+  // Restart the simulation with a gentle animation
+  setTimeout(() => {
+    zoneGraph.simulation.alpha(0.3).restart();
+  }, 50);
+}
+
+function updateNodeAndLinkPositions() {
+  zoneGraph.svg.selectAll(".nodes g")
+    .attr("transform", d => `translate(${d.x},${d.y})`);
+
+  zoneGraph.svg.selectAll(".links line")
+    .attr("x1", d => d.source.x)
+    .attr("y1", d => d.source.y)
+    .attr("x2", d => d.target.x)
+    .attr("y2", d => d.target.y);
 }
 
 function updateNodesAndLinks() {
