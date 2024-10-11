@@ -39,7 +39,6 @@ watch(() => tagStore.tagsByZone(props.zone), updateGraph, { deep: true });
 
 function createLinksBySourceId(sourceId: string, alias: string) {
   secondaryTags.value = tagStore.getSecondaryTagsByZoneAndAlias(props.zone, alias);
-  console.log('this is secondaryTags.value', secondaryTags.value);
   return secondaryTags.value.map(secTag => ({
     source: sourceId,
     target: secTag.id,
@@ -68,6 +67,11 @@ function createForceGraph() {
 function updateGraph() {
   if (!zoneGraph.simulation || !zoneGraph.svg) return;
 
+  zoneGraph.links = zoneGraph.links.map(link => ({
+    source: typeof link.source === 'object' ? link.source.id : link.source,
+    target: typeof link.target === 'object' ? link.target.id : link.target,
+    value: link.value,
+  }));
   // Update nodes and links
   updateNodesAndLinks();
 
@@ -82,6 +86,7 @@ function updateNodesAndLinks() {
 
   // Preserve existing node positions
   const oldNodes = new Map(zoneGraph.nodes.map(d => [d.id, d]));
+ 
   zoneGraph.nodes = [...zoneTags, ...secondaryTags.value].map(tag => {
     const oldNode = oldNodes.get(tag.id);
     const x = oldNode?.x ?? lastClickedNode?.x ?? props.width / 2;
@@ -99,6 +104,14 @@ function updateNodesAndLinks() {
     };
   });
 
+  zoneGraph.links = zoneGraph.links.map(link => ({
+    source: typeof link.source === 'object' ? link.source.id : link.source,
+    target: typeof link.target === 'object' ? link.target.id : link.target,
+    value: link.value,
+  }));
+
+  const linksForSimulation = zoneGraph.links.map(link => ({ ...link }));
+
   //  zoneGraph.links = zoneTags.flatMap(tag => 
   //   tag.secondaryTags?.map(secTag => ({
   //     source: tag.id,
@@ -106,15 +119,13 @@ function updateNodesAndLinks() {
   //     value: 1,
   //   })) || []
   // );
-    console.log('this is zoneGraph.links yahoo', zoneGraph.links);
-    console.log('this is zoneGraph nodes', zoneGraph.nodes);
+    console.log('this is zoneGraph.links before force', zoneGraph.links);
+    console.log('this is zoneGraph nodes before force', zoneGraph.nodes);
 
   // Update simulation
 
-  if (zoneGraph.links) {
-    zoneGraph.simulation.force("link").links(zoneGraph.links);
-  }
-    zoneGraph.simulation.nodes(zoneGraph.nodes);
+  zoneGraph.simulation.nodes(zoneGraph.nodes);
+  zoneGraph.simulation.force("link", d3.forceLink(linksForSimulation).id(d => d.id).distance(50));
 
   // Update nodes
   const node = zoneGraph.svg.select(".nodes").selectAll("g")
@@ -155,10 +166,23 @@ function updateNodesAndLinks() {
 
   // Remove exiting nodes
   node.exit().remove();
+  zoneGraph.node = node.merge(nodeEnter);
+  zoneGraph.simulation.on("tick", () => {
+    const links = zoneGraph.simulation.force("link").links();
 
+    zoneGraph.link
+      .data(links)
+      .attr("x1", d => d.source.x)
+      .attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x)
+      .attr("y2", d => d.target.y);
+
+    zoneGraph.node
+      .attr("transform", d => `translate(${d.x},${d.y})`);
+  });
   // Update links
   updateLinks();
-  zoneGraph.node = node.merge(nodeEnter);
+
 }
 
 function handleNodeClick(event, d) {
@@ -167,33 +191,33 @@ function handleNodeClick(event, d) {
   if (d.zone.includes('-secondary')) {
     emit('secondaryTagSelected', d.id);
   } else {
-    console.log('this is lastClickedTagId.value', d);
-      if (lastClickedTagId.value !== d.id) {
-        zoneGraph.links = createLinksBySourceId(d.id);
-        lastClickedTagId.value = d.id;
-        updateGraph()
-      }
-   
-
-    console.log(secondaryTags);
+    lastClickedNode = d;
+    secondaryTags.value = tagStore.getSecondaryTagsByZoneAndAlias(props.zone, d.alias);
+    zoneGraph.links = createLinksBySourceId(d.id, d.alias);
+    lastClickedTagId.value = d.id;
+    updateGraph();
     emit('tagSelected', d.id);
   }
   updateNodeAppearance(d);
 }
 
 function updateLinks() {
-  const link = zoneGraph.svg.select(".links").selectAll("line")
-    .data(zoneGraph.links, d => `${d.source.id}-${d.target.id}`);
+  const linkSelection = zoneGraph.svg.select(".links").selectAll("line")
+    .data(zoneGraph.links, d => {
+      const sourceId = typeof d.source === 'object' ? d.source.id : d.source;
+      const targetId = typeof d.target === 'object' ? d.target.id : d.target;
+      return `${sourceId}-${targetId}`;
+    });
 
-    const linkEnter = link.enter()
+  linkSelection.exit().remove();
+
+  const linkEnter = linkSelection.enter()
     .append("line")
     .attr("stroke", "#999")
     .attr("stroke-opacity", 0.6)
     .attr("stroke-width", d => Math.sqrt(d.value));
 
-  link.exit().remove();
-
-  zoneGraph.link = link.merge(linkEnter);
+  zoneGraph.link = linkEnter.merge(linkSelection);
 }
 
 function setupSvgAndSimulation(width, height) {
@@ -275,21 +299,7 @@ function setupSvgAndSimulation(width, height) {
   node.append("title")
     .text(d => d.id);
 
-  zoneGraph.simulation.on("tick", () => {
-    link
-      .attr("x1", d => d.source.x)
-      .attr("y1", d => d.source.y)
-      .attr("x2", d => d.target.x)
-      .attr("y2", d => d.target.y);
-
-    node
-      .attr("transform", d => `translate(${d.x},${d.y})`);
-  });
-
-  zoneGraph.link = link;
-  zoneGraph.node = node;
-
-  zoneGraph.simulation.on("tick", () => {
+    zoneGraph.simulation.on("tick", () => {
     zoneGraph.link
       .attr("x1", d => d.source.x)
       .attr("y1", d => d.source.y)
@@ -372,8 +382,14 @@ function drag(simulation) {
 }
 </script>
 
-<style scoped>
+<style >
 .selected {
   fill: #4CAF50;
+}
+
+.links line {
+  stroke: #999;
+  stroke-opacity: 0.6;
+  stroke-width: 1.5px;
 }
 </style>
