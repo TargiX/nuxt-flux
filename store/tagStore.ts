@@ -23,46 +23,46 @@ export const useTagStore = defineStore('tags', {
       // Simulating API call
       const mockTags = {
         Subject: [
-          { text: 'Animal', secondaryTags: ['Mammal', 'Bird', 'Fish', 'Reptile', 'Insect'] },
-          { text: 'Landscape', secondaryTags: ['Mountain', 'Beach', 'Forest', 'Desert', 'City'] },
-          { text: 'Portrait', secondaryTags: ['Self', 'Family', 'Celebrity', 'Pet', 'Group'] },
-          { text: 'Still Life', secondaryTags: ['Food', 'Flowers', 'Technology', 'Books', 'Toys'] },
-          { text: 'Abstract', secondaryTags: ['Geometric', 'Fluid', 'Textural', 'Minimal', 'Chaotic'] }
+          { text: 'Animal', alias: 'animal', secondaryTags: ['Mammal', 'Bird', 'Fish', 'Reptile', 'Insect'] },
+          { text: 'Landscape', alias: 'landscape', secondaryTags: ['Mountain', 'Beach', 'Forest', 'Desert', 'City'] },
+          { text: 'Portrait', alias: 'portrait', secondaryTags: ['Self', 'Family', 'Celebrity', 'Pet', 'Group'] },
+          { text: 'Still Life', alias: 'still life', secondaryTags: ['Food', 'Flowers', 'Technology', 'Books', 'Toys'] },
+          { text: 'Abstract', alias: 'abstract', secondaryTags: ['Geometric', 'Fluid', 'Textural', 'Minimal', 'Chaotic'] }
         ],
         Style: [
-          { text: 'Realistic', secondaryTags: ['Photorealistic', 'Hyperrealistic', 'Naturalistic', 'Veristic', 'Trompe l\'oeil'] },
-          { text: 'Impressionist', secondaryTags: ['Pointillism', 'En Plein Air', 'Loose Brushwork', 'Light-focused', 'Atmospheric'] },
-          { text: 'Surrealist', secondaryTags: ['Dreamlike', 'Juxtaposition', 'Symbolism', 'Biomechanical', 'Psychedelic'] },
-          { text: 'Minimalist', secondaryTags: ['Geometric', 'Monochromatic', 'Negative Space', 'Simple Forms', 'Reductive'] },
-          { text: 'Pop Art', secondaryTags: ['Bold Colors', 'Commercial Imagery', 'Comic Book', 'Celebrity Portraits', 'Repetition'] }
+          { text: 'Realistic', alias: 'realistic', secondaryTags: ['Photorealistic', 'Hyperrealistic', 'Naturalistic', 'Veristic', 'Trompe l\'oeil'] },
+          { text: 'Impressionist', alias: 'impressionist', secondaryTags: ['Pointillism', 'En Plein Air', 'Loose Brushwork', 'Light-focused', 'Atmospheric'] },
+          { text: 'Surrealist', alias: 'surrealist', secondaryTags: ['Dreamlike', 'Juxtaposition', 'Symbolism', 'Biomechanical', 'Psychedelic'] },
+          { text: 'Minimalist', alias: 'minimalist', secondaryTags: ['Geometric', 'Monochromatic', 'Negative Space', 'Simple Forms', 'Reductive'] },
+          { text: 'Pop Art', alias: 'pop art', secondaryTags: ['Bold Colors', 'Commercial Imagery', 'Comic Book', 'Celebrity Portraits', 'Repetition'] }
         ],
         Mood: [
-          { text: 'Happy', secondaryTags: ['Joyful', 'Excited', 'Playful', 'Optimistic', 'Cheerful'] },
-          { text: 'Melancholic', secondaryTags: ['Nostalgic', 'Wistful', 'Somber', 'Reflective', 'Bittersweet'] },
-          { text: 'Energetic', secondaryTags: ['Dynamic', 'Vibrant', 'Lively', 'Spirited', 'Exuberant'] },
-          { text: 'Calm', secondaryTags: ['Serene', 'Peaceful', 'Tranquil', 'Relaxed', 'Meditative'] },
-          { text: 'Mysterious', secondaryTags: ['Enigmatic', 'Intriguing', 'Eerie', 'Cryptic', 'Obscure'] }
+          { text: 'Happy', alias: 'happy', secondaryTags: ['Joyful', 'Excited', 'Playful', 'Optimistic', 'Cheerful'] },
+          { text: 'Melancholic', alias: 'melancholic', secondaryTags: ['Nostalgic', 'Wistful', 'Somber', 'Reflective', 'Bittersweet'] },
+          { text: 'Energetic', alias: 'energetic', secondaryTags: ['Dynamic', 'Vibrant', 'Lively', 'Spirited', 'Exuberant'] },
+          { text: 'Calm', alias: 'calm', secondaryTags: ['Serene', 'Peaceful', 'Tranquil', 'Relaxed', 'Meditative'] },
+          { text: 'Mysterious', alias: 'mysterious', secondaryTags: ['Enigmatic', 'Intriguing', 'Eerie', 'Cryptic', 'Obscure'] }
         ],
         Setting: [
-          { text: 'Urban', secondaryTags: ['Cityscape', 'Street', 'Skyscraper', 'Subway', 'Cafe'] },
-          { text: 'Nature', secondaryTags: ['Forest', 'Mountain', 'Beach', 'River', 'Field'] },
-          { text: 'Indoor', secondaryTags: ['Living Room', 'Kitchen', 'Bedroom', 'Office', 'Studio'] },
-          { text: 'Underwater', secondaryTags: ['Coral Reef', 'Deep Sea', 'Shipwreck', 'Kelp Forest', 'Submarine'] },
-          { text: 'Space', secondaryTags: ['Planet', 'Nebula', 'Space Station', 'Asteroid Field', 'Black Hole'] }
+          { text: 'Urban', alias: 'urban', secondaryTags: ['Cityscape', 'Street', 'Skyscraper', 'Subway', 'Cafe'] },
+          { text: 'Nature', alias: 'nature', secondaryTags: ['Forest', 'Mountain', 'Beach', 'River', 'Field'] },
+          { text: 'Indoor', alias: 'indoor', secondaryTags: ['Living Room', 'Kitchen', 'Bedroom', 'Office', 'Studio'] },
+          { text: 'Underwater', alias: 'underwater', secondaryTags: ['Coral Reef', 'Deep Sea', 'Shipwreck', 'Kelp Forest', 'Submarine'] },
+          { text: 'Space', alias: 'space', secondaryTags: ['Planet', 'Nebula', 'Space Station', 'Asteroid Field', 'Black Hole'] }
         ],
         ColorScheme: [
-          { text: 'Vibrant', secondaryTags: ['Rainbow', 'Neon', 'Saturated', 'Bold', 'Technicolor'] },
-          { text: 'Monochrome', secondaryTags: ['Black and White', 'Grayscale', 'Sepia', 'Blue-toned', 'Green-toned'] },
-          { text: 'Pastel', secondaryTags: ['Soft Pink', 'Light Blue', 'Mint Green', 'Lavender', 'Peach'] },
-          { text: 'Dark', secondaryTags: ['Gothic', 'Muted', 'Shadowy', 'Deep Tones', 'Low Key'] },
-          { text: 'Warm', secondaryTags: ['Sunset Colors', 'Earthy Tones', 'Reds and Oranges', 'Golden Hour', 'Amber'] }
+          { text: 'Vibrant', alias: 'vibrant', secondaryTags: ['Rainbow', 'Neon', 'Saturated', 'Bold', 'Technicolor'] },
+          { text: 'Monochrome', alias: 'monochrome', secondaryTags: ['Black and White', 'Grayscale', 'Sepia', 'Blue-toned', 'Green-toned'] },
+          { text: 'Pastel', alias: 'pastel', secondaryTags: ['Soft Pink', 'Light Blue', 'Mint Green', 'Lavender', 'Peach'] },
+          { text: 'Dark', alias: 'dark', secondaryTags: ['Gothic', 'Muted', 'Shadowy', 'Deep Tones', 'Low Key'] },
+          { text: 'Warm', alias: 'warm', secondaryTags: ['Sunset Colors', 'Earthy Tones', 'Reds and Oranges', 'Golden Hour', 'Amber'] }
         ],
         Composition: [
-          { text: 'Symmetrical', secondaryTags: ['Bilateral', 'Radial', 'Reflective', 'Kaleidoscopic', 'Mandala'] },
-          { text: 'Rule of Thirds', secondaryTags: ['Off-center', 'Grid', 'Balanced', 'Asymmetrical', 'Dynamic'] },
-          { text: 'Leading Lines', secondaryTags: ['Perspective', 'Converging', 'Diagonal', 'S-curve', 'Zigzag'] },
-          { text: 'Framing', secondaryTags: ['Natural Frame', 'Architectural', 'Foreground Elements', 'Vignette', 'Window'] },
-          { text: 'Depth of Field', secondaryTags: ['Bokeh', 'Selective Focus', 'Blurred Background', 'Macro', 'Tilt-shift'] }
+          { text: 'Symmetrical', alias: 'symmetrical', secondaryTags: ['Bilateral', 'Radial', 'Reflective', 'Kaleidoscopic', 'Mandala'] },
+          { text: 'Rule of Thirds', alias: 'rule of thirds', secondaryTags: ['Off-center', 'Grid', 'Balanced', 'Asymmetrical', 'Dynamic'] },
+          { text: 'Leading Lines', alias: 'leading lines', secondaryTags: ['Perspective', 'Converging', 'Diagonal', 'S-curve', 'Zigzag'] },
+          { text: 'Framing', alias: 'framing', secondaryTags: ['Natural Frame', 'Architectural', 'Foreground Elements', 'Vignette', 'Window'] },
+          { text: 'Depth of Field', alias: 'depth of field', secondaryTags: ['Bokeh', 'Selective Focus', 'Blurred Background', 'Macro', 'Tilt-shift'] }
         ]
       };
 
@@ -134,17 +134,15 @@ export const useTagStore = defineStore('tags', {
         tag.fx = null
         tag.fy = null
       }
-    }
+    },
+    getSecondaryTagsByZoneAndAlias(zone: string, alias: string) {
+      const primaryTag = this.tags.find(t => t.zone === zone && t.alias === alias);
+      return primaryTag ? primaryTag.secondaryTags : [];
+    },
   },
   getters: {
     tagsByZone: (state) => {
       return (zone: string) => state.tags.filter(tag => tag.zone === zone)
-    },
-    getSecondaryTagsByZoneAndTag: (state) => {
-      return (zone: string, tag: string) => {
-        const primaryTag = state.tags.find(t => t.zone === zone && t.text === tag)
-        return primaryTag ? primaryTag.secondaryTags : []
-      }
     },
     selectedTags: (state) => {
       return state.tags.filter(tag => tag.selected)

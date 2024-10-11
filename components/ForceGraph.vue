@@ -26,11 +26,26 @@ const zoneGraph = reactive({
   svg: null as d3.Selection<SVGSVGElement, unknown, null, undefined> | null,
 });
 
+const secondaryTags = ref([]);
+const lastClickedTagId = ref('');
+let lastClickedNode = null;
+
 onMounted(() => {
-  createForceGraph();
+  createForceGraph(); 
 });
 
 watch(() => tagStore.tagsByZone(props.zone), updateGraph, { deep: true });
+
+
+function createLinksBySourceId(sourceId: string, alias: string) {
+  secondaryTags.value = tagStore.getSecondaryTagsByZoneAndAlias(props.zone, alias);
+  console.log('this is secondaryTags.value', secondaryTags.value);
+  return secondaryTags.value.map(secTag => ({
+    source: sourceId,
+    target: secTag.id,
+    value: 1,
+  }));
+}
 
 function createForceGraph() {
   if (!chartContainer.value) return;
@@ -57,36 +72,49 @@ function updateGraph() {
   updateNodesAndLinks();
 
   // Gently reheat the simulation
-  zoneGraph.simulation.alpha(0.1).restart();
+  zoneGraph.simulation.alpha(1).restart();
 }
 
 function updateNodesAndLinks() {
   const color = d3.scaleOrdinal(d3.schemeCategory10);
+  
   const zoneTags = tagStore.tagsByZone(props.zone);
-  const secondaryTags = zoneTags.flatMap(tag => tag.secondaryTags || []);
 
   // Preserve existing node positions
   const oldNodes = new Map(zoneGraph.nodes.map(d => [d.id, d]));
-  zoneGraph.nodes = [...zoneTags].map(tag => ({
-    ...tag,
-    r: tag.size / 2,
-    x: oldNodes.get(tag.id)?.x,
-    y: oldNodes.get(tag.id)?.y,
-    vx: oldNodes.get(tag.id)?.vx,
-    vy: oldNodes.get(tag.id)?.vy,
-  }));
+  zoneGraph.nodes = [...zoneTags, ...secondaryTags.value].map(tag => {
+    const oldNode = oldNodes.get(tag.id);
+    const x = oldNode?.x ?? lastClickedNode?.x ?? props.width / 2;
+    const y = oldNode?.y ?? lastClickedNode?.y ?? props.height / 2;
+    const vx = oldNode?.vx ?? 0;
+    const vy = oldNode?.vy ?? 0;
 
-  // zoneGraph.links = zoneTags.flatMap(tag => 
+    return {
+      ...tag,
+      r: tag.size / 2,
+      x,
+      y,
+      vx,
+      vy,
+    };
+  });
+
+  //  zoneGraph.links = zoneTags.flatMap(tag => 
   //   tag.secondaryTags?.map(secTag => ({
   //     source: tag.id,
   //     target: secTag.id,
   //     value: 1,
   //   })) || []
   // );
+    console.log('this is zoneGraph.links yahoo', zoneGraph.links);
+    console.log('this is zoneGraph nodes', zoneGraph.nodes);
 
   // Update simulation
-  zoneGraph.simulation.nodes(zoneGraph.nodes);
-  // zoneGraph.simulation.force("link").links(zoneGraph.links);
+
+  if (zoneGraph.links) {
+    zoneGraph.simulation.force("link").links(zoneGraph.links);
+  }
+    zoneGraph.simulation.nodes(zoneGraph.nodes);
 
   // Update nodes
   const node = zoneGraph.svg.select(".nodes").selectAll("g")
@@ -130,13 +158,24 @@ function updateNodesAndLinks() {
 
   // Update links
   updateLinks();
+  zoneGraph.node = node.merge(nodeEnter);
 }
 
 function handleNodeClick(event, d) {
   event.stopPropagation();
+  lastClickedNode = d;
   if (d.zone.includes('-secondary')) {
     emit('secondaryTagSelected', d.id);
   } else {
+    console.log('this is lastClickedTagId.value', d);
+      if (lastClickedTagId.value !== d.id) {
+        zoneGraph.links = createLinksBySourceId(d.id);
+        lastClickedTagId.value = d.id;
+        updateGraph()
+      }
+   
+
+    console.log(secondaryTags);
     emit('tagSelected', d.id);
   }
   updateNodeAppearance(d);
@@ -146,13 +185,15 @@ function updateLinks() {
   const link = zoneGraph.svg.select(".links").selectAll("line")
     .data(zoneGraph.links, d => `${d.source.id}-${d.target.id}`);
 
-  link.enter()
+    const linkEnter = link.enter()
     .append("line")
     .attr("stroke", "#999")
     .attr("stroke-opacity", 0.6)
     .attr("stroke-width", d => Math.sqrt(d.value));
 
   link.exit().remove();
+
+  zoneGraph.link = link.merge(linkEnter);
 }
 
 function setupSvgAndSimulation(width, height) {
@@ -160,10 +201,9 @@ function setupSvgAndSimulation(width, height) {
 
   // Filter tags for the current zone
   const zoneTags = tagStore.tagsByZone(props.zone);
-  const secondaryTags = zoneTags.flatMap(tag => tag.secondaryTags || []);
 
   // Prepare nodes and links
-  zoneGraph.nodes = [...zoneTags].map(tag => ({
+  zoneGraph.nodes = [...zoneTags, ...secondaryTags.value].map(tag => ({
     ...tag,
     r: tag.size / 2,
   }));
@@ -176,8 +216,10 @@ function setupSvgAndSimulation(width, height) {
   //   })) || []
   // );
 
+  console.log('this is zoneGraph.links', zoneGraph.links);
+
   zoneGraph.simulation = d3.forceSimulation(zoneGraph.nodes)
-    // .force("link", d3.forceLink(zoneGraph.links).id(d => d.id).distance(50))
+    .force("link", d3.forceLink(zoneGraph.links).id(d => d.id).distance(50))
     .force("charge", d3.forceManyBody().strength(-200))
     .force("center", d3.forceCenter(width / 2, height / 2))
     .force("collision", d3.forceCollide().radius(d => d.r + 5))
@@ -241,6 +283,20 @@ function setupSvgAndSimulation(width, height) {
       .attr("y2", d => d.target.y);
 
     node
+      .attr("transform", d => `translate(${d.x},${d.y})`);
+  });
+
+  zoneGraph.link = link;
+  zoneGraph.node = node;
+
+  zoneGraph.simulation.on("tick", () => {
+    zoneGraph.link
+      .attr("x1", d => d.source.x)
+      .attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x)
+      .attr("y2", d => d.target.y);
+
+    zoneGraph.node
       .attr("transform", d => `translate(${d.x},${d.y})`);
   });
 }
