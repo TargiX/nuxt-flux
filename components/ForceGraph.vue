@@ -210,14 +210,22 @@ function updateNodesAndLinks() {
 
 function handleNodeClick(event, d) {
   event.stopPropagation();
-  lastClickedNode = d;
+  
   if (d.zone.includes('-secondary')) {
     emit('secondaryTagSelected', d.id);
   } else {
-    lastClickedNode = d;
-    secondaryTags.value = tagStore.getSecondaryTagsByZoneAndAlias(props.zone, d.alias);
-    zoneGraph.links = createLinksBySourceId(d.id, d.alias);
-    lastClickedTagId.value = d.id;
+    if (lastClickedTagId.value === d.id) {
+      // Clicking the same parent node again, clear secondary tags and links
+      secondaryTags.value = [];
+      zoneGraph.links = [];
+      lastClickedTagId.value = '';
+    } else {
+      // Clicking a new parent node
+      lastClickedNode = d;
+      secondaryTags.value = tagStore.getSecondaryTagsByZoneAndAlias(props.zone, d.alias);
+      zoneGraph.links = createLinksBySourceId(d.id, d.alias);
+      lastClickedTagId.value = d.id;
+    }
     updateGraph();
     emit('tagSelected', d.id);
   }
@@ -359,11 +367,12 @@ function updateNodeAppearance(d) {
   const node = zoneGraph.svg.select(`.nodes g`).filter(n => n.id === d.id);
   
   const baseSize = d.zone.includes('-secondary') ? 30 : 40;
-  const newSize = d.selected ? baseSize * 1.2 : baseSize;
+  const isSelected = d.id === lastClickedTagId.value;
+  const newSize = isSelected ? baseSize * 1.2 : baseSize;
   
   // Update only the specific node
   node.select("circle")
-    .attr("fill", d.selected ? "#4CAF50" : color(d.zone))
+    .attr("fill", isSelected ? "#4CAF50" : color(d.zone))
     .attr("r", newSize / 2);
   
   node.select("text")
@@ -372,7 +381,7 @@ function updateNodeAppearance(d) {
   // Update the node data in the simulation
   const index = zoneGraph.nodes.findIndex(n => n.id === d.id);
   if (index !== -1) {
-    zoneGraph.nodes[index] = { ...zoneGraph.nodes[index], ...d, size: newSize };
+    zoneGraph.nodes[index] = { ...zoneGraph.nodes[index], ...d, size: newSize, selected: isSelected };
     zoneGraph.simulation.nodes(zoneGraph.nodes);
   }
 
