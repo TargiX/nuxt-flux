@@ -6,7 +6,12 @@ export default defineNuxtConfig({
   ],
 
   css: ['~/assets/scss/main.scss'],
-
+  runtimeConfig: {
+    public: {
+      GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+      FLUX_API_KEY: process.env.FLUX_API_KEY
+    }
+  },
   vite: {
     css: {
       preprocessorOptions: {
