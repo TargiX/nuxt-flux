@@ -35,8 +35,8 @@ onMounted(async () => {
   loading.value = false
 })
 
-const handleTagSelection = (tagId: string) => {
-  tagStore.toggleTag(tagId)
+const handleTagSelection = (tagId: string, zone: string) => {
+  tagStore.toggleTag(tagId, zone)
 }
 
 const handleSecondaryTagSelection = (tagId: string) => {

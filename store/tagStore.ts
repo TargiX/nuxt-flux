@@ -10,6 +10,7 @@ interface Tag {
   y: number
   fx: number | null
   fy: number | null
+  alias: string
   secondaryTags?: Tag[]
 }
 
@@ -77,6 +78,7 @@ export const useTagStore = defineStore('tags', {
           y: 0,
           fx: null,
           fy: null,
+          alias: tagData.alias, // Add the alias property
           secondaryTags: tagData.secondaryTags.map((secondaryText, secIndex) => ({
             id: `${zone}-${index}-${secIndex}`,
             text: secondaryText,
@@ -86,20 +88,48 @@ export const useTagStore = defineStore('tags', {
             x: 0,
             y: 0,
             fx: null,
-            fy: null
+            fy: null,
+            alias: secondaryText.toLowerCase().replace(/\s+/g, '-'), // Generate an alias for secondary tags
           }))
         }))
       );
     },
-    toggleTag(id: string) {
-      const tag = this.tags.find(t => t.id === id)
-      if (tag) {
-        tag.selected = !tag.selected
-        tag.size = tag.selected ? tag.size * 1.2 : 40 // Increase size by 20% when selected
+    toggleTag(id: string, zone: string) {
+      const tagToToggle = this.tags.find(t => t.id === id)
+      if (tagToToggle) {
+        // If the tag is being selected, unselect all other first-level tags
+        if (!tagToToggle.selected) {
+          this.tags.forEach(tag => {
+            if (tag.id !== id && !tag.zone.includes('-secondary') && tag.zone === zone) {
+              tag.selected = false
+              tag.size = 40 // Reset size to base size
+            }
+          })
+        }
+        // unselect all secondary tags
+        // Toggle the selected tag
+        tagToToggle.selected = !tagToToggle.selected
+        tagToToggle.size = tagToToggle.selected ? tagToToggle.size * 1.2 : 40 // Increase size by 20% when selected
+
         // Reset fixed position when toggling
-        tag.fx = null
-        tag.fy = null
+        tagToToggle.fx = null
+        tagToToggle.fy = null
       }
+    },
+    unselectAllSecondaryTagsFromZone(zone: string, alias: string) {
+      // find the tags by zone with the given zone and loop thorugh each of it tags and get the secondary tags and unselect them
+      // unselect only if alias is not the same as the given alias  
+      
+      const primaryTags = this.tags.filter(tag => tag.zone === zone);
+      primaryTags.forEach(primaryTag => {
+        primaryTag.secondaryTags?.forEach(secTag => {
+          if (primaryTag.alias !== alias) {
+            secTag.selected = false;
+            secTag.size = 30; // Reset size to base size
+          }
+        });
+      });
+
     },
     toggleSecondaryTag(primaryId: string, secondaryId: string) {
       const primaryTag = this.tags.find(t => t.id === primaryId)
@@ -137,7 +167,7 @@ export const useTagStore = defineStore('tags', {
     },
     getSecondaryTagsByZoneAndAlias(zone: string, alias: string) {
       const primaryTag = this.tags.find(t => t.zone === zone && t.alias === alias);
-      return primaryTag ? primaryTag.secondaryTags : [];
+      return primaryTag ? primaryTag.secondaryTags || [] : [];
     },
   },
   getters: {

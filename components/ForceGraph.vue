@@ -3,7 +3,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, reactive } from 'vue';
+import { ref, onMounted, watch, reactive, computed } from 'vue';
 import * as d3 from 'd3';
 import { useTagStore } from '~/store/tagStore';
 
@@ -29,6 +29,9 @@ const zoneGraph = reactive({
 const secondaryTags = ref([]);
 const lastClickedTagId = ref('');
 let lastClickedNode = null;
+
+// Add this computed property
+const selectedPrimaryNode = computed(() => zoneGraph.nodes.find(node => node.selected && !node.zone.includes('-secondary')));
 
 onMounted(() => {
   createForceGraph(); 
@@ -70,25 +73,20 @@ function updateGraph() {
   // Stop the simulation
   zoneGraph.simulation.stop();
 
-  zoneGraph.links = zoneGraph.links.map(link => ({
-    source: typeof link.source === 'object' ? link.source.id : link.source,
-    target: typeof link.target === 'object' ? link.target.id : link.target,
-    value: link.value,
-  }));
-
   // Update nodes and links
   updateNodesAndLinks();
 
   // Position nodes immediately
-  zoneGraph.simulation.tick(100);
+  zoneGraph.simulation.tick(10);
 
   // Update node and link positions without animation
   updateNodeAndLinkPositions();
 
+  // Update node colors
+  updateNodeColors();
+
   // Restart the simulation with a gentle animation
-  setTimeout(() => {
-    zoneGraph.simulation.alpha(0.3).restart();
-  }, 50);
+  zoneGraph.simulation.alpha(0.3).restart();
 }
 
 function updateNodeAndLinkPositions() {
@@ -142,8 +140,7 @@ function updateNodesAndLinks() {
   //     value: 1,
   //   })) || []
   // );
-    console.log('this is zoneGraph.links before force', zoneGraph.links);
-    console.log('this is zoneGraph nodes before force', zoneGraph.nodes);
+
 
   // Update simulation
 
@@ -206,6 +203,8 @@ function updateNodesAndLinks() {
   // Update links
   updateLinks();
 
+  // After updating nodes and links, call updateNodeColors
+  updateNodeColors();
 }
 
 function handleNodeClick(event, d) {
@@ -214,20 +213,32 @@ function handleNodeClick(event, d) {
   if (d.zone.includes('-secondary')) {
     emit('secondaryTagSelected', d.id);
   } else {
-    if (lastClickedTagId.value === d.id) {
-      // Clicking the same parent node again, clear secondary tags and links
-      secondaryTags.value = [];
-      zoneGraph.links = [];
-      lastClickedTagId.value = '';
-    } else {
-      // Clicking a new parent node
-      lastClickedNode = d;
-      secondaryTags.value = tagStore.getSecondaryTagsByZoneAndAlias(props.zone, d.alias);
-      zoneGraph.links = createLinksBySourceId(d.id, d.alias);
-      lastClickedTagId.value = d.id;
-    }
+    tagStore.unselectAllSecondaryTagsFromZone(props.zone);
+    // Select the clicked node
+    d.selected = true;
+    lastClickedNode = d;
+    lastClickedTagId.value = d.id;
+
+    // Update secondary tags
+    secondaryTags.value = tagStore.getSecondaryTagsByZoneAndAlias(props.zone, d.alias);
+    
+    // Remove all existing links and secondary nodes
+    zoneGraph.links = [];
+    zoneGraph.nodes = zoneGraph.nodes.filter(node => !node.zone.includes('-secondary'));
+
+    // Add new secondary nodes and links
+    const newSecondaryNodes = secondaryTags.value.map(tag => ({
+      ...tag,
+      r: tag.size / 2,
+      x: d.x + (Math.random() - 0.5) * 50,
+      y: d.y + (Math.random() - 0.5) * 50,
+    }));
+
+    zoneGraph.nodes = [...zoneGraph.nodes, ...newSecondaryNodes];
+    zoneGraph.links = createLinksBySourceId(d.id, d.alias);
+    
     updateGraph();
-    emit('tagSelected', d.id);
+    emit('tagSelected', d.id, props.zone);
   }
   updateNodeAppearance(d);
 }
@@ -271,7 +282,7 @@ function setupSvgAndSimulation(width, height) {
   //   })) || []
   // );
 
-  console.log('this is zoneGraph.links', zoneGraph.links);
+
 
   zoneGraph.simulation = d3.forceSimulation(zoneGraph.nodes)
     .force("link", d3.forceLink(zoneGraph.links).id(d => d.id).distance(50))
@@ -411,6 +422,13 @@ function drag(simulation) {
     .on("start", dragstarted)
     .on("drag", dragged)
     .on("end", dragended);
+}
+
+// Add this new function to update node colors
+function updateNodeColors() {
+  const color = d3.scaleOrdinal(d3.schemeCategory10);
+  zoneGraph.svg.selectAll(".nodes circle")
+    .attr("fill", d => d.selected ? "#4CAF50" : color(d.zone));
 }
 </script>
 
