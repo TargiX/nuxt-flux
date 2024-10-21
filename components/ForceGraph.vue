@@ -3,8 +3,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, reactive, computed } from 'vue';
-import { storeToRefs } from 'pinia';
+import { ref, onMounted, watch, computed } from 'vue';
 import * as d3 from 'd3';
 import { useTagStore } from '~/store/tagStore';
 
@@ -19,16 +18,7 @@ const emit = defineEmits(['tagSelected', 'secondaryTagSelected']);
 const chartContainer = ref<HTMLElement | null>(null);
 const tagStore = useTagStore();
 
-// Reactive state for the current zone's graphP
-const zoneGraph = useTagStore().zoneGraphs[props.zone];
-    
-
-const secondaryTags = ref([]);
-const lastClickedTagId = ref('');
-let lastClickedNode = null;
-
-// Add this computed property
-const selectedPrimaryNode = computed(() => zoneGraph.nodes.find(node => node.selected && !node.zone.includes('-secondary')));
+const zoneGraph = computed(() => tagStore.getZoneGraph(props.zone));
 
 onMounted(() => {
   createForceGraph(); 
@@ -36,61 +26,33 @@ onMounted(() => {
 
 watch(() => tagStore.tagsByZone(props.zone), updateGraph, { deep: true });
 
-
-function createLinksBySourceId(sourceId: string, alias: string) {
-  secondaryTags.value = tagStore.getSecondaryTagsByZoneAndAlias(props.zone, alias);
-  return secondaryTags.value.map(secTag => ({
-    source: sourceId,
-    target: secTag.id,
-    value: 1,
-  }));
-}
-
 function createForceGraph() {
   if (!chartContainer.value) return;
 
-  const { width, height, zone } = props;
+  const { width, height } = props;
   
-  // Setup SVG and simulation
   setupSvgAndSimulation(width, height);
-
-  // Create initial nodes and links
   updateNodesAndLinks();
-
-  // Add zoom behavior
   addZoomBehavior();
-
-  // Prevent collapsing when clicking on empty space
   preventCollapseOnEmptyClick();
 }
 
 function updateGraph() {
-  if (!zoneGraph.simulation || !zoneGraph.svg) return;
+  if (!zoneGraph.value.simulation || !zoneGraph.value.svg) return;
 
-  // Stop the simulation
-  zoneGraph.simulation.stop();
-
-  // Update nodes and links
+  zoneGraph.value.simulation.stop();
   updateNodesAndLinks();
-
-  // Position nodes immediately
-  zoneGraph.simulation.tick(10);
-
-  // Update node and link positions without animation
+  zoneGraph.value.simulation.tick(10);
   updateNodeAndLinkPositions();
-
-  // Update node colors
   updateNodeColors();
-
-  // Restart the simulation with a gentle animation
-  zoneGraph.simulation.alpha(0.3).restart();
+  zoneGraph.value.simulation.alpha(0.3).restart();
 }
 
 function updateNodeAndLinkPositions() {
-  zoneGraph.svg.selectAll(".nodes g")
+  zoneGraph.value.svg.selectAll(".nodes g")
     .attr("transform", d => `translate(${d.x},${d.y})`);
 
-  zoneGraph.svg.selectAll(".links line")
+  zoneGraph.value.svg.selectAll(".links line")
     .attr("x1", d => d.source.x)
     .attr("y1", d => d.source.y)
     .attr("x2", d => d.target.x)
@@ -101,14 +63,20 @@ function updateNodesAndLinks() {
   const color = d3.scaleOrdinal(d3.schemeCategory10);
   
   const zoneTags = tagStore.tagsByZone(props.zone);
+  const secondaryTags = tagStore.getSecondaryTagsForZone(props.zone);
 
-  // Preserve existing node positions
-  const oldNodes = new Map(zoneGraph.nodes.map(d => [d.id, d]));
+  const oldNodes = new Map(zoneGraph.value.nodes.map(d => [d.id, d]));
  
-  zoneGraph.nodes = [...zoneTags, ...secondaryTags.value].map(tag => {
+  const nodes = [...zoneTags, ...secondaryTags].map(tag => {
     const oldNode = oldNodes.get(tag.id);
-    const x = oldNode?.x ?? lastClickedNode?.x ?? props.width / 2;
-    const y = oldNode?.y ?? lastClickedNode?.y ?? props.height / 2;
+    let x, y;
+    if (tag.id === tagStore.lastClickedTagId && tagStore.lastClickedNode) {
+      x = tagStore.lastClickedNode.x;
+      y = tagStore.lastClickedNode.y;
+    } else {
+      x = oldNode?.x ?? props.width / 2;
+      y = oldNode?.y ?? props.height / 2;
+    }
     const vx = oldNode?.vx ?? 0;
     const vy = oldNode?.vy ?? 0;
 
@@ -122,34 +90,20 @@ function updateNodesAndLinks() {
     };
   });
 
-  zoneGraph.links = zoneGraph.links.map(link => ({
-    source: typeof link.source === 'object' ? link.source.id : link.source,
-    target: typeof link.target === 'object' ? link.target.id : link.target,
-    value: link.value,
-  }));
+  const links = tagStore.createLinksBySourceId(props.zone, tagStore.lastClickedTagId);
 
-  const linksForSimulation = zoneGraph.links.map(link => ({ ...link }));
-
-  //  zoneGraph.links = zoneTags.flatMap(tag => 
-  //   tag.secondaryTags?.map(secTag => ({
-  //     source: tag.id,
-  //     target: secTag.id,
-  //     value: 1,
-  //   })) || []
-  // );
-
+  tagStore.updateZoneGraph(props.zone, nodes, links);
 
   // Update simulation
-
-  zoneGraph.simulation.nodes(zoneGraph.nodes);
-  zoneGraph.simulation.force("link", d3.forceLink(linksForSimulation).id(d => d.id).distance(50));
+  zoneGraph.value.simulation.nodes(nodes);
+  zoneGraph.value.simulation.force("link", d3.forceLink(links).id(d => d.id).distance(50));
 
   // Update nodes
-  const node = zoneGraph.svg.select(".nodes").selectAll("g")
-    .data(zoneGraph.nodes, d => d.id);
+  const node = zoneGraph.value.svg.select(".nodes").selectAll("g")
+    .data(zoneGraph.value.nodes, d => d.id);
 
   const nodeEnter = node.enter().append("g")
-    .call(drag(zoneGraph.simulation))
+    .call(drag(zoneGraph.value.simulation))
     .on("click", handleNodeClick);
 
   // Add circle to entering nodes
@@ -183,18 +137,18 @@ function updateNodesAndLinks() {
 
   // Remove exiting nodes
   node.exit().remove();
-  zoneGraph.node = node.merge(nodeEnter);
-  zoneGraph.simulation.on("tick", () => {
-    const links = zoneGraph.simulation.force("link").links();
+  zoneGraph.value.node = node.merge(nodeEnter);
+  zoneGraph.value.simulation.on("tick", () => {
+    const links = zoneGraph.value.simulation.force("link").links();
 
-    zoneGraph.link
+    zoneGraph.value.link
       .data(links)
       .attr("x1", d => d.source.x)
       .attr("y1", d => d.source.y)
       .attr("x2", d => d.target.x)
       .attr("y2", d => d.target.y);
 
-    zoneGraph.node
+    zoneGraph.value.node
       .attr("transform", d => `translate(${d.x},${d.y})`);
   });
   // Update links
@@ -210,34 +164,14 @@ function handleNodeClick(event, d) {
   if (d.zone.includes('-secondary')) {
     emit('secondaryTagSelected', d.id);
   } else {
-    // Toggle selection of the primary node
     d.selected = !d.selected;
 
     if (d.selected) {
       tagStore.unselectAllSecondaryTagsFromZone(props.zone, d.alias);
-      lastClickedNode = d;
-      lastClickedTagId.value = d.id;
-
-      // Update secondary tags
-      secondaryTags.value = tagStore.getSecondaryTagsByZoneAndAlias(props.zone, d.alias);
-      
-      // Add new secondary nodes and links
-      const newSecondaryNodes = secondaryTags.value.map(tag => ({
-        ...tag,
-        r: tag.size / 2,
-        x: d.x + (Math.random() - 0.5) * 50,
-        y: d.y + (Math.random() - 0.5) * 50,
-      }));
-
-      zoneGraph.nodes = [...zoneGraph.nodes.filter(node => !node.zone.includes('-secondary')), ...newSecondaryNodes];
-      zoneGraph.links = createLinksBySourceId(d.id, d.alias);
+      // Store the current position of the clicked node
+      tagStore.setLastClickedTag(d.id, d.x, d.y);
     } else {
-      // If unselecting, remove secondary nodes and links
-      lastClickedNode = null;
-      lastClickedTagId.value = null;
-      secondaryTags.value = [];
-      zoneGraph.nodes = zoneGraph.nodes.filter(node => !node.zone.includes('-secondary'));
-      zoneGraph.links = [];
+      tagStore.setLastClickedTag(null);
     }
     
     updateGraph();
@@ -247,8 +181,8 @@ function handleNodeClick(event, d) {
 }
 
 function updateLinks() {
-  const linkSelection = zoneGraph.svg.select(".links").selectAll("line")
-    .data(zoneGraph.links, d => {
+  const linkSelection = zoneGraph.value.svg.select(".links").selectAll("line")
+    .data(zoneGraph.value.links, d => {
       const sourceId = typeof d.source === 'object' ? d.source.id : d.source;
       const targetId = typeof d.target === 'object' ? d.target.id : d.target;
       return `${sourceId}-${targetId}`;
@@ -262,7 +196,7 @@ function updateLinks() {
     .attr("stroke-opacity", 0.6)
     .attr("stroke-width", d => Math.sqrt(d.value));
 
-  zoneGraph.link = linkEnter.merge(linkSelection);
+  zoneGraph.value.link = linkEnter.merge(linkSelection);
 }
 
 function setupSvgAndSimulation(width, height) {
@@ -270,32 +204,25 @@ function setupSvgAndSimulation(width, height) {
 
   // Filter tags for the current zone
   const zoneTags = tagStore.tagsByZone(props.zone);
+  const secondaryTags = tagStore.getSecondaryTagsForZone(props.zone);
 
   // Prepare nodes and links
-  zoneGraph.nodes = [...zoneTags, ...secondaryTags.value].map(tag => ({
+  zoneGraph.value.nodes = [...zoneTags, ...secondaryTags].map(tag => ({
     ...tag,
     r: tag.size / 2,
   }));
 
-  // zoneGraph.links = zoneTags.flatMap(tag => 
-  //   tag.secondaryTags?.map(secTag => ({
-  //     source: tag.id,
-  //     target: secTag.id,
-  //     value: 1,
-  //   })) || []
-  // );
+  zoneGraph.value.links = tagStore.createLinksBySourceId(props.zone, tagStore.lastClickedTagId);
 
-
-
-  zoneGraph.simulation = d3.forceSimulation(zoneGraph.nodes)
-    .force("link", d3.forceLink(zoneGraph.links).id(d => d.id).distance(50))
+  zoneGraph.value.simulation = d3.forceSimulation(zoneGraph.value.nodes)
+    .force("link", d3.forceLink(zoneGraph.value.links).id(d => d.id).distance(50))
     .force("charge", d3.forceManyBody().strength(-200))
     .force("center", d3.forceCenter(width / 2, height / 2))
     .force("collision", d3.forceCollide().radius(d => d.r + 5))
     .force("x", d3.forceX(width / 2).strength(0.1))
     .force("y", d3.forceY(height / 2).strength(0.1));
 
-  zoneGraph.svg = d3.select(chartContainer.value)
+  zoneGraph.value.svg = d3.select(chartContainer.value)
     .append("svg")
     .attr("width", width)
     .attr("height", height)
@@ -303,18 +230,18 @@ function setupSvgAndSimulation(width, height) {
     .attr("style", "max-width: 100%; height: auto;");
 
   // Add a background rect to catch mouse events
-  zoneGraph.svg.append("rect")
+  zoneGraph.value.svg.append("rect")
     .attr("width", width)
     .attr("height", height)
     .attr("fill", "none")
     .attr("pointer-events", "all");
 
-  const g = zoneGraph.svg.append("g");
+  const g = zoneGraph.value.svg.append("g");
 
   const link = g.append("g")
     .attr("class", "links")
     .selectAll("line")
-    .data(zoneGraph.links)
+    .data(zoneGraph.value.links)
     .join("line")
     .attr("stroke", "#999")
     .attr("stroke-opacity", 0.6)
@@ -323,9 +250,9 @@ function setupSvgAndSimulation(width, height) {
   const node = g.append("g")
     .attr("class", "nodes")
     .selectAll("g")
-    .data(zoneGraph.nodes)
+    .data(zoneGraph.value.nodes)
     .join("g")
-    .call(drag(zoneGraph.simulation))
+    .call(drag(zoneGraph.value.simulation))
     .on("click", handleNodeClick);
 
   node.append("circle")
@@ -344,14 +271,14 @@ function setupSvgAndSimulation(width, height) {
   node.append("title")
     .text(d => d.id);
 
-    zoneGraph.simulation.on("tick", () => {
-    zoneGraph.link
+    zoneGraph.value.simulation.on("tick", () => {
+    zoneGraph.value.link
       .attr("x1", d => d.source.x)
       .attr("y1", d => d.source.y)
       .attr("x2", d => d.target.x)
       .attr("y2", d => d.target.y);
 
-    zoneGraph.node
+    zoneGraph.value.node
       .attr("transform", d => `translate(${d.x},${d.y})`);
   });
 }
@@ -361,15 +288,15 @@ function addZoomBehavior() {
   const zoom = d3.zoom()
     .scaleExtent([0.5, 2])
     .on("zoom", (event) => {
-      zoneGraph.svg.select("g").attr("transform", event.transform);
+      zoneGraph.value.svg.select("g").attr("transform", event.transform);
     });
 
-  zoneGraph.svg.call(zoom);
+  zoneGraph.value.svg.call(zoom);
 }
 
 function preventCollapseOnEmptyClick() {
   // Prevent collapsing when clicking on empty space
-  zoneGraph.svg.on("click", (event) => {
+  zoneGraph.value.svg.on("click", (event) => {
     if (event.target.tagName === "svg" || event.target.tagName === "rect") {
       event.stopPropagation();
     }
@@ -378,10 +305,10 @@ function preventCollapseOnEmptyClick() {
 
 function updateNodeAppearance(d) {
   const color = d3.scaleOrdinal(d3.schemeCategory10);
-  const node = zoneGraph.svg.select(`.nodes g`).filter(n => n.id === d.id);
+  const node = zoneGraph.value.svg.select(`.nodes g`).filter(n => n.id === d.id);
   
   const baseSize = d.zone.includes('-secondary') ? 30 : 40;
-  const isSelected = d.id === lastClickedTagId.value;
+  const isSelected = d.id === tagStore.lastClickedTagId;
   const newSize = isSelected ? baseSize * 1.2 : baseSize;
   
   // Update only the specific node
@@ -393,14 +320,14 @@ function updateNodeAppearance(d) {
     .attr("y", newSize / 2 + 10);
 
   // Update the node data in the simulation
-  const index = zoneGraph.nodes.findIndex(n => n.id === d.id);
+  const index = zoneGraph.value.nodes.findIndex(n => n.id === d.id);
   if (index !== -1) {
-    zoneGraph.nodes[index] = { ...zoneGraph.nodes[index], ...d, size: newSize, selected: isSelected };
-    zoneGraph.simulation.nodes(zoneGraph.nodes);
+    zoneGraph.value.nodes[index] = { ...zoneGraph.value.nodes[index], ...d, size: newSize, selected: isSelected };
+    zoneGraph.value.simulation.nodes(zoneGraph.value.nodes);
   }
 
   // Gently reheat the simulation for smooth transitions
-  zoneGraph.simulation.alpha(0.1).restart();
+  zoneGraph.value.simulation.alpha(0.1).restart();
 }
 
 function drag(simulation) {
@@ -430,7 +357,7 @@ function drag(simulation) {
 // Add this new function to update node colors
 function updateNodeColors() {
   const color = d3.scaleOrdinal(d3.schemeCategory10);
-  zoneGraph.svg.selectAll(".nodes circle")
+  zoneGraph.value.svg.selectAll(".nodes circle")
     .attr("fill", d => d.selected ? "#4CAF50" : color(d.zone));
 }
 </script>

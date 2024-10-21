@@ -14,6 +14,7 @@ interface Tag {
   alias: string
   secondaryTags?: Tag[]
 }
+
 interface ZoneGraph {
   nodes: Tag[];
   links: any[];
@@ -32,7 +33,9 @@ export const useTagStore = defineStore('tags', {
       Setting: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null } as ZoneGraph,
       ColorScheme: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null } as ZoneGraph,
       Composition: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null } as ZoneGraph,
-    }
+    },
+    lastClickedTagId: null as string | null,
+    lastClickedNode: null as Tag | null,
   }),
   actions: {
     async fetchTags() {
@@ -184,6 +187,34 @@ export const useTagStore = defineStore('tags', {
       const primaryTag = this.tags.find(t => t.zone === zone && t.alias === alias);
       return primaryTag ? primaryTag.secondaryTags || [] : [];
     },
+    setLastClickedTag(tagId: string | null, x?: number, y?: number) {
+      this.lastClickedTagId = tagId;
+      this.lastClickedNode = this.tags.find(t => t.id === tagId) || null;
+      if (this.lastClickedNode && x !== undefined && y !== undefined) {
+        this.lastClickedNode.x = x;
+        this.lastClickedNode.y = y;
+      }
+    },
+
+    updateZoneGraph(zone: string, nodes: Tag[], links: any[]) {
+      this.zoneGraphs[zone].nodes = nodes;
+      this.zoneGraphs[zone].links = links;
+    },
+
+    getSecondaryTagsForZone(zone: string): Tag[] {
+      const primaryTag = this.tags.find(t => t.zone === zone && t.selected);
+      return primaryTag ? primaryTag.secondaryTags || [] : [];
+    },
+
+    createLinksBySourceId(zone: string, sourceId: string | null): any[] {
+      if (!sourceId) return [];
+      const secondaryTags = this.getSecondaryTagsForZone(zone);
+      return secondaryTags.map(secTag => ({
+        source: sourceId,
+        target: secTag.id,
+        value: 1,
+      }));
+    },
   },
   getters: {
     tagsByZone: (state) => {
@@ -202,6 +233,9 @@ export const useTagStore = defineStore('tags', {
         ...state.tags,
         ...state.tags.flatMap(tag => tag.secondaryTags || [])
       ]
-    }
+    },
+    getZoneGraph: (state) => {
+      return (zone: string) => state.zoneGraphs[zone];
+    },
   }
 })
