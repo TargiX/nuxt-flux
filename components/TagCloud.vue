@@ -13,6 +13,7 @@
     <div class="prompt-container">
       <h2>Generated Prompt:</h2>
       <p>{{ generatedPromptResult }}</p>
+      <button @click="generateImage" :disabled="!generatedPromptResult">Generate Image</button>
       <img v-if="imageUrl" :src="imageUrl" alt="Generated Image" />
     </div>
   </div>
@@ -57,6 +58,15 @@ onMounted(async () => {
 
 const handleTagSelection = (tagId: string, zone: string) => {
   tagStore.toggleTag(tagId, zone)
+  // If the tag is unselected, we should also remove its secondary tags from the selection
+  const tag = tagStore.tags.find(t => t.id === tagId)
+  if (tag && !tag.selected) {
+    tag.secondaryTags?.forEach(secTag => {
+      if (secTag.selected) {
+        tagStore.toggleSecondaryTag(tagId, secTag.id)
+      }
+    })
+  }
 }
 
 const handleSecondaryTagSelection = (tagId: string) => {
@@ -140,13 +150,6 @@ const generateImage = async () => {
 watch(generatedPrompt, () => {
   generatePrompt();
 });
-
-// Watch for changes in the generatedPromptResult
-watch(generatedPromptResult, () => {
-  if (generatedPromptResult.value) {
-    generateImage();
-  }
-});
 </script>
 
 
@@ -180,6 +183,27 @@ watch(generatedPromptResult, () => {
   p {
     font-size: 1.2em;
     font-weight: bold;
+    margin-bottom: 15px;
+  }
+
+  button {
+    padding: 10px 20px;
+    font-size: 1em;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-bottom: 15px;
+
+    &:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+
+    &:hover:not(:disabled) {
+      background-color: #45a049;
+    }
   }
 }
 

@@ -4,6 +4,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch, reactive, computed } from 'vue';
+import { storeToRefs } from 'pinia';
 import * as d3 from 'd3';
 import { useTagStore } from '~/store/tagStore';
 
@@ -19,12 +20,8 @@ const chartContainer = ref<HTMLElement | null>(null);
 const tagStore = useTagStore();
 
 // Reactive state for the current zone's graphP
-const zoneGraph = reactive({
-  nodes: [],
-  links: [],
-  simulation: null as d3.Simulation<any, undefined> | null,
-  svg: null as d3.Selection<SVGSVGElement, unknown, null, undefined> | null,
-});
+const zoneGraph = useTagStore().zoneGraphs[props.zone];
+    
 
 const secondaryTags = ref([]);
 const lastClickedTagId = ref('');
@@ -213,29 +210,35 @@ function handleNodeClick(event, d) {
   if (d.zone.includes('-secondary')) {
     emit('secondaryTagSelected', d.id);
   } else {
-    tagStore.unselectAllSecondaryTagsFromZone(props.zone);
-    // Select the clicked node
-    d.selected = true;
-    lastClickedNode = d;
-    lastClickedTagId.value = d.id;
+    // Toggle selection of the primary node
+    d.selected = !d.selected;
 
-    // Update secondary tags
-    secondaryTags.value = tagStore.getSecondaryTagsByZoneAndAlias(props.zone, d.alias);
-    
-    // Remove all existing links and secondary nodes
-    zoneGraph.links = [];
-    zoneGraph.nodes = zoneGraph.nodes.filter(node => !node.zone.includes('-secondary'));
+    if (d.selected) {
+      tagStore.unselectAllSecondaryTagsFromZone(props.zone, d.alias);
+      lastClickedNode = d;
+      lastClickedTagId.value = d.id;
 
-    // Add new secondary nodes and links
-    const newSecondaryNodes = secondaryTags.value.map(tag => ({
-      ...tag,
-      r: tag.size / 2,
-      x: d.x + (Math.random() - 0.5) * 50,
-      y: d.y + (Math.random() - 0.5) * 50,
-    }));
+      // Update secondary tags
+      secondaryTags.value = tagStore.getSecondaryTagsByZoneAndAlias(props.zone, d.alias);
+      
+      // Add new secondary nodes and links
+      const newSecondaryNodes = secondaryTags.value.map(tag => ({
+        ...tag,
+        r: tag.size / 2,
+        x: d.x + (Math.random() - 0.5) * 50,
+        y: d.y + (Math.random() - 0.5) * 50,
+      }));
 
-    zoneGraph.nodes = [...zoneGraph.nodes, ...newSecondaryNodes];
-    zoneGraph.links = createLinksBySourceId(d.id, d.alias);
+      zoneGraph.nodes = [...zoneGraph.nodes.filter(node => !node.zone.includes('-secondary')), ...newSecondaryNodes];
+      zoneGraph.links = createLinksBySourceId(d.id, d.alias);
+    } else {
+      // If unselecting, remove secondary nodes and links
+      lastClickedNode = null;
+      lastClickedTagId.value = null;
+      secondaryTags.value = [];
+      zoneGraph.nodes = zoneGraph.nodes.filter(node => !node.zone.includes('-secondary'));
+      zoneGraph.links = [];
+    }
     
     updateGraph();
     emit('tagSelected', d.id, props.zone);

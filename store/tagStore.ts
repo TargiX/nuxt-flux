@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import * as d3 from 'd3';
 
 interface Tag {
   id: string
@@ -13,11 +14,25 @@ interface Tag {
   alias: string
   secondaryTags?: Tag[]
 }
+interface ZoneGraph {
+  nodes: Tag[];
+  links: any[];
+  simulation: d3.Simulation<any, undefined> | null;
+  svg: d3.Selection<SVGSVGElement, unknown, null, undefined> | null;
+}
 
 export const useTagStore = defineStore('tags', {
   state: () => ({
     tags: [] as Tag[],
-    zones: ['Subject', 'Style', 'Mood', 'Setting', 'ColorScheme', 'Composition']
+    zones: ['Subject', 'Style', 'Mood', 'Setting', 'ColorScheme', 'Composition'],
+    zoneGraphs: {
+      Subject: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null } as ZoneGraph,
+      Style: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null } as ZoneGraph,
+      Mood: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null } as ZoneGraph,
+      Setting: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null } as ZoneGraph,
+      ColorScheme: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null } as ZoneGraph,
+      Composition: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null } as ZoneGraph,
+    }
   }),
   actions: {
     async fetchTags() {
