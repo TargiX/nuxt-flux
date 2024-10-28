@@ -3,9 +3,13 @@ export default defineNuxtConfig({
   modules: [
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt',
+    'flowbite/plugin'
   ],
 
-  css: ['~/assets/scss/main.scss'],
+  css: [
+    '~/assets/scss/main.scss',
+    'flowbite/dist/flowbite.css'
+  ],
   runtimeConfig: {
     public: {
       GEMINI_API_KEY: process.env.GEMINI_API_KEY,
@@ -17,6 +21,8 @@ export default defineNuxtConfig({
       preprocessorOptions: {
         scss: {
           additionalData: '@import "~/assets/scss/variables.scss";',
+          api: 'modern-compiler' 
+
         },
       },
     },
@@ -26,9 +32,19 @@ export default defineNuxtConfig({
     strict: true
   },
 
-  compatibilityDate: '2024-10-07'
-})
+  compatibilityDate: '2024-10-07',
 
+  tailwindcss: {
+    config: {
+      content: [
+        "./node_modules/flowbite/**/*.js"
+      ],
+      plugins: [
+        require('flowbite/plugin')
+      ],
+    }
+  }
+})
 
 // File: store/tagStore.ts
 import { defineStore } from 'pinia'

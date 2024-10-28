@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import * as d3 from 'd3';
+import { shallowRef } from 'vue';
 
 interface Tag {
   id: string
@@ -20,6 +21,8 @@ interface ZoneGraph {
   links: any[];
   simulation: d3.Simulation<any, undefined> | null;
   svg: d3.Selection<SVGSVGElement, unknown, null, undefined> | null;
+  lastClickedTagId: string | null;
+  lastClickedNode: Tag | null;
 }
 
 export const useTagStore = defineStore('tags', {
@@ -27,15 +30,14 @@ export const useTagStore = defineStore('tags', {
     tags: [] as Tag[],
     zones: ['Subject', 'Style', 'Mood', 'Setting', 'ColorScheme', 'Composition'],
     zoneGraphs: {
-      Subject: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null } as ZoneGraph,
-      Style: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null } as ZoneGraph,
-      Mood: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null } as ZoneGraph,
-      Setting: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null } as ZoneGraph,
-      ColorScheme: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null } as ZoneGraph,
-      Composition: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null } as ZoneGraph,
+      Subject: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null, lastClickedTagId: null, lastClickedNode: null } as ZoneGraph,
+      Style: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null, lastClickedTagId: null, lastClickedNode: null } as ZoneGraph,
+      Mood: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null, lastClickedTagId: null, lastClickedNode: null } as ZoneGraph,
+      Setting: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null, lastClickedTagId: null, lastClickedNode: null } as ZoneGraph,
+      ColorScheme: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null, lastClickedTagId: null, lastClickedNode: null } as ZoneGraph,
+      Composition: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null, lastClickedTagId: null, lastClickedNode: null } as ZoneGraph,
     },
-    lastClickedTagId: null as string | null,
-    lastClickedNode: null as Tag | null,
+    focusedZone: 'Subject' as string,
   }),
   actions: {
     async fetchTags() {
@@ -187,12 +189,13 @@ export const useTagStore = defineStore('tags', {
       const primaryTag = this.tags.find(t => t.zone === zone && t.alias === alias);
       return primaryTag ? primaryTag.secondaryTags || [] : [];
     },
-    setLastClickedTag(tagId: string | null, x?: number, y?: number) {
-      this.lastClickedTagId = tagId;
-      this.lastClickedNode = this.tags.find(t => t.id === tagId) || null;
-      if (this.lastClickedNode && x !== undefined && y !== undefined) {
-        this.lastClickedNode.x = x;
-        this.lastClickedNode.y = y;
+    setLastClickedTag(zone: string, tagId: string | null, x?: number, y?: number) {
+      const zoneGraph = this.zoneGraphs[zone];
+      zoneGraph.lastClickedTagId = tagId;
+      zoneGraph.lastClickedNode = this.tags.find(t => t.id === tagId) || null;
+      if (zoneGraph.lastClickedNode && x !== undefined && y !== undefined) {
+        zoneGraph.lastClickedNode.x = x;
+        zoneGraph.lastClickedNode.y = y;
       }
     },
 
@@ -206,7 +209,8 @@ export const useTagStore = defineStore('tags', {
       return primaryTag ? primaryTag.secondaryTags || [] : [];
     },
 
-    createLinksBySourceId(zone: string, sourceId: string | null): any[] {
+    createLinksBySourceId(zone: string): any[] {
+      const sourceId = this.zoneGraphs[zone].lastClickedTagId;
       if (!sourceId) return [];
       const secondaryTags = this.getSecondaryTagsForZone(zone);
       return secondaryTags.map(secTag => ({
@@ -214,6 +218,9 @@ export const useTagStore = defineStore('tags', {
         target: secTag.id,
         value: 1,
       }));
+    },
+    setFocusedZone(zone: string) {
+      this.focusedZone = zone;
     },
   },
   getters: {

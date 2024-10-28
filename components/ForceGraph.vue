@@ -1,5 +1,5 @@
 <template>
-  <div ref="chartContainer"></div>
+  <div ref="chartContainer" :style="{ width: `${width}px`, height: `${height}px` }"></div>
 </template>
 
 <script setup lang="ts">
@@ -11,6 +11,12 @@ const props = defineProps<{
   width: number;
   height: number;
   zone: string;
+  preview?: boolean;
+  zoomConfig?: {
+    scale: number;
+    translateX: number;
+    translateY: number;
+  };
 }>();
 
 const emit = defineEmits(['tagSelected', 'secondaryTagSelected']);
@@ -33,8 +39,10 @@ function createForceGraph() {
   
   setupSvgAndSimulation(width, height);
   updateNodesAndLinks();
-  addZoomBehavior();
-  preventCollapseOnEmptyClick();
+  if (!props.preview) {
+    addZoomBehavior();
+    preventCollapseOnEmptyClick();
+  }
 }
 
 function updateGraph() {
@@ -70,9 +78,9 @@ function updateNodesAndLinks() {
   const nodes = [...zoneTags, ...secondaryTags].map(tag => {
     const oldNode = oldNodes.get(tag.id);
     let x, y;
-    if (tag.id === tagStore.lastClickedTagId && tagStore.lastClickedNode) {
-      x = tagStore.lastClickedNode.x;
-      y = tagStore.lastClickedNode.y;
+    if (tag.id === zoneGraph.value.lastClickedTagId && zoneGraph.value.lastClickedNode) {
+      x = zoneGraph.value.lastClickedNode.x;
+      y = zoneGraph.value.lastClickedNode.y;
     } else {
       x = oldNode?.x ?? props.width / 2;
       y = oldNode?.y ?? props.height / 2;
@@ -90,7 +98,7 @@ function updateNodesAndLinks() {
     };
   });
 
-  const links = tagStore.createLinksBySourceId(props.zone, tagStore.lastClickedTagId);
+  const links = tagStore.createLinksBySourceId(props.zone);
 
   tagStore.updateZoneGraph(props.zone, nodes, links);
 
@@ -159,6 +167,8 @@ function updateNodesAndLinks() {
 }
 
 function handleNodeClick(event, d) {
+  if (props.preview) return;
+  
   event.stopPropagation();
   
   if (d.zone.includes('-secondary')) {
@@ -169,9 +179,9 @@ function handleNodeClick(event, d) {
     if (d.selected) {
       tagStore.unselectAllSecondaryTagsFromZone(props.zone, d.alias);
       // Store the current position of the clicked node
-      tagStore.setLastClickedTag(d.id, d.x, d.y);
+      tagStore.setLastClickedTag(props.zone, d.id, d.x, d.y);
     } else {
-      tagStore.setLastClickedTag(null);
+      tagStore.setLastClickedTag(props.zone, null);
     }
     
     updateGraph();
@@ -212,22 +222,37 @@ function setupSvgAndSimulation(width, height) {
     r: tag.size / 2,
   }));
 
-  zoneGraph.value.links = tagStore.createLinksBySourceId(props.zone, tagStore.lastClickedTagId);
+  zoneGraph.value.links = tagStore.createLinksBySourceId(props.zone);
+
+  const simulationForces = {
+    link: d3.forceLink(zoneGraph.value.links).id(d => d.id).distance(50),
+    charge: d3.forceManyBody().strength(-200),
+    center: d3.forceCenter(width / 2, height / 2),
+    collision: d3.forceCollide().radius(d => d.r + 5),
+    x: d3.forceX(width / 2).strength(0.1),
+    y: d3.forceY(height / 2).strength(0.1)
+  };
+
+  if (props.preview) {
+    // Adjust forces for preview mode
+    simulationForces.charge = d3.forceManyBody().strength(-50);
+    simulationForces.collision = d3.forceCollide().radius(d => d.r + 2);
+  }
 
   zoneGraph.value.simulation = d3.forceSimulation(zoneGraph.value.nodes)
-    .force("link", d3.forceLink(zoneGraph.value.links).id(d => d.id).distance(50))
-    .force("charge", d3.forceManyBody().strength(-200))
-    .force("center", d3.forceCenter(width / 2, height / 2))
-    .force("collision", d3.forceCollide().radius(d => d.r + 5))
-    .force("x", d3.forceX(width / 2).strength(0.1))
-    .force("y", d3.forceY(height / 2).strength(0.1));
+    .force("link", simulationForces.link)
+    .force("charge", simulationForces.charge)
+    .force("center", simulationForces.center)
+    .force("collision", simulationForces.collision)
+    .force("x", simulationForces.x)
+    .force("y", simulationForces.y);
 
   zoneGraph.value.svg = d3.select(chartContainer.value)
     .append("svg")
     .attr("width", width)
     .attr("height", height)
     .attr("viewBox", [0, 0, width, height])
-    .attr("style", "max-width: 100%; height: auto;");
+    .attr("style", "width: 100%; height: 100%;");
 
   // Add a background rect to catch mouse events
   zoneGraph.value.svg.append("rect")
@@ -237,6 +262,11 @@ function setupSvgAndSimulation(width, height) {
     .attr("pointer-events", "all");
 
   const g = zoneGraph.value.svg.append("g");
+
+  // Apply zoom configuration if provided
+  if (props.zoomConfig) {
+    g.attr("transform", `translate(${props.zoomConfig.translateX}, ${props.zoomConfig.translateY}) scale(${props.zoomConfig.scale})`);
+  }
 
   const link = g.append("g")
     .attr("class", "links")
@@ -308,7 +338,7 @@ function updateNodeAppearance(d) {
   const node = zoneGraph.value.svg.select(`.nodes g`).filter(n => n.id === d.id);
   
   const baseSize = d.zone.includes('-secondary') ? 30 : 40;
-  const isSelected = d.id === tagStore.lastClickedTagId;
+  const isSelected = d.id === zoneGraph.value.lastClickedTagId;
   const newSize = isSelected ? baseSize * 1.2 : baseSize;
   
   // Update only the specific node
@@ -362,14 +392,8 @@ function updateNodeColors() {
 }
 </script>
 
-<style >
-.selected {
-  fill: #4CAF50;
-}
-
-.links line {
-  stroke: #999;
-  stroke-opacity: 0.6;
-  stroke-width: 1.5px;
+<style scoped>
+div {
+  display: inline-block;
 }
 </style>
