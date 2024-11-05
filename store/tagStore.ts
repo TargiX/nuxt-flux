@@ -14,6 +14,7 @@ interface Tag {
   fy: number | null
   alias: string
   secondaryTags?: Tag[]
+  isDynamic?: boolean
 }
 
 interface ZoneGraph {
@@ -38,6 +39,7 @@ export const useTagStore = defineStore('tags', {
       Composition: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null, lastClickedTagId: null, lastClickedNode: null } as ZoneGraph,
     },
     focusedZone: 'Subject' as string,
+    dynamicTags: new Map<string, Tag[]>() // Store dynamic tags by parent ID
   }),
   actions: {
     async fetchTags() {
@@ -115,25 +117,23 @@ export const useTagStore = defineStore('tags', {
       );
     },
     toggleTag(id: string, zone: string) {
-      const tagToToggle = this.tags.find(t => t.id === id)
-      if (tagToToggle) {
-        // If the tag is being selected, unselect all other first-level tags
-        if (!tagToToggle.selected) {
-          this.tags.forEach(tag => {
-            if (tag.id !== id && !tag.zone.includes('-secondary') && tag.zone === zone) {
-              tag.selected = false
-              tag.size = 40 // Reset size to base size
-            }
-          })
+      const tag = this.tags.find(t => t.id === id)
+      if (tag) {
+        // If we're selecting this tag, first unselect any other tag in the same zone
+        if (!tag.selected) {
+          const currentSelected = this.tags.find(t => t.zone === zone && t.selected && t.id !== id)
+          if (currentSelected) {
+            currentSelected.selected = false
+            this.removeSecondaryTagsByParent(currentSelected.id)
+          }
         }
-        // unselect all secondary tags
-        // Toggle the selected tag
-        tagToToggle.selected = !tagToToggle.selected
-        tagToToggle.size = tagToToggle.selected ? tagToToggle.size * 1.2 : 40 // Increase size by 20% when selected
-
-        // Reset fixed position when toggling
-        tagToToggle.fx = null
-        tagToToggle.fy = null
+        
+        tag.selected = !tag.selected
+        
+        if (!tag.selected) {
+          // When unselecting a tag, clean up its dynamic tags
+          this.removeSecondaryTagsByParent(id)
+        }
       }
     },
     unselectAllSecondaryTagsFromZone(zone: string, alias: string) {
@@ -222,6 +222,32 @@ export const useTagStore = defineStore('tags', {
     setFocusedZone(zone: string) {
       this.focusedZone = zone;
     },
+    addSecondaryTag(parentId: string, tag: Tag) {
+      const parent = this.tags.find(t => t.id === parentId)
+      if (parent) {
+        if (!parent.secondaryTags) {
+          parent.secondaryTags = []
+        }
+        parent.secondaryTags.push(tag)
+        
+        if (tag.isDynamic) {
+          if (!this.dynamicTags.has(parentId)) {
+            this.dynamicTags.set(parentId, [])
+          }
+          this.dynamicTags.get(parentId)?.push(tag)
+        }
+      }
+    },
+
+    removeSecondaryTagsByParent(parentId: string) {
+      const parent = this.tags.find(t => t.id === parentId)
+      if (parent && parent.secondaryTags) {
+        // Keep static tags but remove dynamic ones
+        parent.secondaryTags = parent.secondaryTags.filter(tag => !tag.isDynamic)
+      }
+      // Clear any dynamic tags stored in the map
+      this.dynamicTags.delete(parentId)
+    },
   },
   getters: {
     tagsByZone: (state) => {
@@ -244,5 +270,8 @@ export const useTagStore = defineStore('tags', {
     getZoneGraph: (state) => {
       return (zone: string) => state.zoneGraphs[zone];
     },
+    getDynamicTags: (state) => {
+      return (parentId: string) => state.dynamicTags.get(parentId) || []
+    }
   }
 })

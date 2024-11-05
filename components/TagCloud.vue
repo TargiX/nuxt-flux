@@ -133,16 +133,65 @@ const setFocusedZone = (zone: string) => {
   tagStore.setFocusedZone(zone)
 }
 
-const handleTagSelection = (tagId: string, zone: string) => {
-  tagStore.toggleTag(tagId, zone)
-  // If the tag is unselected, we should also remove its secondary tags from the selection
+const handleTagSelection = async (tagId: string, zone: string) => {
   const tag = tagStore.tags.find((t) => t.id === tagId)
-  if (tag && !tag.selected) {
+  if (!tag) return
+
+  // If there's already a selected tag in this zone and it's not the current tag,
+  // unselect it first
+  const currentSelectedTag = tagStore.tags.find(
+    (t) => t.zone === zone && t.selected && t.id !== tagId
+  )
+  if (currentSelectedTag) {
+    // Unselect the current tag and remove its secondary tags
+    tagStore.toggleTag(currentSelectedTag.id, zone)
+    currentSelectedTag.secondaryTags?.forEach((secTag) => {
+      if (secTag.selected) {
+        tagStore.toggleSecondaryTag(currentSelectedTag.id, secTag.id)
+      }
+    })
+    tagStore.removeSecondaryTagsByParent(currentSelectedTag.id)
+  }
+
+  if (!tag.selected) {
+    // Tag is being selected
+    tagStore.toggleTag(tagId, zone)
+    
+    // Clear any existing dynamic tags for this parent
+    tagStore.removeSecondaryTagsByParent(tagId)
+    
+    // Generate new dynamic secondary tags
+    const newTags = await generateRelatedTags(tag.text)
+    
+    // Add generated tags to the store as secondary tags
+    newTags.forEach((tagText, index) => {
+      const newTag = {
+        id: `${tagId}-dynamic-${index}`,
+        text: tagText,
+        parentId: tagId,
+        zone: `${zone}-secondary`,
+        size: tag.size * 0.8,
+        selected: false,
+        isDynamic: true,
+        x: tag.x || 0, // Add position properties
+        y: tag.y || 0,
+        fx: null,
+        fy: null,
+        alias: tagText.toLowerCase().replace(/\s+/g, '-') // Add alias property
+      }
+      tagStore.addSecondaryTag(tagId, newTag)
+    })
+  } else {
+    // Tag is being unselected
+    tagStore.toggleTag(tagId, zone)
+    // Remove all secondary tags when parent is unselected
     tag.secondaryTags?.forEach((secTag) => {
       if (secTag.selected) {
         tagStore.toggleSecondaryTag(tagId, secTag.id)
       }
     })
+    // Remove dynamic tags
+    tagStore.removeSecondaryTagsByParent(tagId)
   }
 }
 
@@ -240,6 +289,7 @@ const generateImage = async () => {
 
 // Watch for changes in the generatedPrompt computed property
 watch(generatedPrompt, () => {
+  return
   generatePrompt()
 })
 
@@ -257,6 +307,38 @@ watch(isManualMode, (newValue) => {
     generatePrompt()
   }
 })
+
+// Add this function near other API-related functions
+const generateRelatedTags = async (parentTag: string) => {
+  const response = await model.generateContent({
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          {
+            text: `Generate 5 related tags for the concept: "${parentTag}". Return only a JSON array of strings, with no markdown formatting or backticks. Example: ["tag1", "tag2", "tag3", "tag4", "tag5"]`,
+          },
+        ],
+      },
+    ],
+    generationConfig: {
+      temperature: 0.7,
+      maxOutputTokens: 200,
+    },
+  })
+
+  const text = await response.response.text()
+  try {
+    // Remove any markdown formatting or extra whitespace
+    const cleanedText = text.replace(/```json\n?|\n?```/g, '').trim()
+    const tags = JSON.parse(cleanedText)
+    return Array.isArray(tags) ? tags.slice(0, 5) : [] // Ensure we get an array and limit to 5 tags
+  } catch (error) {
+    console.error('Failed to parse generated tags:', error)
+    console.error('Raw response:', text)
+    return []
+  }
+}
 </script>
 
 <style lang="scss" scoped>

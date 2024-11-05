@@ -72,10 +72,11 @@ function updateNodesAndLinks() {
   
   const zoneTags = tagStore.tagsByZone(props.zone);
   const secondaryTags = tagStore.getSecondaryTagsForZone(props.zone);
+  const dynamicTags = tagStore.getDynamicTags(props.zone);
 
   const oldNodes = new Map(zoneGraph.value.nodes.map(d => [d.id, d]));
  
-  const nodes = [...zoneTags, ...secondaryTags].map(tag => {
+  const nodes = [...zoneTags, ...secondaryTags, ...dynamicTags].map(tag => {
     const oldNode = oldNodes.get(tag.id);
     let x, y;
     if (tag.id === zoneGraph.value.lastClickedTagId && zoneGraph.value.lastClickedNode) {
@@ -91,8 +92,8 @@ function updateNodesAndLinks() {
     return {
       ...tag,
       r: tag.size / 2,
-      x,
-      y,
+      x: tag.isDynamic ? oldNode?.x + Math.random() * 50 : x,
+      y: tag.isDynamic ? oldNode?.y + Math.random() * 50 : y,
       vx,
       vy,
     };
