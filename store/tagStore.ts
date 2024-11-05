@@ -15,6 +15,7 @@ interface Tag {
   alias: string
   secondaryTags?: Tag[]
   isDynamic?: boolean
+  isLoading?: boolean
 }
 
 interface ZoneGraph {
@@ -247,6 +248,12 @@ export const useTagStore = defineStore('tags', {
       }
       // Clear any dynamic tags stored in the map
       this.dynamicTags.delete(parentId)
+    },
+    setTagLoading(tagId: string, loading: boolean) {
+      const tag = this.tags.find(t => t.id === tagId)
+      if (tag) {
+        tag.isLoading = loading
+      }
     },
   },
   getters: {

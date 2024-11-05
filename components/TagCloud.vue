@@ -137,13 +137,11 @@ const handleTagSelection = async (tagId: string, zone: string) => {
   const tag = tagStore.tags.find((t) => t.id === tagId)
   if (!tag) return
 
-  // If there's already a selected tag in this zone and it's not the current tag,
-  // unselect it first
+  // Handle unselecting current tag if needed
   const currentSelectedTag = tagStore.tags.find(
     (t) => t.zone === zone && t.selected && t.id !== tagId
   )
   if (currentSelectedTag) {
-    // Unselect the current tag and remove its secondary tags
     tagStore.toggleTag(currentSelectedTag.id, zone)
     currentSelectedTag.secondaryTags?.forEach((secTag) => {
       if (secTag.selected) {
@@ -157,28 +155,33 @@ const handleTagSelection = async (tagId: string, zone: string) => {
     // Tag is being selected
     tagStore.toggleTag(tagId, zone)
     
-    // Clear any existing dynamic tags for this parent
-    tagStore.removeSecondaryTagsByParent(tagId)
+    // Set loading state
+    tagStore.setTagLoading(tagId, true)
     
     // Generate new dynamic secondary tags
     const newTags = await generateRelatedTags(tag.text)
     
-    // Add generated tags to the store as secondary tags
-    newTags.forEach((tagText, index) => {
-      const newTag = {
-        id: `${tagId}-dynamic-${index}`,
-        text: tagText,
-        parentId: tagId,
-        zone: `${zone}-secondary`,
-        size: tag.size * 0.8,
-        selected: false,
-        isDynamic: true,
-        x: tag.x || 0, // Add position properties
-        y: tag.y || 0,
-        fx: null,
-        fy: null,
-        alias: tagText.toLowerCase().replace(/\s+/g, '-') // Add alias property
-      }
+    // Prepare all new tags before adding them
+    const tagsToAdd = newTags.map((tagText, index) => ({
+      id: `${tagId}-dynamic-${index}`,
+      text: tagText,
+      parentId: tagId,
+      zone: `${zone}-secondary`,
+      size: tag.size * 0.8,
+      selected: false,
+      isDynamic: true,
+      x: tag.x || 0,
+      y: tag.y || 0,
+      fx: null,
+      fy: null,
+      alias: tagText.toLowerCase().replace(/\s+/g, '-')
+    }))
+    
+    // Clear loading state
+    tagStore.setTagLoading(tagId, false)
+    
+    // Add all tags at once
+    tagsToAdd.forEach(newTag => {
       tagStore.addSecondaryTag(tagId, newTag)
     })
   } else {

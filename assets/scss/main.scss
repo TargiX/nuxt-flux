@@ -4,6 +4,20 @@ body {
   font-family: $font-family;
   color: $text-color;
   background-color: $background-color;
+  background-image: 
+      linear-gradient(0deg, transparent 24%, 
+          rgba(65, 105, 225, 0.05) 25%,
+          rgba(65, 105, 225, 0.05) 26%, 
+          transparent 27%, transparent 74%,
+          rgba(65, 105, 225, 0.05) 75%,
+          rgba(65, 105, 225, 0.05) 76%, transparent 77%),
+      linear-gradient(90deg, transparent 24%, 
+          rgba(65, 105, 225, 0.05) 25%,
+          rgba(65, 105, 225, 0.05) 26%, 
+          transparent 27%, transparent 74%,
+          rgba(65, 105, 225, 0.05) 75%,
+          rgba(65, 105, 225, 0.05) 76%, transparent 77%);
+  background-size: 50px 50px;
 }
 
 // File: assets/scss/variables.scss

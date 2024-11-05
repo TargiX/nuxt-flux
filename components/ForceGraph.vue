@@ -6,6 +6,7 @@
 import { ref, onMounted, watch, computed } from 'vue';
 import * as d3 from 'd3';
 import { useTagStore } from '~/store/tagStore';
+import { ArrowPathIcon } from '@heroicons/vue/24/solid'
 
 const props = defineProps<{
   width: number;
@@ -49,11 +50,41 @@ function updateGraph() {
   if (!zoneGraph.value.simulation || !zoneGraph.value.svg) return;
 
   zoneGraph.value.simulation.stop();
+  
+  // Store current positions
+  const oldPositions = new Map(
+    zoneGraph.value.nodes.map(d => [d.id, { x: d.x, y: d.y }])
+  );
+  
   updateNodesAndLinks();
-  zoneGraph.value.simulation.tick(10);
-  updateNodeAndLinkPositions();
-  updateNodeColors();
-  zoneGraph.value.simulation.alpha(0.3).restart();
+  
+  // Position new nodes near their parent with minimal initial velocity
+  zoneGraph.value.nodes.forEach(node => {
+    if (node.isDynamic && node.parentId) {
+      const parent = zoneGraph.value.nodes.find(n => n.id === node.parentId);
+      if (parent) {
+        const angle = Math.random() * 2 * Math.PI;
+        const distance = 30; // Reduced from previous random distance
+        node.x = parent.x + Math.cos(angle) * distance;
+        node.y = parent.y + Math.sin(angle) * distance;
+        node.vx = 0; // Start with zero velocity
+        node.vy = 0;
+      }
+    } else {
+      const oldPos = oldPositions.get(node.id);
+      if (oldPos) {
+        node.x = oldPos.x;
+        node.y = oldPos.y;
+      }
+    }
+  });
+
+  // Restart simulation very gently
+  zoneGraph.value.simulation
+    .alpha(0.05) // Reduced from 0.1
+    .alphaDecay(0.01) // Reduced from 0.02 for even smoother transitions
+    .velocityDecay(0.4) // Added to reduce overall movement speed
+    .restart();
 }
 
 function updateNodeAndLinkPositions() {
@@ -226,12 +257,20 @@ function setupSvgAndSimulation(width, height) {
   zoneGraph.value.links = tagStore.createLinksBySourceId(props.zone);
 
   const simulationForces = {
-    link: d3.forceLink(zoneGraph.value.links).id(d => d.id).distance(50),
-    charge: d3.forceManyBody().strength(-200),
-    center: d3.forceCenter(width / 2, height / 2),
-    collision: d3.forceCollide().radius(d => d.r + 5),
-    x: d3.forceX(width / 2).strength(0.1),
-    y: d3.forceY(height / 2).strength(0.1)
+    link: d3.forceLink(zoneGraph.value.links)
+      .id(d => d.id)
+      .distance(100)
+      .strength(0.1), // Keep light connections
+    charge: d3.forceManyBody()
+      .strength(-60)  // Keep light repulsion
+      .distanceMax(150),
+    center: d3.forceCenter(width / 2, height / 2)
+      .strength(0.3), // Added stronger center force (default is ~0.1)
+    collision: d3.forceCollide()
+      .radius(d => d.r + 10)
+      .strength(0.4),
+    x: d3.forceX(width / 2).strength(0.08),  // Increased from 0.01 to help with centering
+    y: d3.forceY(height / 2).strength(0.08)  // Increased from 0.01 to help with centering
   };
 
   if (props.preview) {
@@ -240,13 +279,15 @@ function setupSvgAndSimulation(width, height) {
     simulationForces.collision = d3.forceCollide().radius(d => d.r + 2);
   }
 
+  // Update simulation with new forces
   zoneGraph.value.simulation = d3.forceSimulation(zoneGraph.value.nodes)
     .force("link", simulationForces.link)
     .force("charge", simulationForces.charge)
-    .force("center", simulationForces.center)
+    .force("center", simulationForces.center)  // Make sure center force is applied
     .force("collision", simulationForces.collision)
     .force("x", simulationForces.x)
-    .force("y", simulationForces.y);
+    .force("y", simulationForces.y)
+    .alphaDecay(0.02);
 
   zoneGraph.value.svg = d3.select(chartContainer.value)
     .append("svg")
@@ -342,10 +383,32 @@ function updateNodeAppearance(d) {
   const isSelected = d.id === zoneGraph.value.lastClickedTagId;
   const newSize = isSelected ? baseSize * 1.2 : baseSize;
   
-  // Update only the specific node
-  node.select("circle")
-    .attr("fill", isSelected ? "#4CAF50" : color(d.zone))
-    .attr("r", newSize / 2);
+  // Update circle with loading animation if needed
+  const circle = node.select("circle");
+  if (d.isLoading) {
+    let colorIndex = 0;
+    // Create loading animation
+    const loadingAnimation = () => {
+      circle
+        .transition()
+        .duration(300)
+        .attr("fill", loadingColors[colorIndex])
+        .on("end", () => {
+          colorIndex = (colorIndex + 1) % loadingColors.length;
+          if (d.isLoading) {
+            loadingAnimation();
+          } else {
+            circle.attr("fill", isSelected ? "#4CAF50" : color(d.zone));
+          }
+        });
+    };
+    loadingAnimation();
+  } else {
+    circle
+      .attr("fill", isSelected ? "#4CAF50" : color(d.zone));
+  }
+  
+  circle.attr("r", newSize / 2);
   
   node.select("text")
     .attr("y", newSize / 2 + 10);
@@ -356,9 +419,6 @@ function updateNodeAppearance(d) {
     zoneGraph.value.nodes[index] = { ...zoneGraph.value.nodes[index], ...d, size: newSize, selected: isSelected };
     zoneGraph.value.simulation.nodes(zoneGraph.value.nodes);
   }
-
-  // Gently reheat the simulation for smooth transitions
-  zoneGraph.value.simulation.alpha(0.1).restart();
 }
 
 function drag(simulation) {
