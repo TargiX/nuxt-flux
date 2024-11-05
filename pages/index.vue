@@ -1,6 +1,6 @@
 <template>
     <div class="container mx-auto">
-      <h1>Tag Cloud Image Prompt Generator</h1>
+      <h1 class="text-center text-2xl font-bold">Tag Cloud Image Prompt Generator</h1>
       <TagCloud />
     </div>
   </template>

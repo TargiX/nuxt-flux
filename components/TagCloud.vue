@@ -12,7 +12,23 @@
           @tagSelected="handleTagSelection"
           @secondaryTagSelected="handleSecondaryTagSelection"
         />
-        <h2 class="w-full">Selected Tags: <span class="font-bold">{{ generatedPrompt}}</span></h2>
+        <div class="preview-zones">
+      <div
+        v-for="zone in previewZones"
+        :key="zone"
+        class="preview-zone"
+        @click="setFocusedZone(zone)"
+      >
+        <h3>{{ zone }}</h3>
+        <ForceGraph
+          :width="100"
+          :height="150"
+          :zone="zone"
+          :preview="true"
+          :zoomConfig="{ scale: 0.5, translateX: 30, translateY: 10 }"
+        />
+      </div>
+    </div>
       </div>
 
       <div class="prompt-container ">
@@ -26,6 +42,7 @@
           />
           <div v-else class="placeholder-container"></div>
         </div>
+
         <div class="prompt-box">
           <div class="prompt-header">
             <h2>Generated Prompt:</h2>
@@ -60,26 +77,11 @@
             {{ isGeneratingImage ? 'Generating...' : 'Generate Image' }}
           </button>
         </div>
+        <p class="w-full !text-left text-xs">Selected Tags: <span class="font-bold">{{ generatedPrompt}}</span></p>
       </div>
     </div>
 
-    <div class="preview-zones">
-      <div
-        v-for="zone in previewZones"
-        :key="zone"
-        class="preview-zone"
-        @click="setFocusedZone(zone)"
-      >
-        <h3>{{ zone }}</h3>
-        <ForceGraph
-          :width="200"
-          :height="150"
-          :zone="zone"
-          :preview="true"
-          :zoomConfig="{ scale: 0.7, translateX: 50, translateY: 10 }"
-        />
-      </div>
-    </div>
+
   </div>
 
   <div v-else class="loading">Loading...</div>
@@ -261,7 +263,7 @@ watch(isManualMode, (newValue) => {
 .tag-cloud {
   display: flex;
   flex-direction: column;
-  padding: 20px;
+  padding: 0px 20px 0 20px;
   width: 100%;
 }
 
@@ -271,12 +273,14 @@ watch(isManualMode, (newValue) => {
 
   h2 {
     text-align: center;
-    margin-bottom: 10px;
+    margin-bottom: 2px;
   }
   .main-graph {
+    width: 100% !important;
     border: 1px solid #cfcfcf;
     border-radius: 10px;
     margin-bottom: 20px;
+    background: #fff;
   }
 }
 
@@ -297,7 +301,7 @@ watch(isManualMode, (newValue) => {
   min-height: 600px; /* Ensures minimum height even without image */
 
   h2 {
-    margin-bottom: 10px;
+    margin-bottom: 2px;
   }
 
   .prompt-box {
@@ -307,19 +311,20 @@ watch(isManualMode, (newValue) => {
     border: 1px solid #dee2e6;
     border-radius: 8px;
     padding: 15px;
-    margin-bottom: 20px;
+    margin-bottom: 3px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     
     p {
-      font-size: 1.1em;
+      font-size: 0.9em;
       line-height: 1.5;
       margin: 0;
       padding: 0 0 15px 0;
       color: #333;
       text-align: left;
       flex-grow: 1;
+      min-height: 115px;
     }
 
     button {
@@ -347,7 +352,7 @@ watch(isManualMode, (newValue) => {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 10px;
+      margin-bottom: 3px;
       
       .manual-mode-toggle {
         display: flex;
@@ -369,7 +374,7 @@ watch(isManualMode, (newValue) => {
       border: 1px solid #ddd;
       border-radius: 4px;
       margin-bottom: 15px;
-      font-size: 1.1em;
+      font-size: 0.9em;
       line-height: 1.5;
       resize: vertical;
       
@@ -439,7 +444,7 @@ watch(isManualMode, (newValue) => {
   border-radius: 10px;
   cursor: pointer;
   transition: transform 0.2s;
-
+  background: #fff;
   &:hover {
     transform: scale(1.05);
   }
