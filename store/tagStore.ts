@@ -135,30 +135,31 @@ export const useTagStore = defineStore('tags', {
           // When unselecting a tag, clean up its dynamic tags
           this.removeSecondaryTagsByParent(id)
         }
+
+        // Update the graph to reflect the changes
+        const zoneGraph = this.zoneGraphs[zone];
+        if (zoneGraph && zoneGraph.simulation) {
+          zoneGraph.simulation.alpha(0.3).restart();
+        }
       }
     },
     unselectAllSecondaryTagsFromZone(zone: string, alias: string) {
-      // find the tags by zone with the given zone and loop thorugh each of it tags and get the secondary tags and unselect them
-      // unselect only if alias is not the same as the given alias  
-      
       const primaryTags = this.tags.filter(tag => tag.zone === zone);
       primaryTags.forEach(primaryTag => {
-        primaryTag.secondaryTags?.forEach(secTag => {
-          if (primaryTag.alias !== alias) {
+        if (primaryTag.alias !== alias) {
+          primaryTag.secondaryTags?.forEach(secTag => {
             secTag.selected = false;
-            secTag.size = 30; // Reset size to base size
-          }
-        });
+          });
+        }
       });
-
     },
     toggleSecondaryTag(primaryId: string, secondaryId: string) {
       const primaryTag = this.tags.find(t => t.id === primaryId)
       if (primaryTag && primaryTag.secondaryTags) {
         const secondaryTag = primaryTag.secondaryTags.find(t => t.id === secondaryId)
         if (secondaryTag) {
-          secondaryTag.selected = !secondaryTag.selected
-          secondaryTag.size = secondaryTag.selected ? 36 : 30 // Slightly increase size when selected
+          secondaryTag.selected = !secondaryTag.selected;
+          secondaryTag.size = 30;
         }
       }
     },
@@ -207,7 +208,7 @@ export const useTagStore = defineStore('tags', {
 
     getSecondaryTagsForZone(zone: string): Tag[] {
       const primaryTag = this.tags.find(t => t.zone === zone && t.selected);
-      return primaryTag ? primaryTag.secondaryTags || [] : [];
+      return (primaryTag && !primaryTag.isLoading) ? primaryTag.secondaryTags || [] : [];
     },
 
     createLinksBySourceId(zone: string): any[] {
@@ -230,24 +231,14 @@ export const useTagStore = defineStore('tags', {
           parent.secondaryTags = []
         }
         parent.secondaryTags.push(tag)
-        
-        if (tag.isDynamic) {
-          if (!this.dynamicTags.has(parentId)) {
-            this.dynamicTags.set(parentId, [])
-          }
-          this.dynamicTags.get(parentId)?.push(tag)
-        }
       }
     },
 
     removeSecondaryTagsByParent(parentId: string) {
       const parent = this.tags.find(t => t.id === parentId)
-      if (parent && parent.secondaryTags) {
-        // Keep static tags but remove dynamic ones
-        parent.secondaryTags = parent.secondaryTags.filter(tag => !tag.isDynamic)
+      if (parent) {
+        parent.secondaryTags = []
       }
-      // Clear any dynamic tags stored in the map
-      this.dynamicTags.delete(parentId)
     },
     setTagLoading(tagId: string, loading: boolean) {
       const tag = this.tags.find(t => t.id === tagId)
@@ -258,7 +249,13 @@ export const useTagStore = defineStore('tags', {
   },
   getters: {
     tagsByZone: (state) => {
-      return (zone: string) => state.tags.filter(tag => tag.zone === zone)
+      return (zone: string) => {
+        const tags = state.tags.filter(tag => tag.zone === zone);
+        const selectedTag = tags.find(tag => tag.selected);
+        
+        // If there's a selected tag, only return it; otherwise return all tags
+        return selectedTag ? [selectedTag] : tags;
+      }
     },
     selectedTags: (state) => {
       return state.tags.filter(tag => tag.selected)
@@ -279,6 +276,11 @@ export const useTagStore = defineStore('tags', {
     },
     getDynamicTags: (state) => {
       return (parentId: string) => state.dynamicTags.get(parentId) || []
+    },
+    nonSelectedPrimaryTags: (state) => {
+      return (zone: string) => state.tags.filter(tag => 
+        tag.zone === zone && !tag.selected
+      );
     }
   }
 })

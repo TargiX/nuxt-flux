@@ -158,30 +158,42 @@ const handleTagSelection = async (tagId: string, zone: string) => {
     // Set loading state
     tagStore.setTagLoading(tagId, true)
     
+    // Store preconfigured tags temporarily
+    const preconfiguredTags = tag.secondaryTags || []
+    // Clear secondary tags immediately so they don't show up
+    tag.secondaryTags = []
+    
     // Generate new dynamic secondary tags
     const newTags = await generateRelatedTags(tag.text)
     
-    // Prepare all new tags before adding them
-    const tagsToAdd = newTags.map((tagText, index) => ({
-      id: `${tagId}-dynamic-${index}`,
-      text: tagText,
-      parentId: tagId,
-      zone: `${zone}-secondary`,
-      size: tag.size * 0.8,
-      selected: false,
-      isDynamic: true,
-      x: tag.x || 0,
-      y: tag.y || 0,
-      fx: null,
-      fy: null,
-      alias: tagText.toLowerCase().replace(/\s+/g, '-')
-    }))
+    // Prepare all tags (both preconfigured and dynamic)
+    const allTags = [
+      ...preconfiguredTags.map(t => ({
+        ...t,
+        parentId: tagId,
+        isDynamic: false
+      })),
+      ...newTags.map((tagText, index) => ({
+        id: `${tagId}-dynamic-${index}`,
+        text: tagText,
+        parentId: tagId,
+        zone: `${zone}-secondary`,
+        size: tag.size * 0.8,
+        selected: false,
+        isDynamic: true,
+        x: tag.x || 0,
+        y: tag.y || 0,
+        fx: null,
+        fy: null,
+        alias: tagText.toLowerCase().replace(/\s+/g, '-')
+      }))
+    ]
     
     // Clear loading state
     tagStore.setTagLoading(tagId, false)
     
     // Add all tags at once
-    tagsToAdd.forEach(newTag => {
+    allTags.forEach(newTag => {
       tagStore.addSecondaryTag(tagId, newTag)
     })
   } else {
@@ -292,7 +304,7 @@ const generateImage = async () => {
 
 // Watch for changes in the generatedPrompt computed property
 watch(generatedPrompt, () => {
-  return
+  return;
   generatePrompt()
 })
 
