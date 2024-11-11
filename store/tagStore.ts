@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import * as d3 from 'd3';
 import { shallowRef } from 'vue';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { useRuntimeConfig } from '#app';
 
 interface Tag {
   id: string
@@ -28,6 +30,12 @@ interface ZoneGraph {
   lastClickedNode: Tag | null;
 }
 
+// Add new interface for hybrid tags
+interface HybridTag extends Tag {
+  childTags: Tag[];
+  isHybrid: boolean;
+}
+
 export const useTagStore = defineStore('tags', {
   state: () => ({
     tags: [] as Tag[],
@@ -41,7 +49,8 @@ export const useTagStore = defineStore('tags', {
       Composition: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null, lastClickedTagId: null, lastClickedNode: null } as ZoneGraph,
     },
     focusedZone: 'Subject' as string,
-    dynamicTags: new Map<string, Tag[]>() // Store dynamic tags by parent ID
+    dynamicTags: new Map<string, Tag[]>() as Map<string, Tag[]>, // Store dynamic tags by parent ID
+    hybridTags: new Map<string, HybridTag>(), // Store hybrid tags by combined child IDs
   }),
   actions: {
     async fetchTags() {
@@ -255,6 +264,63 @@ export const useTagStore = defineStore('tags', {
         tag.isLoading = loading
       }
     },
+
+    async createHybridTag(zone: string, childTags: Tag[]) {
+      // Sort child IDs to ensure consistent hybrid tag keys
+      const childIds = childTags.map(t => t.id).sort().join('-');
+      
+      // Check if this hybrid already exists
+      let hybridTag = this.hybridTags.get(childIds);
+      if (hybridTag) return hybridTag;
+
+      try {
+        // Move useRuntimeConfig inside the action
+        const config = useRuntimeConfig();
+        
+        // Use Gemini API like in TagCloud.vue
+        const genAI = new GoogleGenerativeAI(config.public.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+        const prompt = `Create a descriptive tag name that combines these concepts: ${
+          childTags.map(t => t.text).join(', ')
+        }. The response should be a short phrase that captures their combination in art. Respony only with one your best suggestion, do not response with any other information.`;
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const tag = response.text();
+
+        // Create new hybrid tag
+        hybridTag = {
+          id: `hybrid-${childIds}`,
+          text: tag,
+          zone: `${zone}-hybrid`,
+          size: 60, // Larger size for hybrid container
+          selected: true,
+          x: 0,
+          y: 0,
+          fx: null,
+          fy: null,
+          alias: tag.toLowerCase().replace(/\s+/g, '-'),
+          isHybrid: true,
+          childTags: childTags,
+          isDynamic: true
+        };
+
+        this.hybridTags.set(childIds, hybridTag);
+        return hybridTag;
+      } catch (error) {
+        console.error('Failed to create hybrid tag:', error);
+        return null;
+      }
+    },
+
+    removeHybridTag(hybridId: string) {
+      const hybridEntries = Array.from(this.hybridTags.entries());
+      const entry = hybridEntries.find(([_, tag]) => tag.id === hybridId);
+      if (entry) {
+        this.hybridTags.delete(entry[0]);
+      }
+    }
   },
   getters: {
     tagsByZone: (state) => {

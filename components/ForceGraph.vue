@@ -6,7 +6,8 @@
 import { ref, onMounted, watch, computed } from 'vue';
 import * as d3 from 'd3';
 import { useTagStore } from '~/store/tagStore';
-import { ArrowPathIcon } from '@heroicons/vue/24/solid'
+import { ArrowPathIcon } from '@heroicons/vue/24/solid';
+import type { Tag } from '~/store/tagStore'; // Import Tag type
 
 const props = defineProps<{
   width: number;
@@ -20,10 +21,13 @@ const props = defineProps<{
   };
 }>();
 
-const emit = defineEmits(['tagSelected', 'secondaryTagSelected']);
-
+// Initialize refs at the top level
 const chartContainer = ref<HTMLElement | null>(null);
+const selectedSecondaryTags = ref<Tag[]>([]);
+const hybridCreationTimeout = ref<NodeJS.Timeout | null>(null);
 const tagStore = useTagStore();
+
+const emit = defineEmits(['tagSelected', 'secondaryTagSelected']);
 
 const zoneGraph = computed(() => tagStore.getZoneGraph(props.zone));
 
@@ -136,8 +140,14 @@ function updateNodesAndLinks() {
   const radius = 150; // Distance from parent
   const angleStep = (2 * Math.PI) / secondaryNodeCount;
 
+  // Include hybrid tags in nodes
+  const hybridTags = Array.from(tagStore.hybridTags.values())
+    .filter(tag => tag.childTags.some(child => 
+      secondaryTags.some(secTag => secTag.id === child.id)
+    ));
+
   // Combine all nodes, ensuring both preconfigured and dynamic secondary tags are included
-  const nodes = [...visiblePrimaryTags, ...secondaryTags].map((tag, index) => {
+  const nodes = [...visiblePrimaryTags, ...secondaryTags, ...hybridTags].map((tag, index) => {
     const oldNode = oldNodes.get(tag.id);
     let x, y;
 
@@ -165,6 +175,20 @@ function updateNodesAndLinks() {
       // Primary node should be centered
       x = props.width / 2;
       y = props.height / 2;
+    }
+
+    // Special positioning for hybrid tags
+    if (tag.isHybrid) {
+      // Position hybrid tag between its child tags
+      const childPositions = tag.childTags.map(child => {
+        const childNode = oldNodes.get(child.id);
+        return childNode ? { x: childNode.x, y: childNode.y } : null;
+      }).filter(Boolean);
+
+      if (childPositions.length > 0) {
+        x = childPositions.reduce((sum, pos) => sum + pos.x, 0) / childPositions.length;
+        y = childPositions.reduce((sum, pos) => sum + pos.y, 0) / childPositions.length;
+      }
     }
 
     return {
@@ -286,17 +310,48 @@ function updateNodesAndLinks() {
 }
 
 
-function handleNodeClick(event, d) {
+function handleNodeClick(event: MouseEvent, d: Tag) {
   if (props.preview) return;
   
   event.stopPropagation();
   
   if (d.zone.includes('-secondary')) {
-    // For secondary tags, just toggle selection and update appearance
+    // Toggle selection
     d.selected = !d.selected;
     updateNodeAppearance(d, false);
+    
+    // Update selected tags array
+    if (d.selected) {
+      selectedSecondaryTags.value.push(d);
+    } else {
+      selectedSecondaryTags.value = selectedSecondaryTags.value.filter(t => t.id !== d.id);
+    }
+
+    // Clear any existing timeout
+    if (hybridCreationTimeout.value) {
+      clearTimeout(hybridCreationTimeout.value);
+    }
+
+    // If we have 2 or more selected tags, create hybrid after a short delay
+    if (selectedSecondaryTags.value.length >= 2) {
+      hybridCreationTimeout.value = setTimeout(async () => {
+        const hybridTag = await tagStore.createHybridTag(props.zone, selectedSecondaryTags.value);
+        if (hybridTag) {
+          // Clear selections
+          selectedSecondaryTags.value.forEach(tag => {
+            tag.selected = false;
+            updateNodeAppearance(tag, false);
+          });
+          selectedSecondaryTags.value = [];
+          
+          // Update graph with new hybrid
+          updateGraph();
+        }
+      }, 1000); // 1 second delay to allow for multiple selections
+    }
+
     emit('secondaryTagSelected', d.id);
-    return; // Exit early for secondary tags
+    return;
   }
 
   // Rest of the primary tag click handling...
@@ -560,5 +615,12 @@ div {
 /* Use ::v-deep to target elements inside the SVG */
 ::v-deep .loading-node circle {
   animation: loadingPulse 1s infinite;
+}
+
+::v-deep .nodes g[data-is-hybrid="true"] circle {
+  stroke: #4CAF50;
+  stroke-width: 2;
+  stroke-dasharray: 4;
+  fill-opacity: 0.3;
 }
 </style>
