@@ -60,4 +60,19 @@ Impact: Improved type safety and code quality in visualization components
 Related: None
 
 
+L004:
+- Context: components/ForceGraph.vue and store/tagStore.ts
+- Insight: Implementing visual transitions for hybrid tag creation and removal
+- Application: 
+  - Use opacity transitions for smooth appearance/disappearance of nodes
+  - Keep nodes in graph data structure but visually hide them
+  - Update both store data and visual representation when removing hybrids
+  - Ensure child tags are properly unselected when hybrid is removed
+- Impact: 
+  - Improved user experience with smooth transitions
+  - Maintained graph stability by avoiding abrupt node removals
+  - Better state management between store and visual representation
+- Related: L002, L003
+
+
 
