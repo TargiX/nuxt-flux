@@ -8,6 +8,7 @@ import * as d3 from 'd3';
 import { useTagStore } from '~/store/tagStore';
 import { ArrowPathIcon } from '@heroicons/vue/24/solid';
 import type { Tag } from '~/store/tagStore'; // Import Tag type
+import { gsap } from 'gsap';
 
 const props = defineProps<{
   width: number;
@@ -315,6 +316,42 @@ function handleNodeClick(event: MouseEvent, d: Tag) {
   
   event.stopPropagation();
   
+  // Add handling for hybrid tag clicks
+  if (d.isHybrid) {
+    if (d.selected) {
+      // Unselecting hybrid tag
+      d.selected = false;
+      // Show child nodes before removing hybrid
+      updateHybridRelatedNodes(d, true);
+      // Unselect all child tags and update their appearance
+      d.childTags.forEach(childTag => {
+        // Make sure to update the actual tag in the store's data
+        const actualTag = tagStore.allTags.find(t => t.id === childTag.id);
+        if (actualTag) {
+          actualTag.selected = false;
+        }
+        // Also update the local reference
+        childTag.selected = false;
+      });
+      // Remove from selected secondary tags array
+      selectedSecondaryTags.value = selectedSecondaryTags.value.filter(
+        tag => !d.childTags.some(child => child.id === tag.id)
+      );
+      // Remove the hybrid tag from store
+      tagStore.removeHybridTag(d.id);
+      // Update graph to reflect removal and unselected states
+      updateGraph();
+      // Force update colors
+      updateNodeColors();
+    } else {
+      // Selecting hybrid tag (this shouldn't happen now, but keep for consistency)
+      d.selected = true;
+      updateNodeAppearance(d, false);
+      updateHybridRelatedNodes(d, false);
+    }
+    return;
+  }
+
   if (d.zone.includes('-secondary')) {
     // Toggle selection
     d.selected = !d.selected;
@@ -337,6 +374,9 @@ function handleNodeClick(event: MouseEvent, d: Tag) {
       hybridCreationTimeout.value = setTimeout(async () => {
         const hybridTag = await tagStore.createHybridTag(props.zone, selectedSecondaryTags.value);
         if (hybridTag) {
+          // Hide the child nodes that are now part of the hybrid
+          updateHybridRelatedNodes(hybridTag, false);
+          
           // Clear selections
           selectedSecondaryTags.value.forEach(tag => {
             tag.selected = false;
@@ -347,7 +387,7 @@ function handleNodeClick(event: MouseEvent, d: Tag) {
           // Update graph with new hybrid
           updateGraph();
         }
-      }, 1000); // 1 second delay to allow for multiple selections
+      }, 1000);
     }
 
     emit('secondaryTagSelected', d.id);
@@ -597,6 +637,28 @@ function updateNodeColors() {
   zoneGraph.value.svg.selectAll(".nodes circle")
     .attr("fill", d => d.selected ? "#4CAF50" : color(d.zone));
 }
+
+// Add new function to handle hybrid-related visual updates
+function updateHybridRelatedNodes(hybridTag: Tag, visible: boolean) {
+  if (!hybridTag.childTags) return;
+
+  const childIds = hybridTag.childTags.map(t => t.id);
+  
+  // Find all child nodes and transition their opacity
+  zoneGraph.value.svg.selectAll(".nodes g")
+    .filter(d => childIds.includes(d.id))
+    .transition()
+    .duration(600)
+    .style("opacity", visible ? 1 : 0)
+    .style("pointer-events", visible ? "all" : "none");
+
+  // Also handle their links
+  zoneGraph.value.svg.selectAll(".links line")
+    .filter(d => childIds.includes(d.source.id) || childIds.includes(d.target.id))
+    .transition()
+    .duration(600)
+    .style("opacity", visible ? 0.6 : 0);
+}
 </script>
 
 <style scoped>
@@ -622,5 +684,14 @@ div {
   stroke-width: 2;
   stroke-dasharray: 4;
   fill-opacity: 0.3;
+}
+
+/* Add to existing styles */
+::v-deep .nodes g {
+  transition: opacity 0.6s ease;
+}
+
+::v-deep .links line {
+  transition: opacity 0.6s ease;
 }
 </style>

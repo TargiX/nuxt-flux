@@ -281,9 +281,10 @@ export const useTagStore = defineStore('tags', {
         const genAI = new GoogleGenerativeAI(config.public.GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-        const prompt = `Create a descriptive tag name that combines these concepts: ${
+        const prompt = `Combine the following concepts into a single, intuitive, and descriptive tag name suitable for creative art or design: ${
           childTags.map(t => t.text).join(', ')
-        }. The response should be a short phrase that captures their combination in art. Respony only with one your best suggestion, do not response with any other information.`;
+        }. The tag phrase should be simple, clear, and directly reflective of the given ideas, avoiding overly complex or abstract phrasing. Respond with only your single best suggestion phrase 2-3 words.`;
+        
 
         const result = await model.generateContent(prompt);
         const response = await result.response;
