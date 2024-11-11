@@ -16,6 +16,7 @@ interface Tag {
   secondaryTags?: Tag[]
   isDynamic?: boolean
   isLoading?: boolean
+  isPreconfigured?: boolean
 }
 
 interface ZoneGraph {
@@ -95,24 +96,25 @@ export const useTagStore = defineStore('tags', {
           id: `${zone}-${index}`,
           text: tagData.text,
           zone,
-          size: 40, // Base size
+          size: 40,
           selected: false,
           x: 0,
           y: 0,
           fx: null,
           fy: null,
-          alias: tagData.alias, // Add the alias property
+          alias: tagData.alias,
           secondaryTags: tagData.secondaryTags.map((secondaryText, secIndex) => ({
             id: `${zone}-${index}-${secIndex}`,
             text: secondaryText,
             zone: `${zone}-secondary`,
-            size: 30, // Smaller size for secondary tags
+            size: 30,
             selected: false,
             x: 0,
             y: 0,
             fx: null,
             fy: null,
-            alias: secondaryText.toLowerCase().replace(/\s+/g, '-'), // Generate an alias for secondary tags
+            alias: secondaryText.toLowerCase().replace(/\s+/g, '-'),
+            isPreconfigured: true
           }))
         }))
       );
@@ -230,14 +232,21 @@ export const useTagStore = defineStore('tags', {
         if (!parent.secondaryTags) {
           parent.secondaryTags = []
         }
+        tag.isDynamic = true;
+        tag.isPreconfigured = tag.isPreconfigured || false;
         parent.secondaryTags.push(tag)
       }
     },
 
     removeSecondaryTagsByParent(parentId: string) {
       const parent = this.tags.find(t => t.id === parentId)
-      if (parent) {
-        parent.secondaryTags = []
+      if (parent && parent.secondaryTags) {
+        // Keep preconfigured tags, remove only dynamic ones
+        parent.secondaryTags = parent.secondaryTags.filter(tag => tag.isPreconfigured);
+        // Deselect all remaining tags
+        parent.secondaryTags.forEach(tag => {
+          tag.selected = false;
+        });
       }
     },
     setTagLoading(tagId: string, loading: boolean) {
@@ -281,6 +290,21 @@ export const useTagStore = defineStore('tags', {
       return (zone: string) => state.tags.filter(tag => 
         tag.zone === zone && !tag.selected
       );
+    },
+    getAllSecondaryTagsForZone: (state) => {
+      return (zone: string) => {
+        const primaryTag = state.tags.find(t => t.zone === zone && t.selected);
+        if (!primaryTag || primaryTag.isLoading) return [];
+        
+        // Get preconfigured secondary tags
+        const preconfiguredTags = primaryTag.secondaryTags || [];
+        
+        // Get dynamic tags
+        const dynamicTags = state.dynamicTags.get(primaryTag.id) || [];
+        
+        // Combine both types of tags
+        return [...preconfiguredTags, ...dynamicTags];
+      }
     }
   }
 })

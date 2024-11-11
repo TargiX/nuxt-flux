@@ -304,7 +304,7 @@ const generateImage = async () => {
 
 // Watch for changes in the generatedPrompt computed property
 watch(generatedPrompt, () => {
-  return;
+  // return;
   generatePrompt()
 })
 

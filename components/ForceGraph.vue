@@ -119,7 +119,7 @@ function updateNodesAndLinks() {
   const color = d3.scaleOrdinal(d3.schemeCategory10);
 
   const zoneTags = tagStore.tagsByZone(props.zone);
-  const secondaryTags = tagStore.getSecondaryTagsForZone(props.zone);
+  const secondaryTags = tagStore.getAllSecondaryTagsForZone(props.zone);
   const dynamicTags = tagStore.getDynamicTags(props.zone);
 
   const oldNodes = new Map(zoneGraph.value.nodes.map(d => [d.id, d]));
@@ -132,12 +132,12 @@ function updateNodesAndLinks() {
     !tag.zone.includes('-secondary') && (!selectedTag || tag.selected)
   );
 
-  // Calculate positions for secondary nodes in a perfect circle
   const secondaryNodeCount = secondaryTags.length;
   const radius = 150; // Distance from parent
   const angleStep = (2 * Math.PI) / secondaryNodeCount;
 
-  const nodes = [...visiblePrimaryTags, ...secondaryTags, ...dynamicTags].map((tag, index) => {
+  // Combine all nodes, ensuring both preconfigured and dynamic secondary tags are included
+  const nodes = [...visiblePrimaryTags, ...secondaryTags].map((tag, index) => {
     const oldNode = oldNodes.get(tag.id);
     let x, y;
 

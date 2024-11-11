@@ -1,28 +1,29 @@
-// https://nuxt.com/docs/api/configuration/nuxt-config
+
 export default defineNuxtConfig({
   modules: [
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt',
-    'flowbite/plugin'
+    // 'flowbite/plugin' // Already removed in Step 1
   ],
 
   css: [
-    '~/assets/scss/main.scss',
-    'flowbite/dist/flowbite.css'
+    '~/assets/scss/main.scss',         // Your main SCSS file
+    'flowbite/dist/flowbite.css'       // Flowbite's CSS
   ],
+
   runtimeConfig: {
     public: {
       GEMINI_API_KEY: process.env.GEMINI_API_KEY,
       FLUX_API_KEY: process.env.FLUX_API_KEY
     }
   },
+
   vite: {
     css: {
       preprocessorOptions: {
         scss: {
-          additionalData: '@import "~/assets/scss/variables.scss";',
-          api: 'modern-compiler' 
-
+          additionalData: '@use "~/assets/scss/variables.scss";',
+          // Remove 'api: modern-compiler' as it's invalid
         },
       },
     },
@@ -35,49 +36,15 @@ export default defineNuxtConfig({
   compatibilityDate: '2024-10-07',
 
   tailwindcss: {
-    config: {
-      content: [
-        "./node_modules/flowbite/**/*.js"
-      ],
-      plugins: [
-        require('flowbite/plugin')
-      ],
-    }
-  }
-})
-
-// File: store/tagStore.ts
-import { defineStore } from 'pinia'
-
-interface Tag {
-  id: string
-  text: string
-  zone: string
-  size: number
-  selected: boolean
-}
-
-export const useTagStore = defineStore('tags', {
-  state: () => ({
-    tags: [] as Tag[],
-    zones: ['Subject', 'Style', 'Mood', 'Setting', 'ColorScheme', 'Composition']
-  }),
-  actions: {
-    addTag(tag: Tag) {
-      this.tags.push(tag)
-    },
-    toggleTag(id: string) {
-      const tag = this.tags.find(t => t.id === id)
-      if (tag) tag.selected = !tag.selected
-    },
-    // Add more actions as needed
+    configPath: './tailwind.config.js', // Reference to the separate config file
+    // quiet: false, // Optionally set to true to suppress warnings
   },
-  getters: {
-    tagsByZone: (state) => {
-      return (zone: string) => state.tags.filter(tag => tag.zone === zone)
+
+  postcss: {
+    plugins: {
+      tailwindcss: {},
+      autoprefixer: {},
     },
-    selectedTags: (state) => {
-      return state.tags.filter(tag => tag.selected)
-    }
-  }
+  },
+
 })
