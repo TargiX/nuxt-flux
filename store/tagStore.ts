@@ -22,6 +22,9 @@ interface Tag {
   isDynamic?: boolean
   isLoading?: boolean
   isPreconfigured?: boolean
+  isHybrid?: boolean
+  childTags?: Tag[]
+  isHidden?: boolean
 }
 
 interface ZoneGraph {
@@ -49,6 +52,7 @@ export const useTagStore = defineStore('tags', {
     focusedZone: 'Subject' as string,
     dynamicTags: new Map<string, Tag[]>() as Map<string, Tag[]>, // Store dynamic tags by parent ID
     hybridTags: new Map<string, HybridTag>(), // Store hybrid tags by combined child IDs
+    selectedHybridTags: [] as Tag[],
   }),
   actions: {
     async fetchTags() {
@@ -218,54 +222,105 @@ export const useTagStore = defineStore('tags', {
       }
     },
 
-    async createHybridTag(zone: string, childTags: Tag[]) {
-      // Sort child IDs to ensure consistent hybrid tag keys
-      const childIds = childTags.map(t => t.id).sort().join('-');
-      
-      // Check if this hybrid already exists
-      let hybridTag = this.hybridTags.get(childIds);
-      if (hybridTag) return hybridTag;
+    async createHybridTag(zone: string, tags: Tag[]) {
+      // Initialize Gemini
+      const config = useRuntimeConfig();
+      const apiKey = config.public.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error('GEMINI_API_KEY is not defined');
+      }
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+      // Generate hybrid tag text using LLM
+      const prompt = `Combine the following concepts into a single, intuitive, and descriptive tag name suitable for creative art or design: ${
+        tags.map(t => t.text).join(', ')
+      }. The tag phrase should be simple, clear, and directly reflective of the given ideas, avoiding overly complex or abstract phrasing. Respond with only your single best suggestion phrase 2-3 words.`;
 
       try {
-        // Move useRuntimeConfig inside the action
-        const config = useRuntimeConfig();
-        
-        // Use Gemini API like in TagCloud.vue
-        const genAI = new GoogleGenerativeAI(config.public.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
-        const prompt = `Combine the following concepts into a single, intuitive, and descriptive tag name suitable for creative art or design: ${
-          childTags.map(t => t.text).join(', ')
-        }. The tag phrase should be simple, clear, and directly reflective of the given ideas, avoiding overly complex or abstract phrasing. Respond with only your single best suggestion phrase 2-3 words.`;
-        
-
         const result = await model.generateContent(prompt);
         const response = await result.response;
-        const tag = response.text();
+        const hybridText = await response.text();
 
-        // Create new hybrid tag
-        hybridTag = {
-          id: `hybrid-${childIds}`,
-          text: tag,
-          zone: `${zone}-hybrid`,
-          size: 60, // Larger size for hybrid container
+        const hybridTag: Tag = {
+          id: `hybrid-${Date.now()}`,
+          text: hybridText.trim(), // Use the LLM-generated text
+          zone: zone,
+          size: 30,
           selected: true,
+          isHybrid: true,
+          childTags: tags,
           x: 0,
           y: 0,
           fx: null,
           fy: null,
-          alias: tag.toLowerCase().replace(/\s+/g, '-'),
-          isHybrid: true,
-          childTags: childTags,
-          isDynamic: true
+          alias: hybridText.toLowerCase().replace(/\s+/g, '-')
         };
 
-        this.hybridTags.set(childIds, hybridTag);
+        // Add hybrid tag to selected hybrids
+        this.selectedHybridTags.push(hybridTag);
+        
+        // Mark child tags as hidden
+        tags.forEach(childTag => {
+          const tag = this.allTags.find(t => t.id === childTag.id);
+          if (tag) {
+            tag.isHidden = true;
+            tag.selected = false;
+          }
+        });
+        
         return hybridTag;
       } catch (error) {
-        console.error('Failed to create hybrid tag:', error);
-        return null;
+        console.error('Error generating hybrid tag:', error);
+        // Fallback to simple concatenation if LLM fails
+        return {
+          id: `hybrid-${Date.now()}`,
+          text: tags.map(t => t.text).join(' + '),
+          zone: zone,
+          size: 30,
+          selected: true,
+          isHybrid: true,
+          childTags: tags,
+          x: 0,
+          y: 0,
+          fx: null,
+          fy: null,
+          alias: `hybrid-${Date.now()}`
+        };
       }
+    },
+
+    addSelectedHybridTag(hybridTag: Tag) {
+      // Check if the hybrid tag is already in the array
+      const existingIndex = this.selectedHybridTags.findIndex(t => t.id === hybridTag.id);
+      if (existingIndex === -1) {
+        this.selectedHybridTags.push(hybridTag);
+      }
+      
+      // Mark child tags as hidden
+      if (hybridTag.childTags) {
+        hybridTag.childTags.forEach(childTag => {
+          const tag = this.allTags.find(t => t.id === childTag.id);
+          if (tag) {
+            tag.isHidden = true;
+            tag.selected = false;
+          }
+        });
+      }
+    },
+
+    removeSelectedHybridTag(hybridTagId: string) {
+      const hybridTag = this.selectedHybridTags.find(t => t.id === hybridTagId);
+      if (hybridTag?.childTags) {
+        // Unhide child tags
+        hybridTag.childTags.forEach(childTag => {
+          const tag = this.allTags.find(t => t.id === childTag.id);
+          if (tag) {
+            tag.isHidden = false;
+          }
+        });
+      }
+      this.selectedHybridTags = this.selectedHybridTags.filter(t => t.id !== hybridTagId);
     },
 
     removeHybridTag(hybridId: string) {
@@ -325,6 +380,23 @@ export const useTagStore = defineStore('tags', {
         // Combine both types of tags
         return [...preconfiguredTags, ...dynamicTags];
       }
+    },
+    selectedTags(): Tag[] {
+      return this.allTags.filter(tag => tag.selected && !tag.isHidden);
+    },
+    selectedSecondaryTags(): Tag[] {
+      return this.allTags.filter(tag => 
+        tag.zone.includes('-secondary') && 
+        tag.selected && 
+        !tag.isHidden
+      );
+    },
+    allSelectedTags(): Tag[] {
+      return [
+        ...this.selectedTags,
+        ...this.selectedSecondaryTags,
+        ...this.selectedHybridTags
+      ];
     }
   }
 })

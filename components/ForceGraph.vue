@@ -52,6 +52,11 @@ const selectedSecondaryTags = ref<Tag[]>([]);
 const hybridCreationTimeout = ref<NodeJS.Timeout | null>(null);
 const tagStore = useTagStore();
 
+const RADIUS = 150; // Distance from parent for secondary nodes
+const SECONDARY_NODE_SIZE = 30;
+const PRIMARY_NODE_SIZE = 40;
+const SECONDARY_NODE_ANGLE_STEP = (2 * Math.PI) / 10;
+
 const emit = defineEmits(['tagSelected', 'secondaryTagSelected', 'zoneChange']);
 
 const zoneGraph = computed(() => tagStore.getZoneGraph(props.zone));
@@ -149,49 +154,47 @@ function updateNodesAndLinks() {
 
   const zoneTags = tagStore.tagsByZone(props.zone);
   const secondaryTags = tagStore.getAllSecondaryTagsForZone(props.zone);
-  const dynamicTags = tagStore.getDynamicTags(props.zone);
+  const hybridTags = tagStore.selectedHybridTags.filter(tag => tag.zone === props.zone);
+
+  // Find the selected tag that's loading (if any)
+  const selectedTag = zoneTags.find(tag => tag.selected && tag.isLoading);
 
   const oldNodes = new Map(zoneGraph.value.nodes.map(d => [d.id, d]));
 
-  // Find the currently selected tag to check its loading state
-  const selectedTag = zoneTags.find(tag => tag.selected && tag.isLoading);
-  
-  // Filter out non-selected primary tags when there's a selected tag
-  const visiblePrimaryTags = zoneTags.filter(tag => 
-    !tag.zone.includes('-secondary') && (!selectedTag || tag.selected)
-  );
-
-  const secondaryNodeCount = secondaryTags.length;
-  const radius = 150; // Distance from parent
-  const angleStep = (2 * Math.PI) / secondaryNodeCount;
-
-  // Include hybrid tags in nodes
-  const hybridTags = Array.from(tagStore.hybridTags.values())
-    .filter(tag => tag.childTags.some(child => 
-      secondaryTags.some(secTag => secTag.id === child.id)
-    ));
-
-  // Combine all nodes, ensuring both preconfigured and dynamic secondary tags are included
-  const nodes = [...visiblePrimaryTags, ...secondaryTags, ...hybridTags].map((tag, index) => {
+  // Combine all nodes, including hybrid tags
+  const nodes = [...zoneTags, ...secondaryTags, ...hybridTags].map((tag) => {
     const oldNode = oldNodes.get(tag.id);
     let x, y;
 
     if (oldNode) {
       x = oldNode.x;
       y = oldNode.y;
+    } else if (tag.isHybrid && tag.childTags) {
+      // Position hybrid tag at the average position of its child tags
+      const childPositions = tag.childTags
+        .map(child => oldNodes.get(child.id))
+        .filter(Boolean);
+      
+      if (childPositions.length > 0) {
+        x = childPositions.reduce((sum, pos) => sum + pos.x, 0) / childPositions.length;
+        y = childPositions.reduce((sum, pos) => sum + pos.y, 0) / childPositions.length;
+      } else {
+        x = props.width / 2;
+        y = props.height / 2;
+      }
     } else if (tag.zone.includes('-secondary')) {
       // For secondary nodes, position them in a perfect circle around the parent
-      const parent = visiblePrimaryTags[0];
+      const parent = zoneTags[0];
       if (parent) {
         const parentX = parent.x || props.width / 2;
         const parentY = parent.y || props.height / 2;
         
         // Calculate position in perfect circle
         const secondaryIndex = secondaryTags.findIndex(t => t.id === tag.id);
-        const angle = angleStep * secondaryIndex - Math.PI / 2; // Start from top (-Math.PI/2)
+        const angle = SECONDARY_NODE_ANGLE_STEP * secondaryIndex - Math.PI / 2;
         
-        x = parentX + Math.cos(angle) * radius;
-        y = parentY + Math.sin(angle) * radius;
+        x = parentX + Math.cos(angle) * RADIUS;
+        y = parentY + Math.sin(angle) * RADIUS;
       } else {
         x = props.width / 2;
         y = props.height / 2;
@@ -218,7 +221,7 @@ function updateNodesAndLinks() {
 
     return {
       ...tag,
-      r: tag.size / 2,
+      r: tag.isHybrid ? 15 : tag.size / 2, // Set size for hybrid tags
       x,
       y,
       vx: 0, // Reset velocity for smoother initialization
@@ -238,7 +241,7 @@ function updateNodesAndLinks() {
   zoneGraph.value.simulation
     .force("link", d3.forceLink(links)
       .id(d => d.id)
-      .distance(radius) // Match the radius we used for positioning
+      .distance(RADIUS) // Use constant here
       .strength(0.5)) // Stronger links to maintain circle shape
     .force("charge", d3.forceManyBody()
       .strength(d => d.zone.includes('-secondary') ? -50 : -40)) // Weaker repulsion for primary
@@ -247,7 +250,7 @@ function updateNodesAndLinks() {
       .strength(0.8))
     .force("centerPrimary", d3.forceRadial(0, props.width / 2, props.height / 2)
       .strength(d => d.zone.includes('-secondary') ? 0 : 0.1)) // Strong centering only for primary
-    .force("circularSecondary", d3.forceRadial(radius, props.width / 2, props.height / 2)
+    .force("circularSecondary", d3.forceRadial(RADIUS, props.width / 2, props.height / 2)
       .strength(d => d.zone.includes('-secondary') ? 0.8 : 0)); // Keep secondary nodes in a circle
 
   // Adjust simulation parameters for smoother movement
@@ -272,12 +275,20 @@ function updateNodesAndLinks() {
     .attr("stroke-width", 1.5);
 
   // Add text to entering nodes
-  nodeEnter.append("text")
-    .text(d => d.text)
-    .attr("x", 0)
-    .attr("y", d => d.r + 10)
-    .attr("text-anchor", "middle")
-    .attr("font-size", "10px");
+  nodeEnter.each(function(d: any) {
+    const node = d3.select(this);
+    const lines = formatNodeText(d.text);
+    
+    lines.forEach((line, i) => {
+      node.append("text")
+        .text(line)
+        .attr("x", 0)
+        .attr("y", d.r + 10 + (i * 12)) // 12px line height
+        .attr("text-anchor", "middle")
+        .attr("font-size", "10px")
+        .attr("class", "node-text");
+    });
+  });
 
   // Update existing nodes and their classes
   const allNodes = node.merge(nodeEnter);
@@ -340,39 +351,20 @@ function handleNodeClick(event: MouseEvent, d: Tag) {
   
   event.stopPropagation();
   
-  // Add handling for hybrid tag clicks
   if (d.isHybrid) {
+    d.selected = !d.selected;
+    
+    // When hybrid is selected/unselected, update the store
     if (d.selected) {
-      // Unselecting hybrid tag
-      d.selected = false;
-      // Show child nodes before removing hybrid
-      updateHybridRelatedNodes(d, true);
-      // Unselect all child tags and update their appearance
-      d.childTags.forEach(childTag => {
-        // Make sure to update the actual tag in the store's data
-        const actualTag = tagStore.allTags.find(t => t.id === childTag.id);
-        if (actualTag) {
-          actualTag.selected = false;
-        }
-        // Also update the local reference
-        childTag.selected = false;
-      });
-      // Remove from selected secondary tags array
-      selectedSecondaryTags.value = selectedSecondaryTags.value.filter(
-        tag => !d.childTags.some(child => child.id === tag.id)
-      );
-      // Remove the hybrid tag from store
-      tagStore.removeHybridTag(d.id);
-      // Update graph to reflect removal and unselected states
-      updateGraph();
-      // Force update colors
-      updateNodeColors();
+      tagStore.addSelectedHybridTag(d);
     } else {
-      // Selecting hybrid tag (this shouldn't happen now, but keep for consistency)
-      d.selected = true;
-      updateNodeAppearance(d, false);
-      updateHybridRelatedNodes(d, false);
+      tagStore.removeSelectedHybridTag(d.id);
     }
+    
+    // Hide/show child nodes
+    updateHybridRelatedNodes(d, !d.selected);
+    updateNodeAppearance(d, false);
+    updateGraph();
     return;
   }
 
@@ -557,12 +549,20 @@ function setupSvgAndSimulation(width, height) {
     .attr("stroke", "#fff")
     .attr("stroke-width", 1.5);
 
-  node.append("text")
-    .text(d => d.text)
-    .attr("x", 0)
-    .attr("y", d => d.r + 10)
-    .attr("text-anchor", "middle")
-    .attr("font-size", "10px");
+  node.each(function(d: any) {
+    const node = d3.select(this);
+    const lines = formatNodeText(d.text);
+    
+    lines.forEach((line, i) => {
+      node.append("text")
+        .text(line)
+        .attr("x", 0)
+        .attr("y", d.r + 10 + (i * 12)) // 12px line height
+        .attr("text-anchor", "middle")
+        .attr("font-size", "10px")
+        .attr("class", "node-text");
+    });
+  });
 
   node.append("title")
     .text(d => d.id);
@@ -603,12 +603,14 @@ function updateNodeAppearance(d, updateForces = true) {
   const color = d3.scaleOrdinal(d3.schemeCategory10);
   const nodes = zoneGraph.value.svg.selectAll(`.nodes g`).filter(n => n.id === d.id);
 
-  const baseSize = d.zone.includes('-secondary') ? 30 : 40;
+  const baseSize = d.zone.includes('-secondary') ? SECONDARY_NODE_SIZE : PRIMARY_NODE_SIZE;
+  const nodeSize = d.isHybrid ? SECONDARY_NODE_SIZE : baseSize;
 
   nodes.each(function() {
     const node = d3.select(this);
     const circle = node.select("circle");
-
+    circle.attr("r", nodeSize / 2);
+    
     // Only update the color, no size changes
     if (!d.isLoading) {
       circle.attr("fill", d.selected ? "#4CAF50" : color(d.zone));
@@ -710,6 +712,26 @@ function handlePrevZone() {
   const prevIndex = currentIndex > 0 ? currentIndex - 1 : 0;
   emit('zoneChange', zones[prevIndex]);
 }
+
+// Add this function near the top of the script section
+function formatNodeText(text: string): string[] {
+  // Split by spaces but keep prepositions with their following word
+  const prepositions = ['of', 'in', 'on', 'at', 'by', 'for', 'with', 'to'];
+  const words = text.split(' ');
+  const lines: string[] = [];
+  
+  for (let i = 0; i < words.length; i++) {
+    if (prepositions.includes(words[i].toLowerCase()) && i < words.length - 1) {
+      // Combine preposition with the next word
+      lines.push(`${words[i]} ${words[i + 1]}`);
+      i++; // Skip the next word since we've used it
+    } else {
+      lines.push(words[i]);
+    }
+  }
+  
+  return lines;
+}
 </script>
 
 <style scoped>
@@ -785,5 +807,11 @@ button:disabled {
 
 button:disabled:hover {
   background-color: #9ca3af; /* Tailwind's gray-400 */
+}
+
+/* Add to existing styles */
+::v-deep .node-text {
+  pointer-events: none; /* Prevents text from interfering with click events */
+  user-select: none; /* Prevents text selection */
 }
 </style>

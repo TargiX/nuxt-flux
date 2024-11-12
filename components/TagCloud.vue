@@ -221,9 +221,7 @@ const handleSecondaryTagSelection = (tagId: string) => {
 }
 
 const generatedPrompt = computed(() => {
-  const selectedPrimaryTags = tagStore.selectedTags.map((tag) => tag.text)
-  const selectedSecondaryTags = tagStore.selectedSecondaryTags.map((tag) => tag.text)
-  return [...selectedPrimaryTags, ...selectedSecondaryTags].join(', ')
+  return tagStore.allSelectedTags.map(tag => tag.text).join(', ');
 })
 
 const debounce = (func: Function, delay: number) => {
