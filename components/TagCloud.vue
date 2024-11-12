@@ -15,33 +15,28 @@
           :zoomConfig="{ scale: 1.4, translateX: -90, translateY: -130 }"
         />
         <div class="preview-zones">
-      <div
-        v-for="zone in previewZones"
-        :key="zone"
-        class="preview-zone"
-        @click="setFocusedZone(zone)"
-      >
-        <h3>{{ zone }}</h3>
-        <ForceGraph
-          :width="100"
-          :height="150"
-          :zone="zone"
-          :preview="true"
-          :zoomConfig="{ scale: 0.3, translateX: 45, translateY: 50 }"
-        />
-      </div>
-    </div>
+          <div
+            v-for="zone in previewZones"
+            :key="zone"
+            class="preview-zone"
+            @click="setFocusedZone(zone)"
+          >
+            <h3>{{ zone }}</h3>
+            <ForceGraph
+              :width="100"
+              :height="150"
+              :zone="zone"
+              :preview="true"
+              :zoomConfig="{ scale: 0.3, translateX: 45, translateY: 50 }"
+            />
+          </div>
+        </div>
       </div>
 
-      <div class="prompt-container ">
+      <div class="prompt-container">
         <h2>Image:</h2>
         <div class="image-container">
-          <img
-            v-if="imageUrl"
-            :src="imageUrl"
-            alt="Generated Image"
-            class="generated-image"
-          />
+          <img v-if="imageUrl" :src="imageUrl" alt="Generated Image" class="generated-image" />
           <div v-else-if="isGeneratingImage" class="loader-container">
             <div class="loader">
               <div class="particles">
@@ -64,16 +59,16 @@
           <div class="prompt-header">
             <h2>Generated Prompt:</h2>
             <label class="relative inline-flex items-center cursor-pointer">
-              <input 
-                type="checkbox" 
-                v-model="isManualMode" 
-                class="sr-only peer"
+              <input type="checkbox" v-model="isManualMode" class="sr-only peer" />
+              <div
+                class="relative w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"
+              ></div>
+              <span class="ms-3 text-sm font-medium text-gray-900 dark:text-gray-300"
+                >Manual Mode</span
               >
-              <div class="relative w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-              <span class="ms-3 text-sm font-medium text-gray-900 dark:text-gray-300">Manual Mode</span>
             </label>
           </div>
-          
+
           <textarea
             v-if="isManualMode"
             v-model="manualPrompt"
@@ -81,24 +76,21 @@
             placeholder="Enter your prompt..."
           ></textarea>
           <p v-else>{{ generatedPromptResult }}</p>
-          
-          <button 
-            @click="generateImage" 
+
+          <button
+            @click="generateImage"
             :disabled="!(isManualMode ? manualPrompt : generatedPromptResult) || isGeneratingImage"
             class="flex items-center gap-2"
           >
-            <ArrowPathIcon
-              v-if="isGeneratingImage"
-              class="animate-spin h-5 w-5"
-            />
+            <ArrowPathIcon v-if="isGeneratingImage" class="animate-spin h-5 w-5" />
             {{ isGeneratingImage ? 'Generating...' : 'Generate Image' }}
           </button>
         </div>
-        <p class="w-full !text-left text-xs">Selected Tags: <span class="font-bold">{{ generatedPrompt}}</span></p>
+        <p class="w-full !text-left text-xs">
+          Selected Tags: <span class="font-bold">{{ generatedPrompt }}</span>
+        </p>
       </div>
     </div>
-
-
   </div>
 
   <div v-else class="loading">Loading...</div>
@@ -111,6 +103,7 @@ import ForceGraph from './ForceGraph.vue'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { ArrowPathIcon } from '@heroicons/vue/24/solid'
 import { HarmCategory, HarmBlockThreshold } from '@google/generative-ai'
+import { mockTags } from '~/store/mockTags'
 const config = useRuntimeConfig()
 
 const apiKey = config.public.GEMINI_API_KEY
@@ -171,24 +164,24 @@ const handleTagSelection = async (tagId: string, zone: string) => {
   if (!tag.selected) {
     // Tag is being selected
     tagStore.toggleTag(tagId, zone)
-    
+
     // Set loading state
     tagStore.setTagLoading(tagId, true)
-    
+
     // Store preconfigured tags temporarily
     const preconfiguredTags = tag.secondaryTags || []
     // Clear secondary tags immediately so they don't show up
     tag.secondaryTags = []
-    
+
     // Generate new dynamic secondary tags
     const newTags = await generateRelatedTags(tag.text)
-    
+
     // Prepare all tags (both preconfigured and dynamic)
     const allTags = [
-      ...preconfiguredTags.map(t => ({
+      ...preconfiguredTags.map((t) => ({
         ...t,
         parentId: tagId,
-        isDynamic: false
+        isDynamic: false,
       })),
       ...newTags.map((tagText, index) => ({
         id: `${tagId}-dynamic-${index}`,
@@ -202,15 +195,15 @@ const handleTagSelection = async (tagId: string, zone: string) => {
         y: tag.y || 0,
         fx: null,
         fy: null,
-        alias: tagText.toLowerCase().replace(/\s+/g, '-')
-      }))
+        alias: tagText.toLowerCase().replace(/\s+/g, '-'),
+      })),
     ]
-    
+
     // Clear loading state
     tagStore.setTagLoading(tagId, false)
-    
+
     // Add all tags at once
-    allTags.forEach(newTag => {
+    allTags.forEach((newTag) => {
       tagStore.addSecondaryTag(tagId, newTag)
     })
   } else {
@@ -237,7 +230,7 @@ const handleSecondaryTagSelection = (tagId: string) => {
 }
 
 const generatedPrompt = computed(() => {
-  return tagStore.allSelectedTags.map(tag => tag.text).join(', ');
+  return tagStore.allSelectedTags.map((tag) => tag.text).join(', ')
 })
 
 const debounce = (func: Function, delay: number) => {
@@ -250,7 +243,7 @@ const debounce = (func: Function, delay: number) => {
 
 const generatePrompt = debounce(async () => {
   if (isManualMode.value) return // Skip auto-generation if in manual mode
-  
+
   const prompt = generatedPrompt.value
   if (prompt.length > 0) {
     const currentRequestId = ++promptRequestId
@@ -265,9 +258,8 @@ const generatePrompt = debounce(async () => {
             },
           ],
         },
-      ],  
+      ],
       safetySettings: [
-    
         {
           category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
           threshold: HarmBlockThreshold.BLOCK_NONE,
@@ -357,15 +349,36 @@ watch(isManualMode, (newValue) => {
   }
 })
 
-// Add this function near other API-related functions
+// Update the generateRelatedTags function
 const generateRelatedTags = async (parentTag: string) => {
+  // Get existing tags from mockTags data
+  const mockTagData = Object.values(mockTags).flat().find(tag => tag.text === parentTag);
+  const existingTags = mockTagData?.secondaryTags || [];
+
+  // Create a set of existing tags for case-insensitive comparison
+  const existingTagSet = new Set(existingTags.map(t => t.toLowerCase()))
+
   const response = await model.generateContent({
     contents: [
       {
         role: 'user',
         parts: [
           {
-            text: `Generate 5 related tags for the concept: "${parentTag}". Return only a JSON array of strings, with no markdown formatting or backticks. Example: ["tag1", "tag2", "tag3", "tag4", "tag5"]`,
+            text: `You are helping users find relevant tags for their image generation. 
+When user selects "${parentTag}" as their main subject, suggest 6 additional descriptive tags.
+
+Requirements:
+- Each tag should be 1-2 words
+- Always start with a capital letter
+- Avoid duplicating these existing tags: ${existingTags.join(', ')}
+- Think about what users might want to achieve when they selected "${parentTag}"
+- Include both common and creative but relevant associations
+- Focus on visual and artistic aspects
+- Suggest tags that would help create interesting image variations
+- Keep tags concrete and imagery-focused
+
+Return only a JSON array of strings, no explanation.
+Example format: ["Mountain Peak", "Dense Forest", "Morning Mist"]`,
           },
         ],
       },
@@ -378,10 +391,13 @@ const generateRelatedTags = async (parentTag: string) => {
 
   const text = await response.response.text()
   try {
-    // Remove any markdown formatting or extra whitespace
     const cleanedText = text.replace(/```json\n?|\n?```/g, '').trim()
     const tags = JSON.parse(cleanedText)
-    return Array.isArray(tags) ? tags.slice(0, 5) : [] // Ensure we get an array and limit to 5 tags
+
+    // Filter out duplicates using the Set
+    const uniqueTags = tags.filter((tag: string) => !existingTagSet.has(tag.toLowerCase()))
+
+    return Array.isArray(uniqueTags) ? uniqueTags.slice(0, 5) : []
   } catch (error) {
     console.error('Failed to parse generated tags:', error)
     console.error('Raw response:', text)
@@ -391,8 +407,8 @@ const generateRelatedTags = async (parentTag: string) => {
 
 // Add the handler for zone change in the script section
 const handleZoneChange = (newZone: string) => {
-  setFocusedZone(newZone);
-};
+  setFocusedZone(newZone)
+}
 </script>
 
 <style lang="scss" scoped>
@@ -451,7 +467,7 @@ const handleZoneChange = (newZone: string) => {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    
+
     p {
       font-size: 0.9em;
       line-height: 1.5;
@@ -489,7 +505,7 @@ const handleZoneChange = (newZone: string) => {
       justify-content: space-between;
       align-items: center;
       margin-bottom: 3px;
-      
+
       .manual-mode-toggle {
         display: flex;
         align-items: center;
@@ -497,7 +513,7 @@ const handleZoneChange = (newZone: string) => {
         font-size: 0.9em;
         cursor: pointer;
 
-        input[type="checkbox"] {
+        input[type='checkbox'] {
           cursor: pointer;
         }
       }
@@ -513,7 +529,7 @@ const handleZoneChange = (newZone: string) => {
       font-size: 0.9em;
       line-height: 1.5;
       resize: vertical;
-      
+
       &:focus {
         outline: none;
         border-color: #4caf50;
@@ -638,7 +654,7 @@ const handleZoneChange = (newZone: string) => {
   opacity: 0.6;
   left: calc(50% - 5px);
   top: calc(50% - 5px);
-  
+
   @for $i from 1 through 8 {
     &:nth-child(#{$i}) {
       transform: rotate($i * 45deg) translateY(-30px);
@@ -681,7 +697,8 @@ const handleZoneChange = (newZone: string) => {
 }
 
 @keyframes text-pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.6;
   }
   50% {
