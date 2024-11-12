@@ -440,9 +440,14 @@ export const useTagStore = defineStore('tags', {
       );
     },
     allSelectedTags(): Tag[] {
+      // Get visible regular tags
       const visibleTags = this.allTags.filter(tag => tag.selected && !tag.isHidden);
-      const zoneHybrids = this.zoneGraphs[this.focusedZone].hybridTags || [];
-      return [...visibleTags, ...zoneHybrids];
+      
+      // Get hybrid tags from all zones
+      const allZoneHybrids = Object.values(this.zoneGraphs)
+        .flatMap(zoneGraph => zoneGraph.hybridTags || []);
+      
+      return [...visibleTags, ...allZoneHybrids];
     }
   }
 })
