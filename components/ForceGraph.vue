@@ -154,15 +154,14 @@ function updateNodesAndLinks() {
 
   const zoneTags = tagStore.tagsByZone(props.zone);
   const secondaryTags = tagStore.getAllSecondaryTagsForZone(props.zone);
-  const hybridTags = tagStore.selectedHybridTags.filter(tag => tag.zone === props.zone);
 
-  // Find the selected tag that's loading (if any)
+
   const selectedTag = zoneTags.find(tag => tag.selected && tag.isLoading);
 
   const oldNodes = new Map(zoneGraph.value.nodes.map(d => [d.id, d]));
 
   // Combine all nodes, including hybrid tags
-  const nodes = [...zoneTags, ...secondaryTags, ...hybridTags].map((tag) => {
+  const nodes = [...zoneTags, ...secondaryTags].map((tag) => {
     const oldNode = oldNodes.get(tag.id);
     let x, y;
 
@@ -206,22 +205,11 @@ function updateNodesAndLinks() {
     }
 
     // Special positioning for hybrid tags
-    if (tag.isHybrid) {
-      // Position hybrid tag between its child tags
-      const childPositions = tag.childTags.map(child => {
-        const childNode = oldNodes.get(child.id);
-        return childNode ? { x: childNode.x, y: childNode.y } : null;
-      }).filter(Boolean);
-
-      if (childPositions.length > 0) {
-        x = childPositions.reduce((sum, pos) => sum + pos.x, 0) / childPositions.length;
-        y = childPositions.reduce((sum, pos) => sum + pos.y, 0) / childPositions.length;
-      }
-    }
+ 
 
     return {
       ...tag,
-      r: tag.isHybrid ? 15 : tag.size / 2, // Set size for hybrid tags
+      r: tag.size / 2, // Set size for hybrid tags
       x,
       y,
       vx: 0, // Reset velocity for smoother initialization
@@ -236,7 +224,7 @@ function updateNodesAndLinks() {
 
   // Update simulation with separate forces for primary and secondary nodes
   zoneGraph.value.simulation.nodes(nodes);
-  
+  console.log('links', links)
   // Adjust force parameters
   zoneGraph.value.simulation
     .force("link", d3.forceLink(links)
@@ -358,7 +346,7 @@ function handleNodeClick(event: MouseEvent, d: Tag) {
     if (d.selected) {
       tagStore.addSelectedHybridTag(d);
     } else {
-      tagStore.removeSelectedHybridTag(d.id);
+      tagStore.removeSelectedHybridTag(d.id, props.zone);
     }
     
     // Hide/show child nodes
@@ -449,61 +437,54 @@ function updateLinks() {
   zoneGraph.value.link = linkEnter.merge(linkSelection);
 }
 
-function setupSvgAndSimulation(width, height) {
+function setupSvgAndSimulation(width: number, height: number) {
   const color = d3.scaleOrdinal(d3.schemeCategory10);
 
   // Filter tags for the current zone
   const zoneTags = tagStore.tagsByZone(props.zone);
-  const secondaryTags = tagStore.getSecondaryTagsForZone(props.zone);
+  const secondaryTags = tagStore.getAllSecondaryTagsForZone(props.zone);
+  const hybridTags = tagStore.getHybridTagsForZone(props.zone);
 
-  // Prepare nodes and links
-  zoneGraph.value.nodes = [...zoneTags, ...secondaryTags].map(tag => ({
+  // Prepare nodes with all necessary properties
+  zoneGraph.value.nodes = [...zoneTags, ...secondaryTags, ...hybridTags].map(tag => ({
     ...tag,
-    r: tag.size / 2,
+    r: tag.isHybrid ? 15 : tag.size / 2,
+    x: props.width / 2,
+    y: props.height / 2,
+    vx: 0,
+    vy: 0
   }));
 
+  // Create links after nodes are prepared
   zoneGraph.value.links = tagStore.createLinksBySourceId(props.zone);
 
+  // Initialize simulation with prepared nodes
   const simulationForces = {
     link: d3.forceLink(zoneGraph.value.links)
-    .id(d => d.id)
-      .distance(100)
-      .strength(0.3),
+      .id((d: any) => d.id)
+      .distance(props.preview ? 20 : RADIUS)
+      .strength(props.preview ? 0.8 : 0.3),
     charge: d3.forceManyBody()
-    .strength(-30) // Reduce repulsion
-    .distanceMax(200),
+      .strength(props.preview ? -20 : -30)
+      .distanceMax(200),
     center: d3.forceCenter(width / 2, height / 2)
-      .strength(0.3), // Added stronger center force (default is ~0.1)
+      .strength(props.preview ? 0.8 : 0.3),
     collision: d3.forceCollide()
-      .radius(d => d.r + 10)
-      .strength(0.4),
-      x: d3.forceX(props.width / 2).strength(0.05),
-      y: d3.forceY(props.height / 2).strength(0.05)
+      .radius((d: any) => d.r + (props.preview ? 1 : 10))
+      .strength(props.preview ? 0.8 : 0.4),
+    x: d3.forceX(width / 2).strength(props.preview ? 0.2 : 0.05),
+    y: d3.forceY(height / 2).strength(props.preview ? 0.2 : 0.05)
   };
 
-  if (props.preview) {
-    // Adjust forces for preview mode - bring nodes closer together
-    simulationForces.link = d3.forceLink(zoneGraph.value.links)
-      .id(d => d.id)
-      .distance(20) // Reduced distance between linked nodes
-      .strength(0.8); // Increased link strength to pull nodes together
-    simulationForces.charge = d3.forceManyBody().strength(-20); // Reduced repulsion
-    simulationForces.collision = d3.forceCollide().radius(d => d.r + 1); // Tighter collision radius
-    simulationForces.center.strength(0.8); // Stronger center force to cluster nodes
-    simulationForces.x.strength(0.2); // Stronger x force to center
-    simulationForces.y.strength(0.2); // Stronger y force to center
-  }
-
-  // Update simulation with new forces
+  // Create simulation with prepared nodes
   zoneGraph.value.simulation = d3.forceSimulation(zoneGraph.value.nodes)
     .force("link", simulationForces.link)
     .force("charge", simulationForces.charge)
-    .force("center", simulationForces.center)  // Make sure center force is applied
+    .force("center", simulationForces.center)
     .force("collision", simulationForces.collision)
     .force("x", simulationForces.x)
     .force("y", simulationForces.y)
-    .alphaDecay(0.05)
-  
+    .alphaDecay(0.05);
 
   zoneGraph.value.svg = d3.select(chartContainer.value)
     .append("svg")

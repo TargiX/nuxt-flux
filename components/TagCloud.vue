@@ -26,7 +26,7 @@
           :height="150"
           :zone="zone"
           :preview="true"
-          :zoomConfig="{ scale: 0.5, translateX: 30, translateY: 10 }"
+          :zoomConfig="{ scale: 0.3, translateX: 45, translateY: 50 }"
         />
       </div>
     </div>

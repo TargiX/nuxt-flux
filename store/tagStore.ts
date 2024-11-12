@@ -34,6 +34,7 @@ interface ZoneGraph {
   svg: d3.Selection<SVGSVGElement, unknown, null, undefined> | null;
   lastClickedTagId: string | null;
   lastClickedNode: Tag | null;
+  hybridTags?: Tag[];
 }
 
 // Add new interface for hybrid tags
@@ -47,12 +48,18 @@ export const useTagStore = defineStore('tags', {
     tags: [] as Tag[],
     zones: Object.keys(mockTags),
     zoneGraphs: Object.fromEntries(
-      Object.keys(mockTags).map(zone => [zone, { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null, lastClickedTagId: null, lastClickedNode: null } as ZoneGraph])
+      Object.keys(mockTags).map(zone => [zone, {
+        nodes: shallowRef([]),
+        links: shallowRef([]),
+        simulation: null,
+        svg: null,
+        lastClickedTagId: null,
+        lastClickedNode: null,
+        hybridTags: []
+      } as ZoneGraph])
     ),
     focusedZone: 'Subject' as string,
-    dynamicTags: new Map<string, Tag[]>() as Map<string, Tag[]>, // Store dynamic tags by parent ID
-    hybridTags: new Map<string, HybridTag>(), // Store hybrid tags by combined child IDs
-    selectedHybridTags: [] as Tag[],
+    dynamicTags: new Map<string, Tag[]>(), // Store dynamic tags by parent ID
   }),
   actions: {
     async fetchTags() {
@@ -102,6 +109,13 @@ export const useTagStore = defineStore('tags', {
         if (!tag.selected) {
           // When unselecting a tag, clean up its dynamic tags
           this.removeSecondaryTagsByParent(id)
+          
+          // Also clean up any hybrid tags in this zone
+          const hybridsToRemove = this.zoneGraphs[zone].hybridTags || [];
+          
+          hybridsToRemove.forEach(hybridTag => {
+            this.removeSelectedHybridTag(hybridTag.id, zone);
+          });
         }
 
         // Update the graph to reflect the changes
@@ -181,13 +195,25 @@ export const useTagStore = defineStore('tags', {
 
     createLinksBySourceId(zone: string): any[] {
       const sourceId = this.zoneGraphs[zone].lastClickedTagId;
-      if (!sourceId) return [];
-      const secondaryTags = this.getSecondaryTagsForZone(zone);
-      return secondaryTags.map(secTag => ({
-        source: sourceId,
-        target: secTag.id,
-        value: 1,
-      }));
+      const links = [];
+
+      if (sourceId) {
+        // Get all nodes that should have links
+        const allLinkedTags = [
+          ...this.getSecondaryTagsForZone(zone),
+          ...(this.zoneGraphs[zone].hybridTags || [])
+        ];
+        console.log('allLinkedTags', allLinkedTags)
+
+        // Create links for all nodes at once
+        links.push(...allLinkedTags.map(tag => ({
+          source: sourceId,
+          target: tag.id,
+          value: 1,
+        })));
+      }
+
+      return links;
     },
     setFocusedZone(zone: string) {
       this.focusedZone = zone;
@@ -244,7 +270,7 @@ export const useTagStore = defineStore('tags', {
 
         const hybridTag: Tag = {
           id: `hybrid-${Date.now()}`,
-          text: hybridText.trim(), // Use the LLM-generated text
+          text: hybridText.trim(),
           zone: zone,
           size: 30,
           selected: true,
@@ -257,10 +283,13 @@ export const useTagStore = defineStore('tags', {
           alias: hybridText.toLowerCase().replace(/\s+/g, '-')
         };
 
-        // Add hybrid tag to selected hybrids
-        this.selectedHybridTags.push(hybridTag);
-        
-        // Mark child tags as hidden
+        // Add to zone's hybrid tags
+        const zoneGraph = this.zoneGraphs[zone];
+        if (zoneGraph) {
+          zoneGraph.hybridTags = [...(zoneGraph.hybridTags || []), hybridTag];
+        }
+
+        // Hide child tags
         tags.forEach(childTag => {
           const tag = this.allTags.find(t => t.id === childTag.id);
           if (tag) {
@@ -268,12 +297,12 @@ export const useTagStore = defineStore('tags', {
             tag.selected = false;
           }
         });
-        
+
         return hybridTag;
       } catch (error) {
         console.error('Error generating hybrid tag:', error);
         // Fallback to simple concatenation if LLM fails
-        return {
+        const fallbackTag = {
           id: `hybrid-${Date.now()}`,
           text: tags.map(t => t.text).join(' + '),
           zone: zone,
@@ -287,40 +316,59 @@ export const useTagStore = defineStore('tags', {
           fy: null,
           alias: `hybrid-${Date.now()}`
         };
+        
+        // Add the fallback hybrid tag directly to the zone's hybrid tags
+        const zoneGraph = this.zoneGraphs[zone];
+        if (zoneGraph) {
+          zoneGraph.hybridTags = [...(zoneGraph.hybridTags || []), fallbackTag];
+        }
+        
+        return fallbackTag;
       }
     },
 
     addSelectedHybridTag(hybridTag: Tag) {
-      // Check if the hybrid tag is already in the array
-      const existingIndex = this.selectedHybridTags.findIndex(t => t.id === hybridTag.id);
-      if (existingIndex === -1) {
-        this.selectedHybridTags.push(hybridTag);
-      }
-      
-      // Mark child tags as hidden
-      if (hybridTag.childTags) {
-        hybridTag.childTags.forEach(childTag => {
-          const tag = this.allTags.find(t => t.id === childTag.id);
-          if (tag) {
-            tag.isHidden = true;
-            tag.selected = false;
+      const zoneGraph = this.zoneGraphs[hybridTag.zone];
+      if (zoneGraph) {
+        // Check if this hybrid tag already exists
+        const existingTag = zoneGraph.hybridTags?.find(t => 
+          t.childTags?.every(child => 
+            hybridTag.childTags?.some(newChild => newChild.id === child.id)
+          )
+        );
+
+        if (!existingTag) {
+          // Only add if it doesn't exist
+          zoneGraph.hybridTags = [...(zoneGraph.hybridTags || []), hybridTag];
+          
+          // Hide child tags
+          if (hybridTag.childTags) {
+            hybridTag.childTags.forEach(childTag => {
+              const tag = this.allTags.find(t => t.id === childTag.id);
+              if (tag) {
+                tag.isHidden = true;
+                tag.selected = false;
+              }
+            });
           }
-        });
+        }
       }
     },
 
-    removeSelectedHybridTag(hybridTagId: string) {
-      const hybridTag = this.selectedHybridTags.find(t => t.id === hybridTagId);
-      if (hybridTag?.childTags) {
-        // Unhide child tags
-        hybridTag.childTags.forEach(childTag => {
+    removeSelectedHybridTag(hybridTagId: string, zone: string) {
+      const zoneGraph = this.zoneGraphs[zone];
+      const hybridTag = zoneGraph.hybridTags?.find(t => t.id === hybridTagId);
+      
+      if (hybridTag) {
+        zoneGraph.hybridTags = zoneGraph.hybridTags?.filter(t => t.id !== hybridTagId) || [];
+        
+        hybridTag.childTags?.forEach(childTag => {
           const tag = this.allTags.find(t => t.id === childTag.id);
           if (tag) {
             tag.isHidden = false;
           }
         });
       }
-      this.selectedHybridTags = this.selectedHybridTags.filter(t => t.id !== hybridTagId);
     },
 
     removeHybridTag(hybridId: string) {
@@ -329,6 +377,10 @@ export const useTagStore = defineStore('tags', {
       if (entry) {
         this.hybridTags.delete(entry[0]);
       }
+    },
+
+    getHybridTagsForZone(zone: string): Tag[] {
+      return this.zoneGraphs[zone].hybridTags || [];
     }
   },
   getters: {
@@ -371,14 +423,10 @@ export const useTagStore = defineStore('tags', {
         const primaryTag = state.tags.find(t => t.zone === zone && t.selected);
         if (!primaryTag || primaryTag.isLoading) return [];
         
-        // Get preconfigured secondary tags
-        const preconfiguredTags = primaryTag.secondaryTags || [];
+        const secondaryTags = primaryTag.secondaryTags || [];
+        const hybridTags = state.zoneGraphs[zone].hybridTags || [];
         
-        // Get dynamic tags
-        const dynamicTags = state.dynamicTags.get(primaryTag.id) || [];
-        
-        // Combine both types of tags
-        return [...preconfiguredTags, ...dynamicTags];
+        return [...secondaryTags, ...hybridTags];
       }
     },
     selectedTags(): Tag[] {
@@ -392,11 +440,9 @@ export const useTagStore = defineStore('tags', {
       );
     },
     allSelectedTags(): Tag[] {
-      return [
-        ...this.selectedTags,
-        ...this.selectedSecondaryTags,
-        ...this.selectedHybridTags
-      ];
+      const visibleTags = this.allTags.filter(tag => tag.selected && !tag.isHidden);
+      const zoneHybrids = this.zoneGraphs[this.focusedZone].hybridTags || [];
+      return [...visibleTags, ...zoneHybrids];
     }
   }
 })

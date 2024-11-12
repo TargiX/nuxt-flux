@@ -1,3 +1,4 @@
+
 export const mockTags = {
   Subject: [
     {
@@ -113,7 +114,120 @@ export const mockTags = {
         ]
       }
     ],
-  
+    Attributes: [
+        {
+          text: 'Roles',
+          alias: 'roles',
+          secondaryTags: [
+            'Hero',
+            'Villain',
+            'Mentor',
+            'Sidekick',
+            'Leader',
+            'Rebel',
+            'Guardian',
+            'Ninja' // Added 'Ninja' here
+          ]
+        },
+        {
+          text: 'Characteristics',
+          alias: 'characteristics',
+          secondaryTags: [
+            'Brave',
+            'Intelligent',
+            'Cunning',
+            'Kind',
+            'Funny',
+            'Mysterious',
+            'Energetic',
+            'Stealthy'
+          ]
+        },
+        {
+          text: 'Emotions',
+          alias: 'emotions',
+          secondaryTags: [
+            'Happy',
+            'Sad',
+            'Angry',
+            'Fearful',
+            'Surprised',
+            'Disgusted',
+            'Calm',
+            'Excited'
+          ]
+        },
+        {
+          text: 'Abilities',
+          alias: 'abilities',
+          secondaryTags: [
+            'Flying',
+            'Invisibility',
+            'Super Strength',
+            'Telepathy',
+            'Speed',
+            'Magic',
+            'Stealth',
+            'Martial Arts' // Added 'Martial Arts'
+          ]
+        },
+        {
+          text: 'Occupations',
+          alias: 'occupations',
+          secondaryTags: [
+            'Doctor',
+            'Engineer',
+            'Artist',
+            'Scientist',
+            'Teacher',
+            'Detective',
+            'Farmer',
+            'Pirate' // Added 'Pirate' for variety
+          ]
+        },
+        {
+          text: 'Personality Traits',
+          alias: 'personality traits',
+          secondaryTags: [
+            'Optimistic',
+            'Pessimistic',
+            'Introverted',
+            'Extroverted',
+            'Ambitious',
+            'Lazy',
+            'Curious',
+            'Stubborn'
+          ]
+        },
+        {
+          text: 'Physical Traits',
+          alias: 'physical traits',
+          secondaryTags: [
+            'Tall',
+            'Short',
+            'Athletic',
+            'Old',
+            'Young',
+            'Scarred',
+            'Bearded',
+            'Glasses'
+          ]
+        },
+        {
+          text: 'Relationships',
+          alias: 'relationships',
+          secondaryTags: [
+            'Friend',
+            'Enemy',
+            'Sibling',
+            'Parent',
+            'Child',
+            'Lover',
+            'Rival',
+            'Colleague'
+          ]
+        }
+      ],
     ActivityEvent: [
       {
         text: 'Action',
@@ -687,6 +801,7 @@ export const mockTags = {
           'Monumental Feeling'
         ]
       }
-    ]
+    ],
+  
   };
   
