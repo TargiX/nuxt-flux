@@ -12,6 +12,7 @@
           @tagSelected="handleTagSelection"
           @secondaryTagSelected="handleSecondaryTagSelection"
           @zoneChange="handleZoneChange"
+          :zoomConfig="{ scale: 1.4, translateX: -90, translateY: -130 }"
         />
         <div class="preview-zones">
       <div
@@ -41,6 +42,21 @@
             alt="Generated Image"
             class="generated-image"
           />
+          <div v-else-if="isGeneratingImage" class="loader-container">
+            <div class="loader">
+              <div class="particles">
+                <div class="particle"></div>
+                <div class="particle"></div>
+                <div class="particle"></div>
+                <div class="particle"></div>
+                <div class="particle"></div>
+                <div class="particle"></div>
+                <div class="particle"></div>
+                <div class="particle"></div>
+              </div>
+            </div>
+            <p class="loader-text">Generating your image...</p>
+          </div>
           <div v-else class="placeholder-container"></div>
         </div>
 
@@ -512,11 +528,14 @@ const handleZoneChange = (newZone: string) => {
     display: flex;
     align-items: center;
     justify-content: center;
+    background: #f8f9fa;
+    border-radius: 8px;
+    overflow: hidden;
   }
 
   .placeholder-container {
     width: 100%;
-    aspect-ratio: 1 / 1;
+    height: 100%;
     background-color: #f5f5f5;
     border: 2px dashed #ddd;
     border-radius: 8px;
@@ -581,5 +600,92 @@ const handleZoneChange = (newZone: string) => {
   align-items: center;
   height: 100vh;
   font-size: 1.5rem;
+}
+
+.loader-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.loader {
+  width: 120px;
+  height: 120px;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.particles {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  animation: rotate 10s linear infinite;
+}
+
+.particle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #4caf50;
+  opacity: 0.6;
+  left: calc(50% - 5px);
+  top: calc(50% - 5px);
+  
+  @for $i from 1 through 8 {
+    &:nth-child(#{$i}) {
+      transform: rotate($i * 45deg) translateY(-30px);
+      animation: particle-animation 2s infinite;
+      animation-delay: $i * 0.2s;
+    }
+  }
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes particle-animation {
+  0% {
+    transform: rotate(0deg) translateY(-30px) scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: rotate(180deg) translateY(-40px) scale(1.5);
+    opacity: 1;
+    background: #2196f3;
+  }
+  100% {
+    transform: rotate(360deg) translateY(-30px) scale(1);
+    opacity: 0.6;
+  }
+}
+
+.loader-text {
+  margin-top: 20px;
+  color: #666;
+  font-size: 0.9em;
+  animation: text-pulse 2s ease-in-out infinite;
+}
+
+@keyframes text-pulse {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 </style>

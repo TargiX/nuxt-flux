@@ -334,7 +334,7 @@ function updateNodesAndLinks() {
 }
 
 
-function handleNodeClick(event: MouseEvent, d: Tag) {
+async function handleNodeClick(event: MouseEvent, d: Tag) {
   if (props.preview) return;
   
   event.stopPropagation();
@@ -361,37 +361,73 @@ function handleNodeClick(event: MouseEvent, d: Tag) {
     d.selected = !d.selected;
     updateNodeAppearance(d, false);
     
-    // Update selected tags array
+    // Get existing hybrid tag for this zone if any
+    const existingHybrid = tagStore.getHybridTagsForZone(props.zone)[0];
+    
     if (d.selected) {
-      selectedSecondaryTags.value.push(d);
-    } else {
-      selectedSecondaryTags.value = selectedSecondaryTags.value.filter(t => t.id !== d.id);
-    }
-
-    // Clear any existing timeout
-    if (hybridCreationTimeout.value) {
-      clearTimeout(hybridCreationTimeout.value);
-    }
-
-    // If we have 2 or more selected tags, create hybrid after a short delay
-    if (selectedSecondaryTags.value.length >= 2) {
-      hybridCreationTimeout.value = setTimeout(async () => {
-        const hybridTag = await tagStore.createHybridTag(props.zone, selectedSecondaryTags.value);
+      if (existingHybrid) {
+        // If we have a hybrid tag, add this tag to its composition
+        const newTags = [...existingHybrid.childTags, d];
+        
+        // Remove old hybrid tag
+        tagStore.removeSelectedHybridTag(existingHybrid.id, props.zone);
+        
+        // Create new hybrid tag with all tags
+        const hybridTag = await tagStore.createHybridTag(props.zone, newTags);
         if (hybridTag) {
-          // Hide the child nodes that are now part of the hybrid
           updateHybridRelatedNodes(hybridTag, false);
-          
-          // Clear selections
-          selectedSecondaryTags.value.forEach(tag => {
-            tag.selected = false;
-            updateNodeAppearance(tag, false);
-          });
-          selectedSecondaryTags.value = [];
-          
-          // Update graph with new hybrid
           updateGraph();
         }
-      }, 1000);
+      } else {
+        // No existing hybrid, proceed with normal selection
+        selectedSecondaryTags.value.push(d);
+        
+        // If we have 2 or more selected tags, create hybrid
+        if (selectedSecondaryTags.value.length >= 2) {
+          if (hybridCreationTimeout.value) {
+            clearTimeout(hybridCreationTimeout.value);
+          }
+          
+          hybridCreationTimeout.value = setTimeout(async () => {
+            const hybridTag = await tagStore.createHybridTag(props.zone, selectedSecondaryTags.value);
+            if (hybridTag) {
+              updateHybridRelatedNodes(hybridTag, false);
+              selectedSecondaryTags.value.forEach(tag => {
+                tag.selected = false;
+                updateNodeAppearance(tag, false);
+              });
+              selectedSecondaryTags.value = [];
+              updateGraph();
+            }
+          }, 1000);
+        }
+      }
+    } else {
+      // Tag is being unselected
+      selectedSecondaryTags.value = selectedSecondaryTags.value.filter(t => t.id !== d.id);
+      
+      if (existingHybrid) {
+        // Remove this tag from hybrid composition
+        const remainingTags = existingHybrid.childTags.filter(t => t.id !== d.id);
+        
+        if (remainingTags.length >= 2) {
+          // If we still have 2 or more tags, create new hybrid
+          tagStore.removeSelectedHybridTag(existingHybrid.id, props.zone);
+          const hybridTag = await tagStore.createHybridTag(props.zone, remainingTags);
+          if (hybridTag) {
+            updateHybridRelatedNodes(hybridTag, false);
+            updateGraph();
+          }
+        } else {
+          // If less than 2 tags remain, remove hybrid completely
+          tagStore.removeSelectedHybridTag(existingHybrid.id, props.zone);
+          remainingTags.forEach(tag => {
+            tag.isHidden = false;
+            tag.selected = true;
+          });
+          updateGraph();
+        }
+      }
     }
 
     emit('secondaryTagSelected', d.id);

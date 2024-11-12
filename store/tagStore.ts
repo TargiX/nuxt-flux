@@ -258,10 +258,24 @@ export const useTagStore = defineStore('tags', {
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-      // Generate hybrid tag text using LLM
-      const prompt = `Combine the following concepts into a single, intuitive, and descriptive tag name suitable for creative art or design: ${
+      // Improved prompt for more specific and meaningful combinations
+      const prompt = `Create a concise but descriptive tag that combines these specific concepts: ${
         tags.map(t => t.text).join(', ')
-      }. The tag phrase should be simple, clear, and directly reflective of the given ideas, avoiding overly complex or abstract phrasing. Respond with only your single best suggestion phrase 2-3 words.`;
+      }. 
+      Requirements:
+      - The result should be 2-4 words
+      - Must directly reference the key elements from the input tags
+      - Avoid generic or overly abstract terms
+      - Focus on the unique combination of these specific elements
+      - Keep it concrete and imagery-focused
+      - Don't use metaphors or poetic language
+      
+      Return only the tag phrase, no explanation or additional text.
+      
+      Example inputs and good outputs:
+      "Fire, Water" → "Steaming Elements"
+      "Forest, Night, Magic" → "Enchanted Dark Woods"
+      "Desert, Ocean" → "Coastal Sand Wilderness"`;
 
       try {
         const result = await model.generateContent(prompt);
