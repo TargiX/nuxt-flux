@@ -365,20 +365,20 @@ const generateRelatedTags = async (parentTag: string) => {
         parts: [
           {
             text: `You are helping users find relevant tags for their image generation. 
-When user selects "${parentTag}" as their main subject, suggest 6 additional descriptive tags.
+            When user selects "${parentTag}" as their main subject, suggest 6 additional descriptive tags.
 
-Requirements:
-- Each tag should be 1-2 words
-- Always start with a capital letter
-- Avoid duplicating these existing tags: ${existingTags.join(', ')}
-- Think about what users might want to achieve when they selected "${parentTag}"
-- Include both common and creative but relevant associations
-- Focus on visual and artistic aspects
-- Suggest tags that would help create interesting image variations
-- Keep tags concrete and imagery-focused
+            Requirements:
+            - Each tag should be 1-2 words
+            - Always start with a capital letter
+            - Avoid duplicating these existing tags: ${existingTags.join(', ')}
+            - Think about what users might want to achieve when they selected "${parentTag}"
+            - Include both common and creative but relevant associations
+            - Focus on visual and artistic aspects
+            - Suggest tags that would help create interesting image variations
+            - Keep tags concrete and imagery-focused
 
-Return only a JSON array of strings, no explanation.
-Example format: ["Mountain Peak", "Dense Forest", "Morning Mist"]`,
+            Return only a JSON array of strings, no explanation.
+            Example format: ["Mountain Peak", "Dense Forest", "Morning Mist"]`,
           },
         ],
       },

@@ -229,8 +229,21 @@ function updateNodesAndLinks() {
   zoneGraph.value.simulation
     .force("link", d3.forceLink(links)
       .id(d => d.id)
-      .distance(RADIUS) // Use constant here
-      .strength(0.5)) // Stronger links to maintain circle shape
+      .distance(link => {
+        // Further increase distance for links between parent and hybrid tags
+        if (link.source.isHybrid || link.target.isHybrid) {
+          return RADIUS * 3; // Triple the distance for hybrid links
+        }
+        return RADIUS; // Default distance
+      })
+      .strength(link => {
+        // Apply a weaker link strength for hybrid links
+        if (link.source.isHybrid || link.target.isHybrid) {
+          return 0.1; // Weaker link strength
+        }
+        return 0.5; // Default link strength
+      })
+    )
     .force("charge", d3.forceManyBody()
       .strength(d => d.zone.includes('-secondary') ? -50 : -40)) // Weaker repulsion for primary
     .force("collision", d3.forceCollide()
@@ -733,7 +746,7 @@ function handlePrevZone() {
 // Add this function near the top of the script section
 function formatNodeText(text: string): string[] {
   // Split by spaces but keep prepositions with their following word
-  const prepositions = ['of', 'in', 'on', 'at', 'by', 'for', 'with', 'to'];
+  const prepositions = ['of', 'in', 'on', 'at', 'by', 'for', 'with', 'to', '&', 'and'];
   const words = text.split(' ');
   const lines: string[] = [];
   
