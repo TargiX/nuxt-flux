@@ -4,6 +4,9 @@ import { shallowRef } from 'vue';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { useRuntimeConfig } from '#app';
 
+
+import { mockTags } from './mockTags';
+
 interface Tag {
   id: string
   text: string
@@ -39,15 +42,10 @@ interface HybridTag extends Tag {
 export const useTagStore = defineStore('tags', {
   state: () => ({
     tags: [] as Tag[],
-    zones: ['Subject', 'Style', 'Mood', 'Setting', 'ColorScheme', 'Composition'],
-    zoneGraphs: {
-      Subject: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null, lastClickedTagId: null, lastClickedNode: null } as ZoneGraph,
-      Style: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null, lastClickedTagId: null, lastClickedNode: null } as ZoneGraph,
-      Mood: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null, lastClickedTagId: null, lastClickedNode: null } as ZoneGraph,
-      Setting: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null, lastClickedTagId: null, lastClickedNode: null } as ZoneGraph,
-      ColorScheme: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null, lastClickedTagId: null, lastClickedNode: null } as ZoneGraph,
-      Composition: { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null, lastClickedTagId: null, lastClickedNode: null } as ZoneGraph,
-    },
+    zones: Object.keys(mockTags),
+    zoneGraphs: Object.fromEntries(
+      Object.keys(mockTags).map(zone => [zone, { nodes: shallowRef([]), links: shallowRef([]), simulation: null, svg: null, lastClickedTagId: null, lastClickedNode: null } as ZoneGraph])
+    ),
     focusedZone: 'Subject' as string,
     dynamicTags: new Map<string, Tag[]>() as Map<string, Tag[]>, // Store dynamic tags by parent ID
     hybridTags: new Map<string, HybridTag>(), // Store hybrid tags by combined child IDs
@@ -55,51 +53,6 @@ export const useTagStore = defineStore('tags', {
   actions: {
     async fetchTags() {
       // Simulating API call
-      const mockTags = {
-        Subject: [
-          { text: 'Animal', alias: 'animal', secondaryTags: ['Mammal', 'Bird', 'Fish', 'Reptile', 'Insect'] },
-          { text: 'Landscape', alias: 'landscape', secondaryTags: ['Mountain', 'Beach', 'Forest', 'Desert', 'City'] },
-          { text: 'Portrait', alias: 'portrait', secondaryTags: ['Self', 'Family', 'Celebrity', 'Pet', 'Group'] },
-          { text: 'Still Life', alias: 'still life', secondaryTags: ['Food', 'Flowers', 'Technology', 'Books', 'Toys'] },
-          { text: 'Abstract', alias: 'abstract', secondaryTags: ['Geometric', 'Fluid', 'Textural', 'Minimal', 'Chaotic'] }
-        ],
-        Style: [
-          { text: 'Realistic', alias: 'realistic', secondaryTags: ['Photorealistic', 'Hyperrealistic', 'Naturalistic', 'Veristic', 'Trompe l\'oeil'] },
-          { text: 'Impressionist', alias: 'impressionist', secondaryTags: ['Pointillism', 'En Plein Air', 'Loose Brushwork', 'Light-focused', 'Atmospheric'] },
-          { text: 'Surrealist', alias: 'surrealist', secondaryTags: ['Dreamlike', 'Juxtaposition', 'Symbolism', 'Biomechanical', 'Psychedelic'] },
-          { text: 'Minimalist', alias: 'minimalist', secondaryTags: ['Geometric', 'Monochromatic', 'Negative Space', 'Simple Forms', 'Reductive'] },
-          { text: 'Pop Art', alias: 'pop art', secondaryTags: ['Bold Colors', 'Commercial Imagery', 'Comic Book', 'Celebrity Portraits', 'Repetition'] }
-        ],
-        Mood: [
-          { text: 'Happy', alias: 'happy', secondaryTags: ['Joyful', 'Excited', 'Playful', 'Optimistic', 'Cheerful'] },
-          { text: 'Melancholic', alias: 'melancholic', secondaryTags: ['Nostalgic', 'Wistful', 'Somber', 'Reflective', 'Bittersweet'] },
-          { text: 'Energetic', alias: 'energetic', secondaryTags: ['Dynamic', 'Vibrant', 'Lively', 'Spirited', 'Exuberant'] },
-          { text: 'Calm', alias: 'calm', secondaryTags: ['Serene', 'Peaceful', 'Tranquil', 'Relaxed', 'Meditative'] },
-          { text: 'Mysterious', alias: 'mysterious', secondaryTags: ['Enigmatic', 'Intriguing', 'Eerie', 'Cryptic', 'Obscure'] }
-        ],
-        Setting: [
-          { text: 'Urban', alias: 'urban', secondaryTags: ['Cityscape', 'Street', 'Skyscraper', 'Subway', 'Cafe'] },
-          { text: 'Nature', alias: 'nature', secondaryTags: ['Forest', 'Mountain', 'Beach', 'River', 'Field'] },
-          { text: 'Indoor', alias: 'indoor', secondaryTags: ['Living Room', 'Kitchen', 'Bedroom', 'Office', 'Studio'] },
-          { text: 'Underwater', alias: 'underwater', secondaryTags: ['Coral Reef', 'Deep Sea', 'Shipwreck', 'Kelp Forest', 'Submarine'] },
-          { text: 'Space', alias: 'space', secondaryTags: ['Planet', 'Nebula', 'Space Station', 'Asteroid Field', 'Black Hole'] }
-        ],
-        ColorScheme: [
-          { text: 'Vibrant', alias: 'vibrant', secondaryTags: ['Rainbow', 'Neon', 'Saturated', 'Bold', 'Technicolor'] },
-          { text: 'Monochrome', alias: 'monochrome', secondaryTags: ['Black and White', 'Grayscale', 'Sepia', 'Blue-toned', 'Green-toned'] },
-          { text: 'Pastel', alias: 'pastel', secondaryTags: ['Soft Pink', 'Light Blue', 'Mint Green', 'Lavender', 'Peach'] },
-          { text: 'Dark', alias: 'dark', secondaryTags: ['Gothic', 'Muted', 'Shadowy', 'Deep Tones', 'Low Key'] },
-          { text: 'Warm', alias: 'warm', secondaryTags: ['Sunset Colors', 'Earthy Tones', 'Reds and Oranges', 'Golden Hour', 'Amber'] }
-        ],
-        Composition: [
-          { text: 'Symmetrical', alias: 'symmetrical', secondaryTags: ['Bilateral', 'Radial', 'Reflective', 'Kaleidoscopic', 'Mandala'] },
-          { text: 'Rule of Thirds', alias: 'rule of thirds', secondaryTags: ['Off-center', 'Grid', 'Balanced', 'Asymmetrical', 'Dynamic'] },
-          { text: 'Leading Lines', alias: 'leading lines', secondaryTags: ['Perspective', 'Converging', 'Diagonal', 'S-curve', 'Zigzag'] },
-          { text: 'Framing', alias: 'framing', secondaryTags: ['Natural Frame', 'Architectural', 'Foreground Elements', 'Vignette', 'Window'] },
-          { text: 'Depth of Field', alias: 'depth of field', secondaryTags: ['Bokeh', 'Selective Focus', 'Blurred Background', 'Macro', 'Tilt-shift'] }
-        ]
-      };
-
       this.tags = Object.entries(mockTags).flatMap(([zone, zoneTags]) =>
         zoneTags.map((tagData, index) => ({
           id: `${zone}-${index}`,

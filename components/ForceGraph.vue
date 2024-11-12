@@ -1,5 +1,29 @@
 <template>
-  <div ref="chartContainer" :style="{ width: `${width}px`, height: `${height}px` }"></div>
+  <div class="relative" ref="chartContainer" :style="{ width: `${width}px`, height: `${height}px` }">
+    <div v-if="!preview" class="absolute bottom-4 right-4 flex gap-2">
+      <button 
+        @click="handlePrevZone"
+        class="bg-green-500 hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md flex items-center gap-2 transition-colors duration-200"
+        :disabled="isFirstZone"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 rotate-180" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+        </svg>
+        Prev
+      </button>
+      
+      <button 
+        @click="handleNextZone"
+        class="bg-green-500 hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md flex items-center gap-2 transition-colors duration-200"
+        :disabled="isLastZone"
+      >
+        Next
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+        </svg>
+      </button>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -28,7 +52,7 @@ const selectedSecondaryTags = ref<Tag[]>([]);
 const hybridCreationTimeout = ref<NodeJS.Timeout | null>(null);
 const tagStore = useTagStore();
 
-const emit = defineEmits(['tagSelected', 'secondaryTagSelected']);
+const emit = defineEmits(['tagSelected', 'secondaryTagSelected', 'zoneChange']);
 
 const zoneGraph = computed(() => tagStore.getZoneGraph(props.zone));
 
@@ -217,12 +241,12 @@ function updateNodesAndLinks() {
       .distance(radius) // Match the radius we used for positioning
       .strength(0.5)) // Stronger links to maintain circle shape
     .force("charge", d3.forceManyBody()
-      .strength(d => d.zone.includes('-secondary') ? -50 : -10)) // Weaker repulsion for primary
+      .strength(d => d.zone.includes('-secondary') ? -50 : -40)) // Weaker repulsion for primary
     .force("collision", d3.forceCollide()
-      .radius(d => d.r + (d.zone.includes('-secondary') ? 30 : 10)) // More space between secondary nodes
+      .radius(d => d.r + (d.zone.includes('-secondary') ? 30 : 20)) // More space between secondary nodes
       .strength(0.8))
     .force("centerPrimary", d3.forceRadial(0, props.width / 2, props.height / 2)
-      .strength(d => d.zone.includes('-secondary') ? 0 : 1)) // Strong centering only for primary
+      .strength(d => d.zone.includes('-secondary') ? 0 : 0.1)) // Strong centering only for primary
     .force("circularSecondary", d3.forceRadial(radius, props.width / 2, props.height / 2)
       .strength(d => d.zone.includes('-secondary') ? 0.8 : 0)); // Keep secondary nodes in a circle
 
@@ -659,6 +683,33 @@ function updateHybridRelatedNodes(hybridTag: Tag, visible: boolean) {
     .duration(600)
     .style("opacity", visible ? 0.6 : 0);
 }
+
+// Add new function to handle next zone click
+function handleNextZone() {
+  const zones = tagStore.zones;
+  const currentIndex = zones.indexOf(props.zone);
+  const nextIndex = currentIndex < zones.length - 1 ? currentIndex + 1 : currentIndex;
+  emit('zoneChange', zones[nextIndex]);
+}
+
+// Add these computed properties
+const isFirstZone = computed(() => {
+  const zones = tagStore.zones;
+  return zones.indexOf(props.zone) === 0;
+});
+
+const isLastZone = computed(() => {
+  const zones = tagStore.zones;
+  return zones.indexOf(props.zone) === zones.length - 1;
+});
+
+// Add new function to handle previous zone click
+function handlePrevZone() {
+  const zones = tagStore.zones;
+  const currentIndex = zones.indexOf(props.zone);
+  const prevIndex = currentIndex > 0 ? currentIndex - 1 : 0;
+  emit('zoneChange', zones[prevIndex]);
+}
 </script>
 
 <style scoped>
@@ -693,5 +744,46 @@ div {
 
 ::v-deep .links line {
   transition: opacity 0.6s ease;
+}
+
+/* Add to existing styles */
+.relative {
+  position: relative;
+}
+
+.absolute {
+  position: absolute;
+}
+
+.bottom-4 {
+  bottom: 1rem;
+}
+
+.right-4 {
+  right: 1rem;
+}
+
+button {
+  z-index: 10;
+}
+
+.flex {
+  display: flex;
+}
+
+.gap-2 {
+  gap: 0.5rem;
+}
+
+.rotate-180 {
+  transform: rotate(180deg);
+}
+
+button:disabled {
+  opacity: 0.7;
+}
+
+button:disabled:hover {
+  background-color: #9ca3af; /* Tailwind's gray-400 */
 }
 </style>

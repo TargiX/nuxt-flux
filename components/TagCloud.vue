@@ -6,11 +6,12 @@
         <ForceGraph
           :key="focusedZone"
           :width="600"
-          :height="600"
+          :height="728"
           :zone="focusedZone"
           class="main-graph"
           @tagSelected="handleTagSelection"
           @secondaryTagSelected="handleSecondaryTagSelection"
+          @zoneChange="handleZoneChange"
         />
         <div class="preview-zones">
       <div
@@ -93,7 +94,7 @@ import { useTagStore } from '~/store/tagStore'
 import ForceGraph from './ForceGraph.vue'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { ArrowPathIcon } from '@heroicons/vue/24/solid'
-
+import { HarmCategory, HarmBlockThreshold } from '@google/generative-ai'
 const config = useRuntimeConfig()
 
 const apiKey = config.public.GEMINI_API_KEY
@@ -250,6 +251,25 @@ const generatePrompt = debounce(async () => {
             },
           ],
         },
+      ],  
+      safetySettings: [
+    
+        {
+          category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
+        },
       ],
       generationConfig: {
         temperature: 0.5,
@@ -354,6 +374,11 @@ const generateRelatedTags = async (parentTag: string) => {
     return []
   }
 }
+
+// Add the handler for zone change in the script section
+const handleZoneChange = (newZone: string) => {
+  setFocusedZone(newZone);
+};
 </script>
 
 <style lang="scss" scoped>
