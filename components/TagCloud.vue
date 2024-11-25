@@ -79,7 +79,7 @@
 
           <button
             @click="generateImage"
-            :disabled="!(isManualMode ? manualPrompt : generatedPromptResult) || isGeneratingImage"
+            :disabled="!(isManualMode ? manualPrompt : generatedPrompt) || isGeneratingImage"
             class="flex items-center gap-2"
           >
             <ArrowPathIcon v-if="isGeneratingImage" class="animate-spin h-5 w-5" />
@@ -241,60 +241,72 @@ const debounce = (func: Function, delay: number) => {
   }
 }
 
-const generatePrompt = debounce(async () => {
-  if (isManualMode.value) return // Skip auto-generation if in manual mode
+const generatePrompt = () => {
+  return new Promise((resolve) => {
+    const debouncedGenerate = debounce(async () => {
+      if (isManualMode.value) {
+        resolve(null);
+        return;
+      }
 
-  const prompt = generatedPrompt.value
-  if (prompt.length > 0) {
-    const currentRequestId = ++promptRequestId
+      const prompt = generatedPrompt.value;
+      if (prompt.length > 0) {
+        const currentRequestId = ++promptRequestId;
 
-    const response = await model.generateContent({
-      contents: [
-        {
-          role: 'user',
-          parts: [
+        const response = await model.generateContent({
+          contents: [
             {
-              text: `You are creating an image prompt based on the following tags: ${prompt}. You should create prompt as much exactly matching the tags as possible, do not make up tags, the result is a prompt for an image generator, no words before, no words after, just the prompt.`,
+              role: 'user',
+              parts: [
+                {
+                  text: `You are creating an image prompt based on the following tags: ${prompt}. You should create prompt as much exactly matching the tags as possible, do not make up tags, the result is a prompt for an image generator, no words before, no words after, just the prompt.`,
+                },
+              ],
             },
           ],
-        },
-      ],
-      safetySettings: [
-        {
-          category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-          threshold: HarmBlockThreshold.BLOCK_NONE,
-        },
-        {
-          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-          threshold: HarmBlockThreshold.BLOCK_NONE,
-        },
-        {
-          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-          threshold: HarmBlockThreshold.BLOCK_NONE,
-        },
-        {
-          category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-          threshold: HarmBlockThreshold.BLOCK_NONE,
-        },
-      ],
-      generationConfig: {
-        temperature: 0.5,
-        maxOutputTokens: 1000,
-      },
-    })
+          safetySettings: [
+            {
+              category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+              threshold: HarmBlockThreshold.BLOCK_NONE,
+            },
+            {
+              category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+              threshold: HarmBlockThreshold.BLOCK_NONE,
+            },
+            {
+              category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+              threshold: HarmBlockThreshold.BLOCK_NONE,
+            },
+            {
+              category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+              threshold: HarmBlockThreshold.BLOCK_NONE,
+            },
+          ],
+          generationConfig: {
+            temperature: 0.5,
+            maxOutputTokens: 1000,
+          },
+        });
 
-    if (currentRequestId === promptRequestId) {
-      generatedPromptResult.value = await response.response.text()
-    }
-  }
-}, 300)
+        if (currentRequestId === promptRequestId) {
+          generatedPromptResult.value = await response.response.text();
+          resolve(generatedPromptResult.value);
+        } else {
+          resolve(null);
+        }
+      } else {
+        resolve(null);
+      }
+    }, 300);
+
+    debouncedGenerate();
+  });
+}
 
 const isGeneratingImage = ref(false)
 
 const generateImage = async () => {
-  if (!isManualMode.value) {
     await generatePrompt()
-  }
   isGeneratingImage.value = true
   const currentImageRequestId = ++imageRequestId
 

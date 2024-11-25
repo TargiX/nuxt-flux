@@ -382,91 +382,54 @@ async function handleNodeClick(event: MouseEvent, d: Tag) {
   if (d.isHybrid) {
     d.selected = !d.selected;
     
-    // When hybrid is selected/unselected, update the store
     if (d.selected) {
       tagStore.addSelectedHybridTag(d);
     } else {
       tagStore.removeSelectedHybridTag(d.id, props.zone);
     }
     
-    // Hide/show child nodes
     updateHybridRelatedNodes(d, !d.selected);
     updateNodeAppearance(d, false);
     updateGraph();
     return;
   }
 
-  if (d.zone.includes('-secondary')) {
+  // Handle both secondary tags and hybrid child tags the same way
+  if (d.zone.includes('-secondary') || d.isHybridChild) {
     // Toggle selection
     d.selected = !d.selected;
     updateNodeAppearance(d, false);
     
-    // Get existing hybrid tag for this zone if any
-    const existingHybrid = tagStore.getHybridTagsForZone(props.zone)[0];
+    // Get all selected secondary and hybrid child tags
+    const selectedTags = zoneGraph.value.nodes.filter(
+      node => (node.zone.includes('-secondary') || node.isHybridChild) && 
+      node.selected && 
+      !node.isHidden
+    );
     
     if (d.selected) {
-      if (existingHybrid) {
-        // If we have a hybrid tag, add this tag to its composition
-        const newTags = [...existingHybrid.childTags, d];
-        
-        // Remove old hybrid tag
-        tagStore.removeSelectedHybridTag(existingHybrid.id, props.zone);
-        
-        // Create new hybrid tag with all tags
-        const hybridTag = await tagStore.createHybridTag(props.zone, newTags);
-        if (hybridTag) {
-          updateHybridRelatedNodes(hybridTag, false);
-          updateGraph();
+      // If we have 2 or more selected tags, create hybrid
+      if (selectedTags.length >= 2) {
+        if (hybridCreationTimeout.value) {
+          clearTimeout(hybridCreationTimeout.value);
         }
-      } else {
-        // No existing hybrid, proceed with normal selection
-        selectedSecondaryTags.value.push(d);
         
-        // If we have 2 or more selected tags, create hybrid
-        if (selectedSecondaryTags.value.length >= 2) {
-          if (hybridCreationTimeout.value) {
-            clearTimeout(hybridCreationTimeout.value);
+        hybridCreationTimeout.value = setTimeout(async () => {
+          const hybridTag = await tagStore.createHybridTag(props.zone, selectedTags);
+          if (hybridTag) {
+            updateHybridRelatedNodes(hybridTag, false);
+            selectedTags.forEach(tag => {
+              tag.selected = false;
+              updateNodeAppearance(tag, false);
+            });
+            updateGraph();
           }
-          
-          hybridCreationTimeout.value = setTimeout(async () => {
-            const hybridTag = await tagStore.createHybridTag(props.zone, selectedSecondaryTags.value);
-            if (hybridTag) {
-              updateHybridRelatedNodes(hybridTag, false);
-              selectedSecondaryTags.value.forEach(tag => {
-                tag.selected = false;
-                updateNodeAppearance(tag, false);
-              });
-              selectedSecondaryTags.value = [];
-              updateGraph();
-            }
-          }, 1000);
-        }
+        }, 1000);
       }
     } else {
       // Tag is being unselected
-      selectedSecondaryTags.value = selectedSecondaryTags.value.filter(t => t.id !== d.id);
-      
-      if (existingHybrid) {
-        // Remove this tag from hybrid composition
-        const remainingTags = existingHybrid.childTags.filter(t => t.id !== d.id);
-        
-        if (remainingTags.length >= 2) {
-          // If we still have 2 or more tags, create new hybrid
-          tagStore.removeSelectedHybridTag(existingHybrid.id, props.zone);
-          const hybridTag = await tagStore.createHybridTag(props.zone, remainingTags);
-          if (hybridTag) {
-            updateHybridRelatedNodes(hybridTag, false);
-            updateGraph();
-          }
-        } else {
-          // If less than 2 tags remain, remove hybrid completely
-          tagStore.removeSelectedHybridTag(existingHybrid.id, props.zone);
-          remainingTags.forEach(tag => {
-            tag.isHidden = false;
-            tag.selected = true;
-          });
-          updateGraph();
-        }
+      if (hybridCreationTimeout.value) {
+        clearTimeout(hybridCreationTimeout.value);
       }
     }
 
