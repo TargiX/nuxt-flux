@@ -155,13 +155,16 @@ function updateNodesAndLinks() {
   const zoneTags = tagStore.tagsByZone(props.zone);
   const secondaryTags = tagStore.getAllSecondaryTagsForZone(props.zone);
 
+  // Extract child tags from hybrid tags
+  const hybridTags = tagStore.getHybridTagsForZone(props.zone);
+  const hybridChildTags = hybridTags.flatMap(hybrid => hybrid.childTags || []);
 
   const selectedTag = zoneTags.find(tag => tag.selected && tag.isLoading);
 
   const oldNodes = new Map(zoneGraph.value.nodes.map(d => [d.id, d]));
 
-  // Combine all nodes, including hybrid tags
-  const nodes = [...zoneTags, ...secondaryTags].map((tag) => {
+  // Combine all nodes, including child tags of hybrid tags
+  const nodes = [...zoneTags, ...secondaryTags, ...hybridChildTags].map((tag) => {
     const oldNode = oldNodes.get(tag.id);
     let x, y;
 
@@ -204,9 +207,6 @@ function updateNodesAndLinks() {
       y = props.height / 2;
     }
 
-    // Special positioning for hybrid tags
- 
-
     return {
       ...tag,
       r: tag.size / 2, // Set size for hybrid tags
@@ -230,6 +230,10 @@ function updateNodesAndLinks() {
     .force("link", d3.forceLink(links)
       .id(d => d.id)
       .distance(link => {
+        if (link.isHybridLink) {
+          // Distance for hybrid-to-child links
+          return RADIUS * 1.5;
+        }
         // Further increase distance for links between parent and hybrid tags
         if (link.source.isHybrid || link.target.isHybrid) {
           return RADIUS * 3; // Triple the distance for hybrid links
@@ -237,6 +241,10 @@ function updateNodesAndLinks() {
         return RADIUS; // Default distance
       })
       .strength(link => {
+        if (link.isHybridLink) {
+          // Strength for hybrid-to-child links
+          return 0.3;
+        }
         // Apply a weaker link strength for hybrid links
         if (link.source.isHybrid || link.target.isHybrid) {
           return 0.1; // Weaker link strength
@@ -696,24 +704,34 @@ function updateNodeColors() {
 
 // Add new function to handle hybrid-related visual updates
 function updateHybridRelatedNodes(hybridTag: Tag, visible: boolean) {
-  if (!hybridTag.childTags) return;
+  if (!hybridTag.sourceTags) return;
 
-  const childIds = hybridTag.childTags.map(t => t.id);
+  // Only hide/show source tags
+  const sourceIds = hybridTag.sourceTags.map(t => t.id);
   
-  // Find all child nodes and transition their opacity
+  // Update visibility of source tags
   zoneGraph.value.svg.selectAll(".nodes g")
-    .filter(d => childIds.includes(d.id))
+    .filter(d => sourceIds.includes(d.id))
     .transition()
     .duration(600)
     .style("opacity", visible ? 1 : 0)
     .style("pointer-events", visible ? "all" : "none");
 
-  // Also handle their links
+  // Update their links
   zoneGraph.value.svg.selectAll(".links line")
-    .filter(d => childIds.includes(d.source.id) || childIds.includes(d.target.id))
+    .filter(d => sourceIds.includes(d.source.id) || sourceIds.includes(d.target.id))
     .transition()
     .duration(600)
     .style("opacity", visible ? 0.6 : 0);
+
+  // Ensure child tags are always visible
+  if (hybridTag.childTags) {
+    const childIds = hybridTag.childTags.map(t => t.id);
+    zoneGraph.value.svg.selectAll(".nodes g")
+      .filter(d => childIds.includes(d.id))
+      .style("opacity", 1)
+      .style("pointer-events", "all");
+  }
 }
 
 // Add new function to handle next zone click

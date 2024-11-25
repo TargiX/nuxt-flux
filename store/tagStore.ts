@@ -25,6 +25,7 @@ interface Tag {
   isHybrid?: boolean
   childTags?: Tag[]
   isHidden?: boolean
+  sourceTags?: Tag[]
 }
 
 interface ZoneGraph {
@@ -203,7 +204,6 @@ export const useTagStore = defineStore('tags', {
           ...this.getSecondaryTagsForZone(zone),
           ...(this.zoneGraphs[zone].hybridTags || [])
         ];
-        console.log('allLinkedTags', allLinkedTags)
 
         // Create links for all nodes at once
         links.push(...allLinkedTags.map(tag => ({
@@ -211,6 +211,20 @@ export const useTagStore = defineStore('tags', {
           target: tag.id,
           value: 1,
         })));
+
+        // Add links between hybrid tags and their child tags
+        const hybridTags = this.zoneGraphs[zone].hybridTags || [];
+        hybridTags.forEach(hybridTag => {
+          if (hybridTag.childTags) {
+            // Create links between hybrid tag and its child tags
+            links.push(...hybridTag.childTags.map(childTag => ({
+              source: hybridTag.id,
+              target: childTag.id,
+              value: 1,
+              isHybridLink: true // Mark these links specially if needed
+            })));
+          }
+        });
       }
 
       return links;
@@ -289,7 +303,8 @@ export const useTagStore = defineStore('tags', {
           size: 50,
           selected: true,
           isHybrid: true,
-          childTags: tags,
+          sourceTags: tags,
+          childTags: [],
           x: tags[0].x + 100,
           y: tags[0].y + 100,
           fx: null,
@@ -303,14 +318,31 @@ export const useTagStore = defineStore('tags', {
           zoneGraph.hybridTags = [...(zoneGraph.hybridTags || []), hybridTag];
         }
 
-        // Hide child tags
-        tags.forEach(childTag => {
-          const tag = this.allTags.find(t => t.id === childTag.id);
+        // Hide only the source tags
+        tags.forEach(sourceTag => {
+          const tag = this.allTags.find(t => t.id === sourceTag.id);
           if (tag) {
             tag.isHidden = true;
             tag.selected = false;
           }
         });
+
+        // Create and attach new child tags to the hybrid tag
+        const testTags = ['Test Tag 1', 'Test Tag 2', 'Test Tag 3', 'Test Tag 4', 'Test Tag 5'].map((text, index) => ({
+          id: `${hybridTag.id}-child-${index}`,
+          text,
+          zone: `${zone}-secondary`,
+          size: 30,
+          selected: false,
+          x: hybridTag.x + Math.cos(index * Math.PI * 0.4) * 100, // Position in a semi-circle
+          y: hybridTag.y + Math.sin(index * Math.PI * 0.4) * 100,
+          fx: null,
+          fy: null,
+          alias: text.toLowerCase().replace(/\s+/g, '-'),
+          isHybridChild: true
+        }));
+
+        hybridTag.childTags = testTags;
 
         return hybridTag;
       } catch (error) {
@@ -376,8 +408,9 @@ export const useTagStore = defineStore('tags', {
       if (hybridTag) {
         zoneGraph.hybridTags = zoneGraph.hybridTags?.filter(t => t.id !== hybridTagId) || [];
         
-        hybridTag.childTags?.forEach(childTag => {
-          const tag = this.allTags.find(t => t.id === childTag.id);
+        // Only unhide source tags, not child tags
+        hybridTag.sourceTags?.forEach(sourceTag => {
+          const tag = this.allTags.find(t => t.id === sourceTag.id);
           if (tag) {
             tag.isHidden = false;
           }
