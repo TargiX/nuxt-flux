@@ -48,7 +48,7 @@ interface HybridTag extends Tag {
 const DEFAULT_WIDTH = 600;  // Default width matching ForceGraph default
 const DEFAULT_HEIGHT = 728; // Default height matching ForceGraph default
 const HYBRID_DISTANCE = 280; // Reduced from ~400 (30% less)
-const CHILD_RADIUS = 60;   // Reduced from 150 (much closer to parent)
+const CHILD_RADIUS = 120;   // Reduced from 150 (much closer to parent)
 
 export const useTagStore = defineStore('tags', {
   state: () => ({
@@ -302,9 +302,9 @@ export const useTagStore = defineStore('tags', {
         const response = await result.response;
         const hybridText = await response.text();
 
-        // Calculate a position far from center (but not too far)
+        // Calculate position for hybrid tag
         const angle = Math.random() * Math.PI * 2;
-        const distance = HYBRID_DISTANCE; // Reduced distance with some randomness
+        const distance = HYBRID_DISTANCE;
         const hybridX = DEFAULT_WIDTH / 2 + Math.cos(angle) * distance;
         const hybridY = DEFAULT_HEIGHT / 2 + Math.sin(angle) * distance;
 
@@ -319,22 +319,54 @@ export const useTagStore = defineStore('tags', {
           childTags: [],
           x: hybridX,
           y: hybridY,
-          // Fix position immediately
           fx: hybridX,
           fy: hybridY,
           alias: hybridText.toLowerCase().replace(/\s+/g, '-')
         };
 
-        // Create child tags in a tighter circle around hybrid
-        const testTags = ['Test Tag 1', 'Test Tag 2', 'Test Tag 3', 'Test Tag 4', 'Test Tag 5'].map((text, index) => {
-          const childAngle = (index / 5) * Math.PI * 2;
+        // Generate meaningful child tags using Gemini
+        const childTagsPrompt = `You are helping users find relevant tags for their image generation. 
+        When user combines concepts into "${hybridText.trim()}", suggest 8 additional more specific level descriptive tags that continue story of "${hybridText.trim()}", all maintaining general ${zone} subgroup.
+
+        Requirements:
+        - Each tag should be 1-2 words
+        - Always start with a capital letter
+        - Think about what visual elements would extend and expand on "${hybridText.trim()}"
+        - Include both common and creative but relevant associations
+        - Focus on visual and artistic aspects
+        - Suggest tags that would help create interesting image variations
+        - Keep tags concrete and imagery-focused
+
+        Return only a JSON array of strings, no explanation.
+        Example format: ["Mountain Peak", "Dense Forest", "Morning Mist"]`;
+
+        const childTagsResult = await model.generateContent({
+          contents: [{ role: 'user', parts: [{ text: childTagsPrompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 200,
+          },
+        });
+
+        const childTagsText = await childTagsResult.response.text();
+        let childTags: string[] = [];
+        try {
+          const cleanedText = childTagsText.replace(/```json\n?|\n?```/g, '').trim();
+          childTags = JSON.parse(cleanedText);
+        } catch (error) {
+          console.error('Failed to parse generated child tags:', error);
+          childTags = ['Variation 1', 'Variation 2', 'Variation 3', 'Variation 4', 'Variation 5'];
+        }
+
+        // Create child tags in a circle around hybrid
+        const generatedTags = childTags.map((text, index) => {
+          const childAngle = (index / 8) * Math.PI * 2;
           return {
             id: `${hybridTag.id}-child-${index}`,
             text,
             zone: `${zone}-secondary`,
-            size: 30, 
+            size: 30,
             selected: false,
-            // Fix child positions initially
             x: hybridX + Math.cos(childAngle) * CHILD_RADIUS,
             y: hybridY + Math.sin(childAngle) * CHILD_RADIUS,
             fx: hybridX + Math.cos(childAngle) * CHILD_RADIUS,
@@ -344,14 +376,13 @@ export const useTagStore = defineStore('tags', {
           };
         });
 
-        hybridTag.childTags = testTags;
+        hybridTag.childTags = generatedTags;
 
         // Add to zone's hybrid tags
         const zoneGraph = this.zoneGraphs[zone];
         if (zoneGraph && zoneGraph.simulation) {
           zoneGraph.hybridTags = [...(zoneGraph.hybridTags || []), hybridTag];
           
-          // After a short delay, release the fixed positions
           setTimeout(() => {
             if (hybridTag) {
               hybridTag.fx = null;
@@ -361,7 +392,6 @@ export const useTagStore = defineStore('tags', {
                 child.fy = null;
               });
               
-              // Gently restart simulation
               zoneGraph.simulation
                 ?.alpha(0.1)
                 .alphaTarget(0)
