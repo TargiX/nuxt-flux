@@ -276,7 +276,7 @@ export const useTagStore = defineStore('tags', {
         throw new Error('GEMINI_API_KEY is not defined');
       }
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-8b' });
 
       // Improved prompt for more specific and meaningful combinations
       const prompt = `Create a concise but descriptive tag that combines these specific concepts: ${

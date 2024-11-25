@@ -71,7 +71,7 @@
 
           <textarea
             v-if="isManualMode"
-            v-model="manualPrompt"
+
             class="manual-prompt-input"
             placeholder="Enter your prompt..."
           ></textarea>
@@ -116,7 +116,7 @@ if (!fluxApiKey) {
 }
 const genAI = new GoogleGenerativeAI(apiKey)
 
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-8b' })
 
 const imageUrl = ref('')
 const generatedPromptResult = ref('')
@@ -292,6 +292,9 @@ const generatePrompt = debounce(async () => {
 const isGeneratingImage = ref(false)
 
 const generateImage = async () => {
+  if (!isManualMode.value) {
+    await generatePrompt()
+  }
   isGeneratingImage.value = true
   const currentImageRequestId = ++imageRequestId
 
@@ -329,10 +332,10 @@ const generateImage = async () => {
 }
 
 // Watch for changes in the generatedPrompt computed property
-watch(generatedPrompt, () => {
-  // return;
-  generatePrompt()
-})
+// watch(generatedPrompt, () => {
+//   // return;
+//   generatePrompt()
+// })
 
 // Add this ref near the top of the script section with other refs
 const isManualMode = ref(false)
