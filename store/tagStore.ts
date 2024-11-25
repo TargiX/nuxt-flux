@@ -47,6 +47,8 @@ interface HybridTag extends Tag {
 // Add these constants at the top of the file, after imports
 const DEFAULT_WIDTH = 600;  // Default width matching ForceGraph default
 const DEFAULT_HEIGHT = 728; // Default height matching ForceGraph default
+const HYBRID_DISTANCE = 280; // Reduced from ~400 (30% less)
+const CHILD_RADIUS = 60;   // Reduced from 150 (much closer to parent)
 
 export const useTagStore = defineStore('tags', {
   state: () => ({
@@ -300,9 +302,9 @@ export const useTagStore = defineStore('tags', {
         const response = await result.response;
         const hybridText = await response.text();
 
-        // Calculate a position far from center
+        // Calculate a position far from center (but not too far)
         const angle = Math.random() * Math.PI * 2;
-        const distance = 400 + Math.random() * 200;
+        const distance = HYBRID_DISTANCE; // Reduced distance with some randomness
         const hybridX = DEFAULT_WIDTH / 2 + Math.cos(angle) * distance;
         const hybridY = DEFAULT_HEIGHT / 2 + Math.sin(angle) * distance;
 
@@ -323,21 +325,20 @@ export const useTagStore = defineStore('tags', {
           alias: hybridText.toLowerCase().replace(/\s+/g, '-')
         };
 
-        // Create child tags in a perfect circle around hybrid
+        // Create child tags in a tighter circle around hybrid
         const testTags = ['Test Tag 1', 'Test Tag 2', 'Test Tag 3', 'Test Tag 4', 'Test Tag 5'].map((text, index) => {
           const childAngle = (index / 5) * Math.PI * 2;
-          const radius = 150; // Fixed radius for perfect circle
           return {
             id: `${hybridTag.id}-child-${index}`,
             text,
             zone: `${zone}-secondary`,
-            size: 30,
+            size: 30, 
             selected: false,
             // Fix child positions initially
-            x: hybridX + Math.cos(childAngle) * radius,
-            y: hybridY + Math.sin(childAngle) * radius,
-            fx: hybridX + Math.cos(childAngle) * radius,
-            fy: hybridY + Math.sin(childAngle) * radius,
+            x: hybridX + Math.cos(childAngle) * CHILD_RADIUS,
+            y: hybridY + Math.sin(childAngle) * CHILD_RADIUS,
+            fx: hybridX + Math.cos(childAngle) * CHILD_RADIUS,
+            fy: hybridY + Math.sin(childAngle) * CHILD_RADIUS,
             alias: text.toLowerCase().replace(/\s+/g, '-'),
             isHybridChild: true
           };
