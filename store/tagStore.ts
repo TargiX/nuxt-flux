@@ -389,19 +389,21 @@ export const useTagStore = defineStore('tags', {
           childTags = ['Variation 1', 'Variation 2', 'Variation 3', 'Variation 4', 'Variation 5'];
         }
 
-        // Create child tags in a circle around hybrid
+        // Create child tags with fixed positions
         const generatedTags = childTags.map((text, index) => {
           const childAngle = (index / 8) * Math.PI * 2;
+          const childX = hybridX + Math.cos(childAngle) * CHILD_RADIUS;
+          const childY = hybridY + Math.sin(childAngle) * CHILD_RADIUS;
           return {
             id: `${hybridTag.id}-child-${index}`,
             text,
             zone: `${zone}-secondary`,
             size: 30,
             selected: false,
-            x: hybridX + Math.cos(childAngle) * CHILD_RADIUS,
-            y: hybridY + Math.sin(childAngle) * CHILD_RADIUS,
-            fx: hybridX + Math.cos(childAngle) * CHILD_RADIUS,
-            fy: hybridY + Math.sin(childAngle) * CHILD_RADIUS,
+            x: childX,
+            y: childY,
+            fx: childX,
+            fy: childY,
             alias: text.toLowerCase().replace(/\s+/g, '-'),
             isHybridChild: true
           };
@@ -414,21 +416,11 @@ export const useTagStore = defineStore('tags', {
         if (zoneGraph && zoneGraph.simulation) {
           zoneGraph.hybridTags = [...(zoneGraph.hybridTags || []), hybridTag];
           
-          setTimeout(() => {
-            if (hybridTag) {
-              hybridTag.fx = null;
-              hybridTag.fy = null;
-              hybridTag.childTags?.forEach(child => {
-                child.fx = null;
-                child.fy = null;
-              });
-              
-              zoneGraph.simulation
-                ?.alpha(0.1)
-                .alphaTarget(0)
-                .restart();
-            }
-          }, 500);
+          // Just a gentle simulation restart
+          zoneGraph.simulation
+            ?.alpha(0.1)
+            .alphaTarget(0)
+            .restart();
         }
 
         // Hide source tags

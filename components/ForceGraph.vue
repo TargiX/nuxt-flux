@@ -53,6 +53,7 @@ const hybridCreationTimeout = ref<NodeJS.Timeout | null>(null);
 const tagStore = useTagStore();
 
 const RADIUS = 150; // Distance from parent for secondary nodes
+const CHILD_RADIUS = 120; // Distance from hybrid parent to its children
 const SECONDARY_NODE_SIZE = 30;
 const PRIMARY_NODE_SIZE = 40;
 const SECONDARY_NODE_ANGLE_STEP = (2 * Math.PI) / 10;
@@ -231,11 +232,10 @@ function updateNodesAndLinks() {
       .id(d => d.id)
       .distance(link => {
         if (link.isHybridChainLink) {
-          // Longer distance for hybrid-to-hybrid links
           return RADIUS * 4;
         }
         if (link.isHybridLink) {
-          return RADIUS * 1.5;
+          return CHILD_RADIUS;
         }
         if (link.source.isHybrid || link.target.isHybrid) {
           return RADIUS * 5;
@@ -243,46 +243,41 @@ function updateNodesAndLinks() {
         return RADIUS;
       })
       .strength(link => {
-        if (link.isHybridChainLink) {
-          // Weaker strength for hybrid-to-hybrid links
-          return 0.2;
-        }
-        if (link.isHybridLink) {
-          return 0.5;
-        }
-        if (link.source.isHybrid || link.target.isHybrid) {
-          return 0.05;
+        // Only apply forces to non-hybrid links
+        if (link.source.isHybrid || link.target.isHybrid || 
+            link.isHybridChainLink || link.isHybridLink) {
+          return 0;
         }
         return 0.5;
       })
     )
     .force("charge", d3.forceManyBody()
       .strength(d => {
-        if (d.isHybrid) return -200; // Stronger repulsion for hybrid tags
-        if (d.isHybridChild) return -100; // Medium repulsion for hybrid children
-        return d.zone.includes('-secondary') ? -50 : -40; // Default repulsion
+        if (d.isHybrid || d.isHybridChild) {
+          return 0;
+        }
+        return d.zone.includes('-secondary') ? -50 : -40;
       }))
     .force("collision", d3.forceCollide()
       .radius(d => {
-        if (d.isHybrid) return d.r + 100; // Large collision radius for hybrid tags
-        if (d.isHybridChild) return d.r + 50; // Medium collision radius for hybrid children
-        return d.r + (d.zone.includes('-secondary') ? 30 : 20); // Default collision radius
+        if (d.isHybrid) return d.r + 20;
+        if (d.isHybridChild) return d.r + 10;
+        return d.r + (d.zone.includes('-secondary') ? 30 : 20);
       })
-      .strength(0.8))
-    // Remove centerPrimary force for hybrid tags
+      .strength(1)) // Maximum strength to prevent overlaps
     .force("centerPrimary", d3.forceRadial(0, props.width / 2, props.height / 2)
       .strength(d => {
-        if (d.isHybrid || d.isHybridChild) return 0; // No centering force for hybrid system
-        return d.zone.includes('-secondary') ? 0 : 0.1; // Normal centering for others
+        if (d.isHybrid || d.isHybridChild) {
+          return 0;
+        }
+        return d.zone.includes('-secondary') ? 0 : 0.1;
       }))
-    // Add separate centering force for each hybrid cluster
-    .force("hybridClusters", d3.forceRadial(RADIUS * 3, props.width / 2, props.height / 2)
-      .strength(d => (d.isHybrid || d.isHybridChild) ? 0.3 : 0)) // Only affect hybrid systems
-    // Remove circularSecondary force for hybrid children
     .force("circularSecondary", d3.forceRadial(RADIUS, props.width / 2, props.height / 2)
       .strength(d => {
-        if (d.isHybrid || d.isHybridChild) return 0; // No circular force for hybrid system
-        return d.zone.includes('-secondary') ? 0.8 : 0; // Normal circular force for others
+        if (d.isHybrid || d.isHybridChild) {
+          return 0;
+        }
+        return d.zone.includes('-secondary') ? 0.8 : 0;
       }));
 
   // Adjust simulation parameters for smoother movement
@@ -360,17 +355,25 @@ function updateNodesAndLinks() {
   updateLinks();
 
   zoneGraph.value.simulation.on("tick", () => {
+    // First ensure hybrid systems maintain their positions
+    nodes.forEach(node => {
+      if (node.fx !== null && node.fy !== null) {
+        node.x = node.fx;
+        node.y = node.fy;
+      }
+    });
+
     const links = zoneGraph.value.simulation.force("link").links();
 
     zoneGraph.value.link
       .data(links)
-      .attr("x1", d => d.source.x)
-      .attr("y1", d => d.source.y)
-      .attr("x2", d => d.target.x)
-      .attr("y2", d => d.target.y);
+      .attr("x1", d => d.source.x || 0)
+      .attr("y1", d => d.source.y || 0)
+      .attr("x2", d => d.target.x || 0)
+      .attr("y2", d => d.target.y || 0);
 
     zoneGraph.value.node
-      .attr("transform", d => `translate(${d.x},${d.y})`);
+      .attr("transform", d => `translate(${d.x || 0},${d.y || 0})`);
   });
 
   // After updating nodes and links, update node colors
@@ -686,17 +689,24 @@ function updateNodeAppearance(d, updateForces = true) {
 
 function drag(simulation) {
   function dragstarted(event) {
+    // Don't allow dragging of hybrid systems
+    if (event.subject.isHybrid || event.subject.isHybridChild) return;
+
     if (!event.active) simulation.alphaTarget(0.3).restart();
     event.subject.fx = event.subject.x;
     event.subject.fy = event.subject.y;
   }
 
   function dragged(event) {
+    if (event.subject.isHybrid || event.subject.isHybridChild) return;
+    
     event.subject.fx = event.x;
     event.subject.fy = event.y;
   }
 
   function dragended(event) {
+    if (event.subject.isHybrid || event.subject.isHybridChild) return;
+    
     if (!event.active) simulation.alphaTarget(0);
     event.subject.fx = null;
     event.subject.fy = null;
