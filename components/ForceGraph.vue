@@ -230,26 +230,30 @@ function updateNodesAndLinks() {
     .force("link", d3.forceLink(links)
       .id(d => d.id)
       .distance(link => {
+        if (link.isHybridChainLink) {
+          // Longer distance for hybrid-to-hybrid links
+          return RADIUS * 4;
+        }
         if (link.isHybridLink) {
-          // Distance for hybrid-to-child links
           return RADIUS * 1.5;
         }
-        // Further increase distance for links between parent and hybrid tags
         if (link.source.isHybrid || link.target.isHybrid) {
-          return RADIUS * 5; // Significantly increase distance for hybrid tags
+          return RADIUS * 5;
         }
-        return RADIUS; // Default distance
+        return RADIUS;
       })
       .strength(link => {
+        if (link.isHybridChainLink) {
+          // Weaker strength for hybrid-to-hybrid links
+          return 0.2;
+        }
         if (link.isHybridLink) {
-          // Stronger connection between hybrid and its children
           return 0.5;
         }
-        // Very weak connection to main center for hybrid tags
         if (link.source.isHybrid || link.target.isHybrid) {
           return 0.05;
         }
-        return 0.5; // Default strength
+        return 0.5;
       })
     )
     .force("charge", d3.forceManyBody()
@@ -400,12 +404,20 @@ async function handleNodeClick(event: MouseEvent, d: Tag) {
     d.selected = !d.selected;
     updateNodeAppearance(d, false);
     
-    // Get all selected secondary and hybrid child tags
-    const selectedTags = zoneGraph.value.nodes.filter(
-      node => (node.zone.includes('-secondary') || node.isHybridChild) && 
-      node.selected && 
-      !node.isHidden
-    );
+    // Get all selected tags from the same parent/context
+    const selectedTags = zoneGraph.value.nodes.filter(node => {
+      if (!node.selected || node.isHidden) return false;
+
+      if (d.isHybridChild) {
+        // If current tag is a hybrid child, only select other children of the same hybrid parent
+        const parentHybrid = tagStore.getHybridTagsForZone(props.zone)
+          .find(hybrid => hybrid.childTags?.some(child => child.id === d.id));
+        return node.isHybridChild && parentHybrid?.childTags?.some(child => child.id === node.id);
+      } else {
+        // If current tag is a secondary tag, only select other secondary tags
+        return node.zone.includes('-secondary') && !node.isHybridChild;
+      }
+    });
     
     if (d.selected) {
       // If we have 2 or more selected tags, create hybrid
@@ -417,6 +429,26 @@ async function handleNodeClick(event: MouseEvent, d: Tag) {
         hybridCreationTimeout.value = setTimeout(async () => {
           const hybridTag = await tagStore.createHybridTag(props.zone, selectedTags);
           if (hybridTag) {
+            // If we're combining hybrid child tags, attach the new hybrid to the parent hybrid
+            if (d.isHybridChild) {
+              const parentHybrid = tagStore.getHybridTagsForZone(props.zone)
+                .find(hybrid => hybrid.childTags?.some(child => child.id === d.id));
+              
+              if (parentHybrid) {
+                // Create link between parent hybrid and new hybrid
+                const link = {
+                  source: parentHybrid.id,
+                  target: hybridTag.id,
+                  value: 1,
+                  isHybridLink: true,
+                  isHybridChainLink: true // Special flag for hybrid-to-hybrid links
+                };
+                
+                // Add to links
+                zoneGraph.value.links.push(link);
+              }
+            }
+
             updateHybridRelatedNodes(hybridTag, false);
             selectedTags.forEach(tag => {
               tag.selected = false;
@@ -427,7 +459,6 @@ async function handleNodeClick(event: MouseEvent, d: Tag) {
         }, 1000);
       }
     } else {
-      // Tag is being unselected
       if (hybridCreationTimeout.value) {
         clearTimeout(hybridCreationTimeout.value);
       }

@@ -23,6 +23,7 @@ interface Tag {
   isLoading?: boolean
   isPreconfigured?: boolean
   isHybrid?: boolean
+  isHybridChild?: boolean
   childTags?: Tag[]
   isHidden?: boolean
   sourceTags?: Tag[]
@@ -211,12 +212,24 @@ export const useTagStore = defineStore('tags', {
           ...(this.zoneGraphs[zone].hybridTags || [])
         ];
 
-        // Create links for all nodes at once
-        links.push(...allLinkedTags.map(tag => ({
-          source: sourceId,
-          target: tag.id,
-          value: 1,
-        })));
+        // Create links for all nodes at once, but skip hybrid tags that were created from other hybrid's children
+        links.push(...allLinkedTags
+          .filter(tag => {
+            if (!tag.isHybrid) return true;
+            // Check if this hybrid was created from another hybrid's children
+            const isChildHybrid = tag.sourceTags?.every(sourceTag => 
+              this.zoneGraphs[zone].hybridTags?.some(hybrid => 
+                hybrid.childTags?.some(child => child.id === sourceTag.id)
+              )
+            );
+            return !isChildHybrid;
+          })
+          .map(tag => ({
+            source: sourceId,
+            target: tag.id,
+            value: 1,
+          }))
+        );
 
         // Add links between hybrid tags and their child tags
         const hybridTags = this.zoneGraphs[zone].hybridTags || [];
@@ -227,8 +240,26 @@ export const useTagStore = defineStore('tags', {
               source: hybridTag.id,
               target: childTag.id,
               value: 1,
-              isHybridLink: true // Mark these links specially if needed
+              isHybridLink: true
             })));
+
+            // Find any child hybrid tags that were created from this hybrid's children
+            const childHybrids = hybridTags.filter(otherHybrid => 
+              otherHybrid.sourceTags?.every(sourceTag => 
+                hybridTag.childTags?.some(childTag => childTag.id === sourceTag.id)
+              )
+            );
+
+            // Create chain links between hybrid and child hybrids
+            childHybrids.forEach(childHybrid => {
+              links.push({
+                source: hybridTag.id,
+                target: childHybrid.id,
+                value: 1,
+                isHybridLink: true,
+                isHybridChainLink: true
+              });
+            });
           }
         });
       }
