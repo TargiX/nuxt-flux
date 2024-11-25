@@ -333,11 +333,13 @@ export const useTagStore = defineStore('tags', {
         const response = await result.response;
         const hybridText = await response.text();
 
-        // Calculate position for hybrid tag
+        // Calculate initial position far from center
         const angle = Math.random() * Math.PI * 2;
-        const distance = HYBRID_DISTANCE;
-        const hybridX = DEFAULT_WIDTH / 2 + Math.cos(angle) * distance;
-        const hybridY = DEFAULT_HEIGHT / 2 + Math.sin(angle) * distance;
+        const distance = HYBRID_DISTANCE * 5; // Much larger initial distance
+        const initialX = DEFAULT_WIDTH / 2 + Math.cos(angle) * distance;
+        const initialY = DEFAULT_HEIGHT / 2 + Math.sin(angle) * distance;
+
+        console.log('Creating hybrid tag at:', { initialX, initialY });
 
         const hybridTag: Tag = {
           id: `hybrid-${Date.now()}`,
@@ -348,10 +350,10 @@ export const useTagStore = defineStore('tags', {
           isHybrid: true,
           sourceTags: tags,
           childTags: [],
-          x: hybridX,
-          y: hybridY,
-          fx: hybridX,
-          fy: hybridY,
+          x: initialX,
+          y: initialY,
+          fx: null,
+          fy: null,
           alias: hybridText.toLowerCase().replace(/\s+/g, '-')
         };
 
@@ -392,8 +394,8 @@ export const useTagStore = defineStore('tags', {
         // Create child tags with fixed positions
         const generatedTags = childTags.map((text, index) => {
           const childAngle = (index / 8) * Math.PI * 2;
-          const childX = hybridX + Math.cos(childAngle) * CHILD_RADIUS;
-          const childY = hybridY + Math.sin(childAngle) * CHILD_RADIUS;
+          const childX = initialX + Math.cos(childAngle) * CHILD_RADIUS;
+          const childY = initialY + Math.sin(childAngle) * CHILD_RADIUS;
           return {
             id: `${hybridTag.id}-child-${index}`,
             text,
@@ -414,12 +416,18 @@ export const useTagStore = defineStore('tags', {
         // Add to zone's hybrid tags
         const zoneGraph = this.zoneGraphs[zone];
         if (zoneGraph && zoneGraph.simulation) {
+          // Force the position before adding to graph
+          hybridTag.x = initialX;
+          hybridTag.y = initialY;
+          
           zoneGraph.hybridTags = [...(zoneGraph.hybridTags || []), hybridTag];
           
-          // Just a gentle simulation restart
+          // Heat up simulation to allow movement
           zoneGraph.simulation
-            ?.alpha(0.1)
+            ?.alpha(1) // Full heat
             .alphaTarget(0)
+            .alphaDecay(0.01) // Slower decay
+            .velocityDecay(0.1) // Less friction
             .restart();
         }
 

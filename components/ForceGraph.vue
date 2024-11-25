@@ -54,9 +54,13 @@ const tagStore = useTagStore();
 
 const RADIUS = 150; // Distance from parent for secondary nodes
 const CHILD_RADIUS = 120; // Distance from hybrid parent to its children
+const MAIN_NODE_CHILDREN = 13; // Number of secondary tags around main node
+const HYBRID_NODE_CHILDREN = 8; // Number of child tags around hybrid
 const SECONDARY_NODE_SIZE = 30;
 const PRIMARY_NODE_SIZE = 40;
-const SECONDARY_NODE_ANGLE_STEP = (2 * Math.PI) / 10;
+
+// Calculate angle step for main node's secondary tags
+const MAIN_TAG_ANGLE_STEP = (2 * Math.PI) / MAIN_NODE_CHILDREN; // Evenly distribute 13 nodes
 
 const emit = defineEmits(['tagSelected', 'secondaryTagSelected', 'zoneChange']);
 
@@ -172,51 +176,50 @@ function updateNodesAndLinks() {
     if (oldNode) {
       x = oldNode.x;
       y = oldNode.y;
-    } else if (tag.isHybrid && tag.childTags) {
-      // Position hybrid tag at the average position of its child tags
-      const childPositions = tag.childTags
-        .map(child => oldNodes.get(child.id))
-        .filter(Boolean);
-      
-      if (childPositions.length > 0) {
-        x = childPositions.reduce((sum, pos) => sum + pos.x, 0) / childPositions.length;
-        y = childPositions.reduce((sum, pos) => sum + pos.y, 0) / childPositions.length;
-      } else {
-        x = props.width / 2;
-        y = props.height / 2;
-      }
-    } else if (tag.zone.includes('-secondary')) {
-      // For secondary nodes, position them in a perfect circle around the parent
-      const parent = zoneTags[0];
-      if (parent) {
-        const parentX = parent.x || props.width / 2;
-        const parentY = parent.y || props.height / 2;
-        
-        // Calculate position in perfect circle
-        const secondaryIndex = secondaryTags.findIndex(t => t.id === tag.id);
-        const angle = SECONDARY_NODE_ANGLE_STEP * secondaryIndex - Math.PI / 2;
-        
-        x = parentX + Math.cos(angle) * RADIUS;
-        y = parentY + Math.sin(angle) * RADIUS;
-      } else {
-        x = props.width / 2;
-        y = props.height / 2;
-      }
-    } else {
-      // Primary node should be centered
+    } else if (!tag.zone.includes('-secondary')  && !tag.isHybrid) {
+      // Main zone tag
       x = props.width / 2;
       y = props.height / 2;
+      if (tag.selected) {
+        tag.fx = x;
+        tag.fy = y;
+      }
+    } else if (tag.isHybrid) {
+  // Position hybrid tag far from center
+  const angle = Math.random() * Math.PI * 2;
+  const distance = RADIUS * 5; // Much larger initial distance
+  x = props.width / 2 + Math.cos(angle) * distance;
+  y = props.height / 2 + Math.sin(angle) * distance; // Corrected
+  // Don't fix position
+  tag.fx = null;
+  tag.fy = null;
+} else if (tag.isHybridChild) {
+      // Position children around their parent hybrid
+      const parentHybrid = hybridTags.find(hybrid => 
+        hybrid.childTags?.some(child => child.id === tag.id)
+      );
+      if (parentHybrid) {
+        const childIndex = parentHybrid.childTags?.findIndex(child => child.id === tag.id) || 0;
+        const angle = (childIndex * (2 * Math.PI / HYBRID_NODE_CHILDREN));
+        x = parentHybrid.x + Math.cos(angle) * CHILD_RADIUS;
+        y = parentHybrid.y + Math.sin(angle) * CHILD_RADIUS;
+        tag.fx = x;
+        tag.fy = y;
+      }
+    } else {
+      // Secondary tags around selected main tag
+      const mainTag = zoneTags.find(t => t.selected);
+      if (mainTag) {
+        const index = secondaryTags.findIndex(t => t.id === tag.id);
+        const angle = (index / MAIN_NODE_CHILDREN) * Math.PI * 2;
+        x = props.width / 2 + Math.cos(angle) * RADIUS;
+        y = props.height / 2 + Math.sin(angle) * RADIUS;
+        tag.fx = x;
+        tag.fy = y;
+      }
     }
 
-    return {
-      ...tag,
-      r: tag.size / 2, // Set size for hybrid tags
-      x,
-      y,
-      vx: 0, // Reset velocity for smoother initialization
-      vy: 0,
-      isLoading: tag.isLoading,
-    };
+    return { ...tag, r: tag.size / 2, x, y, vx: 0, vy: 0 };
   });
 
   const links = tagStore.createLinksBySourceId(props.zone);
@@ -237,47 +240,42 @@ function updateNodesAndLinks() {
         if (link.isHybridLink) {
           return CHILD_RADIUS;
         }
-        if (link.source.isHybrid || link.target.isHybrid) {
-          return RADIUS * 5;
+        // For links between main node and hybrid
+        if ((link.source.isHybrid || link.target.isHybrid) && 
+            (!link.source.isHybridChild && !link.target.isHybridChild)) {
+          return RADIUS * 3; // Keep reasonable distance
         }
         return RADIUS;
       })
       .strength(link => {
-        // Only apply forces to non-hybrid links
-        if (link.source.isHybrid || link.target.isHybrid || 
-            link.isHybridChainLink || link.isHybridLink) {
-          return 0;
+        // Keep weak force for main-to-hybrid links to help positioning
+        if ((link.source.isHybrid || link.target.isHybrid) && 
+            (!link.source.isHybridChild && !link.target.isHybridChild)) {
+          return 0.2; // Weak but present force
         }
-        return 0.5;
+        if (link.isHybridLink) {
+          return 0.5;
+        }
+        return 0.1;
       })
     )
     .force("charge", d3.forceManyBody()
       .strength(d => {
-        if (d.isHybrid || d.isHybridChild) {
-          return 0;
-        }
-        return d.zone.includes('-secondary') ? -50 : -40;
+        if (d.isHybrid) return -200; // Repulsion for hybrid tags
+        if (d.isHybridChild) return -50;
+        return -30;
       }))
     .force("collision", d3.forceCollide()
       .radius(d => {
-        if (d.isHybrid) return d.r + 20;
-        if (d.isHybridChild) return d.r + 10;
-        return d.r + (d.zone.includes('-secondary') ? 30 : 20);
+        if (d.isHybrid) return d.r + 50;
+        return d.r + 10;
       })
-      .strength(1)) // Maximum strength to prevent overlaps
-    .force("centerPrimary", d3.forceRadial(0, props.width / 2, props.height / 2)
+      .strength(0.8))
+    .force("centerPrimary", d3.forceRadial(RADIUS * 2, props.width / 2, props.height / 2)
       .strength(d => {
-        if (d.isHybrid || d.isHybridChild) {
-          return 0;
-        }
-        return d.zone.includes('-secondary') ? 0 : 0.1;
-      }))
-    .force("circularSecondary", d3.forceRadial(RADIUS, props.width / 2, props.height / 2)
-      .strength(d => {
-        if (d.isHybrid || d.isHybridChild) {
-          return 0;
-        }
-        return d.zone.includes('-secondary') ? 0.8 : 0;
+        if (!d.zone.includes('-secondary') && d.selected) return 0; // No centering for main
+        if (d.isHybrid) return 0.1; // Light centering for hybrids
+        return 0;
       }));
 
   // Adjust simulation parameters for smoother movement
@@ -355,16 +353,23 @@ function updateNodesAndLinks() {
   updateLinks();
 
   zoneGraph.value.simulation.on("tick", () => {
-    // First ensure hybrid systems maintain their positions
+    // First ensure fixed positions are maintained
     nodes.forEach(node => {
-      if (node.fx !== null && node.fy !== null) {
+      // Keep selected main tag fixed at center
+      if (!node.zone.includes('-secondary') && node.selected && !node.isHybrid) {
+        node.x = props.width / 2;
+        node.y = props.height / 2;
+      }
+      // Keep other fixed positions
+      else if (node.fx !== null && node.fy !== null) {
+        console.log('fixing position', node)
         node.x = node.fx;
         node.y = node.fy;
       }
     });
 
+    // Update positions
     const links = zoneGraph.value.simulation.force("link").links();
-
     zoneGraph.value.link
       .data(links)
       .attr("x1", d => d.source.x || 0)
@@ -481,9 +486,16 @@ async function handleNodeClick(event: MouseEvent, d: Tag) {
   d.selected = !d.selected;
 
   if (d.selected) {
+    // When main tag is selected, fix its position at center
+    d.fx = props.width / 2;
+    d.fy = props.height / 2;
+    
     tagStore.unselectAllSecondaryTagsFromZone(props.zone, d.alias);
     tagStore.setLastClickedTag(props.zone, d.id, d.x, d.y);
   } else {
+    // When unselected, release the fixed position
+    d.fx = null;
+    d.fy = null;
     tagStore.setLastClickedTag(props.zone, null);
   }
   
@@ -802,6 +814,40 @@ function formatNodeText(text: string): string[] {
   }
   
   return lines;
+}
+
+// Add new helper function to find a good position for hybrid tag
+function findHybridPosition(sourceTags: Tag[], width: number, height: number) {
+  // Get center point
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  // Try different angles to find a good spot
+  for (let i = 0; i < 8; i++) {
+    const angle = (i * Math.PI / 4) + (Math.random() * Math.PI / 4); // Add some randomness
+    const distance = RADIUS * (2.5 + Math.random()); // Random distance between 2.5-3.5 * RADIUS
+    const x = centerX + Math.cos(angle) * distance;
+    const y = centerY + Math.sin(angle) * distance;
+
+    // Check if this position is far enough from existing hybrids
+    const existingHybrids = zoneGraph.value.hybridTags || [];
+    const isFarEnough = existingHybrids.every(hybrid => {
+      const dx = hybrid.x - x;
+      const dy = hybrid.y - y;
+      return Math.sqrt(dx * dx + dy * dy) > RADIUS * 2;
+    });
+
+    if (isFarEnough) {
+      return { x, y };
+    }
+  }
+
+  // Fallback: return a random position if no good spot found
+  const angle = Math.random() * Math.PI * 2;
+  return {
+    x: centerX + Math.cos(angle) * RADIUS * 3,
+    y: centerY + Math.sin(angle) * RADIUS * 3
+  };
 }
 </script>
 
