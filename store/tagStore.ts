@@ -44,6 +44,10 @@ interface HybridTag extends Tag {
   isHybrid: boolean;
 }
 
+// Add these constants at the top of the file, after imports
+const DEFAULT_WIDTH = 600;  // Default width matching ForceGraph default
+const DEFAULT_HEIGHT = 728; // Default height matching ForceGraph default
+
 export const useTagStore = defineStore('tags', {
   state: () => ({
     tags: [] as Tag[],
@@ -296,6 +300,12 @@ export const useTagStore = defineStore('tags', {
         const response = await result.response;
         const hybridText = await response.text();
 
+        // Calculate a position far from center
+        const angle = Math.random() * Math.PI * 2;
+        const distance = 400 + Math.random() * 200;
+        const hybridX = DEFAULT_WIDTH / 2 + Math.cos(angle) * distance;
+        const hybridY = DEFAULT_HEIGHT / 2 + Math.sin(angle) * distance;
+
         const hybridTag: Tag = {
           id: `hybrid-${Date.now()}`,
           text: hybridText.trim(),
@@ -305,20 +315,61 @@ export const useTagStore = defineStore('tags', {
           isHybrid: true,
           sourceTags: tags,
           childTags: [],
-          x: tags[0].x + 100,
-          y: tags[0].y + 100,
-          fx: null,
-          fy: null,
+          x: hybridX,
+          y: hybridY,
+          // Fix position immediately
+          fx: hybridX,
+          fy: hybridY,
           alias: hybridText.toLowerCase().replace(/\s+/g, '-')
         };
 
+        // Create child tags in a perfect circle around hybrid
+        const testTags = ['Test Tag 1', 'Test Tag 2', 'Test Tag 3', 'Test Tag 4', 'Test Tag 5'].map((text, index) => {
+          const childAngle = (index / 5) * Math.PI * 2;
+          const radius = 150; // Fixed radius for perfect circle
+          return {
+            id: `${hybridTag.id}-child-${index}`,
+            text,
+            zone: `${zone}-secondary`,
+            size: 30,
+            selected: false,
+            // Fix child positions initially
+            x: hybridX + Math.cos(childAngle) * radius,
+            y: hybridY + Math.sin(childAngle) * radius,
+            fx: hybridX + Math.cos(childAngle) * radius,
+            fy: hybridY + Math.sin(childAngle) * radius,
+            alias: text.toLowerCase().replace(/\s+/g, '-'),
+            isHybridChild: true
+          };
+        });
+
+        hybridTag.childTags = testTags;
+
         // Add to zone's hybrid tags
         const zoneGraph = this.zoneGraphs[zone];
-        if (zoneGraph) {
+        if (zoneGraph && zoneGraph.simulation) {
           zoneGraph.hybridTags = [...(zoneGraph.hybridTags || []), hybridTag];
+          
+          // After a short delay, release the fixed positions
+          setTimeout(() => {
+            if (hybridTag) {
+              hybridTag.fx = null;
+              hybridTag.fy = null;
+              hybridTag.childTags?.forEach(child => {
+                child.fx = null;
+                child.fy = null;
+              });
+              
+              // Gently restart simulation
+              zoneGraph.simulation
+                ?.alpha(0.1)
+                .alphaTarget(0)
+                .restart();
+            }
+          }, 500);
         }
 
-        // Hide only the source tags
+        // Hide source tags
         tags.forEach(sourceTag => {
           const tag = this.allTags.find(t => t.id === sourceTag.id);
           if (tag) {
@@ -326,23 +377,6 @@ export const useTagStore = defineStore('tags', {
             tag.selected = false;
           }
         });
-
-        // Create and attach new child tags to the hybrid tag
-        const testTags = ['Test Tag 1', 'Test Tag 2', 'Test Tag 3', 'Test Tag 4', 'Test Tag 5'].map((text, index) => ({
-          id: `${hybridTag.id}-child-${index}`,
-          text,
-          zone: `${zone}-secondary`,
-          size: 30,
-          selected: false,
-          x: hybridTag.x + Math.cos(index * Math.PI * 0.4) * 100, // Position in a semi-circle
-          y: hybridTag.y + Math.sin(index * Math.PI * 0.4) * 100,
-          fx: null,
-          fy: null,
-          alias: text.toLowerCase().replace(/\s+/g, '-'),
-          isHybridChild: true
-        }));
-
-        hybridTag.childTags = testTags;
 
         return hybridTag;
       } catch (error) {

@@ -236,31 +236,50 @@ function updateNodesAndLinks() {
         }
         // Further increase distance for links between parent and hybrid tags
         if (link.source.isHybrid || link.target.isHybrid) {
-          return RADIUS * 3; // Triple the distance for hybrid links
+          return RADIUS * 5; // Significantly increase distance for hybrid tags
         }
         return RADIUS; // Default distance
       })
       .strength(link => {
         if (link.isHybridLink) {
-          // Strength for hybrid-to-child links
-          return 0.3;
+          // Stronger connection between hybrid and its children
+          return 0.5;
         }
-        // Apply a weaker link strength for hybrid links
+        // Very weak connection to main center for hybrid tags
         if (link.source.isHybrid || link.target.isHybrid) {
-          return 0.1; // Weaker link strength
+          return 0.05;
         }
-        return 0.5; // Default link strength
+        return 0.5; // Default strength
       })
     )
     .force("charge", d3.forceManyBody()
-      .strength(d => d.zone.includes('-secondary') ? -50 : -40)) // Weaker repulsion for primary
+      .strength(d => {
+        if (d.isHybrid) return -200; // Stronger repulsion for hybrid tags
+        if (d.isHybridChild) return -100; // Medium repulsion for hybrid children
+        return d.zone.includes('-secondary') ? -50 : -40; // Default repulsion
+      }))
     .force("collision", d3.forceCollide()
-      .radius(d => d.r + (d.zone.includes('-secondary') ? 30 : 20)) // More space between secondary nodes
+      .radius(d => {
+        if (d.isHybrid) return d.r + 100; // Large collision radius for hybrid tags
+        if (d.isHybridChild) return d.r + 50; // Medium collision radius for hybrid children
+        return d.r + (d.zone.includes('-secondary') ? 30 : 20); // Default collision radius
+      })
       .strength(0.8))
+    // Remove centerPrimary force for hybrid tags
     .force("centerPrimary", d3.forceRadial(0, props.width / 2, props.height / 2)
-      .strength(d => d.zone.includes('-secondary') ? 0 : 0.1)) // Strong centering only for primary
+      .strength(d => {
+        if (d.isHybrid || d.isHybridChild) return 0; // No centering force for hybrid system
+        return d.zone.includes('-secondary') ? 0 : 0.1; // Normal centering for others
+      }))
+    // Add separate centering force for each hybrid cluster
+    .force("hybridClusters", d3.forceRadial(RADIUS * 3, props.width / 2, props.height / 2)
+      .strength(d => (d.isHybrid || d.isHybridChild) ? 0.3 : 0)) // Only affect hybrid systems
+    // Remove circularSecondary force for hybrid children
     .force("circularSecondary", d3.forceRadial(RADIUS, props.width / 2, props.height / 2)
-      .strength(d => d.zone.includes('-secondary') ? 0.8 : 0)); // Keep secondary nodes in a circle
+      .strength(d => {
+        if (d.isHybrid || d.isHybridChild) return 0; // No circular force for hybrid system
+        return d.zone.includes('-secondary') ? 0.8 : 0; // Normal circular force for others
+      }));
 
   // Adjust simulation parameters for smoother movement
   zoneGraph.value.simulation
