@@ -138,7 +138,6 @@ function updateGraph() {
     .velocityDecay(0.6)
     .restart();
 }
-
 function updateNodeAndLinkPositions() {
   zoneGraph.value.svg.selectAll(".nodes g")
     .attr("transform", d => `translate(${d.x},${d.y})`);

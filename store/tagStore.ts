@@ -27,6 +27,9 @@ interface Tag {
   childTags?: Tag[]
   isHidden?: boolean
   sourceTags?: Tag[]
+  parentId?: string
+  vx?: number
+  vy?: number
 }
 
 interface ZoneGraph {
@@ -50,6 +53,7 @@ const DEFAULT_WIDTH = 600;  // Default width matching ForceGraph default
 const DEFAULT_HEIGHT = 728; // Default height matching ForceGraph default
 const HYBRID_DISTANCE = 280; // Reduced from ~400 (30% less)
 const CHILD_RADIUS = 120;   // Reduced from 150 (much closer to parent)
+const CHILD_TAG_RADIUS = 150; // Adjust as needed for spacing
 
 export const useTagStore = defineStore('tags', {
   state: () => ({
@@ -103,7 +107,6 @@ export const useTagStore = defineStore('tags', {
     toggleTag(id: string, zone: string) {
       const tag = this.tags.find(t => t.id === id)
       if (tag) {
-        // If we're selecting this tag, first unselect any other tag in the same zone
         if (!tag.selected) {
           const currentSelected = this.tags.find(t => t.zone === zone && t.selected && t.id !== id)
           if (currentSelected) {
@@ -114,19 +117,29 @@ export const useTagStore = defineStore('tags', {
         
         tag.selected = !tag.selected
         
-        if (!tag.selected) {
-          // When unselecting a tag, clean up its dynamic tags
+        if (tag.selected) {
+          // Center the selected tag
+          tag.x = DEFAULT_WIDTH / 2;
+          tag.y = DEFAULT_HEIGHT / 2;
+          tag.fx = tag.x;  // Fix the position
+          tag.fy = tag.y;
+          
+          // Distribute child tags immediately after selection
+          this.distributeChildTagsCircularly(tag);
+        } else {
+          // Unfix the position when unselected
+          tag.fx = null;
+          tag.fy = null;
+          
           this.removeSecondaryTagsByParent(id)
           
-          // Also clean up any hybrid tags in this zone
           const hybridsToRemove = this.zoneGraphs[zone].hybridTags || [];
-          
           hybridsToRemove.forEach(hybridTag => {
             this.removeSelectedHybridTag(hybridTag.id, zone);
           });
         }
 
-        // Update the graph to reflect the changes
+        // Update the graph
         const zoneGraph = this.zoneGraphs[zone];
         if (zoneGraph && zoneGraph.simulation) {
           zoneGraph.simulation.alpha(0.3).restart();
@@ -269,15 +282,24 @@ export const useTagStore = defineStore('tags', {
     setFocusedZone(zone: string) {
       this.focusedZone = zone;
     },
-    addSecondaryTag(parentId: string, tag: Tag) {
+    async addSecondaryTag(parentId: string, tag: Tag) {
       const parent = this.tags.find(t => t.id === parentId)
       if (parent) {
         if (!parent.secondaryTags) {
           parent.secondaryTags = []
         }
+        
+        // Add parentId to dynamic tags
+        tag.parentId = parentId;
         tag.isDynamic = true;
         tag.isPreconfigured = tag.isPreconfigured || false;
+        
         parent.secondaryTags.push(tag)
+        
+        // If parent is selected, immediately distribute all child tags
+        if (parent.selected) {
+          this.distributeChildTagsCircularly(parent);
+        }
       }
     },
 
@@ -516,6 +538,40 @@ export const useTagStore = defineStore('tags', {
 
     getHybridTagsForZone(zone: string): Tag[] {
       return this.zoneGraphs[zone].hybridTags || [];
+    },
+
+    distributeChildTagsCircularly(parentTag: Tag) {
+      // Get all child tags (both preconfigured and dynamic)
+      const allChildTags = [
+        ...(parentTag.secondaryTags || []),
+        ...Array.from(this.dynamicTags.get(parentTag.id) || [])
+      ];
+      
+      const angleStep = (2 * Math.PI) / allChildTags.length;
+      const centerX = parentTag.x || DEFAULT_WIDTH / 2;
+      const centerY = parentTag.y || DEFAULT_HEIGHT / 2;
+
+      allChildTags.forEach((childTag, index) => {
+        const angle = index * angleStep;
+        childTag.x = centerX + Math.cos(angle) * CHILD_TAG_RADIUS;
+        childTag.y = centerY + Math.sin(angle) * CHILD_TAG_RADIUS;
+        childTag.fx = childTag.x; // Fix position
+        childTag.fy = childTag.y; // Fix position
+        
+        // Reset any existing velocities
+        childTag.vx = 0;
+        childTag.vy = 0;
+      });
+
+      // Update the zone graph if it exists
+      const zoneGraph = this.zoneGraphs[parentTag.zone];
+      if (zoneGraph && zoneGraph.simulation) {
+        zoneGraph.simulation
+          .alpha(0.1)
+          .alphaDecay(0.05)
+          .velocityDecay(0.6)
+          .restart();
+      }
     }
   },
   getters: {
