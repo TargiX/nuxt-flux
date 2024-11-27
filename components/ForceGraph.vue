@@ -157,7 +157,9 @@ function updateNodesAndLinks() {
   const hybridTags = tagStore.getHybridTagsForZone(props.zone);
 
   // Extract child tags from hybrid tags
-  const hybridChildTags = hybridTags.flatMap(hybrid => hybrid.childTags || []);
+  const hybridChildTags = hybridTags
+          .flatMap(hybrid => hybrid.childTags || [])
+          .filter(tag => !tag.isHidden);
 
   const selectedTag = zoneTags.find(tag => tag.selected && tag.isLoading);
 
@@ -390,18 +392,6 @@ async function handleNodeClick(event: MouseEvent, d: Tag) {
     d.selected = !d.selected;
     updateNodeAppearance(d, false);
     
-    // If it's a hybrid child, update the selection in the parent's childTags array
-    if (d.isHybridChild) {
-      const parentHybrid = tagStore.getHybridTagsForZone(props.zone)
-        .find(hybrid => hybrid.childTags?.some(child => child.id === d.id));
-      if (parentHybrid && parentHybrid.childTags) {
-        const childTag = parentHybrid.childTags.find(child => child.id === d.id);
-        if (childTag) {
-          childTag.selected = d.selected;
-        }
-      }
-    }
-    
     // Get all selected tags from the same parent/context
     const selectedTags = zoneGraph.value.nodes.filter(node => {
       if (!node.selected || node.isHidden) return false;
@@ -433,6 +423,16 @@ async function handleNodeClick(event: MouseEvent, d: Tag) {
                 .find(hybrid => hybrid.childTags?.some(child => child.id === d.id));
               
               if (parentHybrid) {
+                // Hide the source hybrid child tags
+                selectedTags.forEach(tag => {
+                  // Find and hide the tag in the parent hybrid's childTags array
+                  const childTag = parentHybrid.childTags?.find(child => child.id === tag.id);
+                  if (childTag) {
+                    childTag.isHidden = true;
+                    childTag.selected = false;
+                  }
+                });
+
                 // Create link between parent hybrid and new hybrid
                 const link = {
                   source: parentHybrid.id,
@@ -679,7 +679,6 @@ function updateNodeAppearance(d, updateForces = true) {
       zoneGraph.value.simulation.alpha(0.1).restart();
     }
   }
-  console.log('updated node appearance', d)
 }
 
 

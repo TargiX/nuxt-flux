@@ -493,43 +493,29 @@ export const useTagStore = defineStore('tags', {
         if (zoneGraph && zoneGraph.simulation) {
           zoneGraph.hybridTags = [...(zoneGraph.hybridTags || []), hybridTag];
           
+          // Hide source tags BEFORE updating the graph
+          tags.forEach(sourceTag => {
+            // Find and update the actual tag in the store's state
+            const tagInStore = this.tags.find(t => t.id === sourceTag.id);
+            if (tagInStore) {
+              tagInStore.isHidden = true;
+              tagInStore.selected = false;
+            }
+
+            // Also update the tag in the zoneGraph's nodes
+            const nodeInGraph = zoneGraph.nodes.find(n => n.id === sourceTag.id);
+            if (nodeInGraph) {
+              nodeInGraph.isHidden = true;
+              nodeInGraph.selected = false;
+            }
+          });
+
           // Just a gentle simulation restart
           zoneGraph.simulation
             ?.alpha(0.1)
             .alphaTarget(0)
             .restart();
         }
-
-        // Hide source tags
-        tags.forEach(sourceTag => {
-          // Update in the store's tags array
-          const storeTag = this.tags.find(t => t.id === sourceTag.id);
-          if (storeTag) {
-            storeTag.isHidden = true;
-            storeTag.selected = false;
-          }
-
-          // Update in secondary tags if it's a secondary tag
-          const primaryTag = this.tags.find(t => t.secondaryTags?.some(st => st.id === sourceTag.id));
-          if (primaryTag) {
-            const secondaryTag = primaryTag.secondaryTags?.find(st => st.id === sourceTag.id);
-            if (secondaryTag) {
-              secondaryTag.isHidden = true;
-              secondaryTag.selected = false;
-            }
-          }
-
-          // Update in hybrid child tags if it's a hybrid child
-          Object.values(this.zoneGraphs).forEach(zoneGraph => {
-            zoneGraph.hybridTags?.forEach(hybrid => {
-              const childTag = hybrid.childTags?.find(child => child.id === sourceTag.id);
-              if (childTag) {
-                childTag.isHidden = true;
-                childTag.selected = false;
-              }
-            });
-          });
-        });
 
         return hybridTag;
       } catch (error) {
@@ -678,15 +664,17 @@ export const useTagStore = defineStore('tags', {
   getters: {
     tagsByZone: (state) => {
       return (zone: string) => {
-        const tags = state.tags.filter(tag => tag.zone === zone);
+        const tags = state.tags.filter(tag => tag.zone === zone && !tag.isHidden);
         const selectedTag = tags.find(tag => tag.selected);
         
         // Get hybrid tags for this zone
         const zoneGraph = state.zoneGraphs[zone];
-        const hybridTags = zoneGraph?.hybridTags || [];
-        const hybridChildTags = hybridTags.flatMap(hybrid => hybrid.childTags || []);
+        const hybridTags = (zoneGraph?.hybridTags || []).filter(tag => !tag.isHidden);
+        const hybridChildTags = hybridTags
+          .flatMap(hybrid => hybrid.childTags || [])
+          .filter(tag => !tag.isHidden);
         
-        // If there's a selected tag, only return it along with hybrid tags and their children
+        // If there's a selected tag, only return it along with visible hybrid tags and their children
         return selectedTag ? [selectedTag, ...hybridTags, ...hybridChildTags] : [...tags, ...hybridTags, ...hybridChildTags];
       }
     },
