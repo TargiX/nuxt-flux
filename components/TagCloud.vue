@@ -79,7 +79,7 @@
 
           <button
             @click="generateImage"
-            :disabled="!(isManualMode ? manualPrompt : generatedPrompt) || isGeneratingImage"
+            :disabled="!(isManualMode ? manualPrompt : generatedPromptResult) || isGeneratingImage"
             class="flex items-center gap-2"
           >
             <ArrowPathIcon v-if="isGeneratingImage" class="animate-spin h-5 w-5" />

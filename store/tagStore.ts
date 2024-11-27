@@ -693,8 +693,20 @@ export const useTagStore = defineStore('tags', {
       // Get hybrid tags from all zones
       const allZoneHybrids = Object.values(this.zoneGraphs)
         .flatMap(zoneGraph => zoneGraph.hybridTags || []);
+
+      console.log('allZoneHybrids:', allZoneHybrids);
+      const allZoneHybridChildren = allZoneHybrids.flatMap(hybrid => {
+        console.log('hybrid:', hybrid);
+        const childTags = hybrid.childTags?.filter(child => {
+          console.log('child:', child);
+          return child.selected && !child.isHidden;
+        }) || [];
+        console.log('filtered childTags:', childTags);
+        return childTags;
+      });
+      console.log('allZoneHybridChildren:', allZoneHybridChildren);
       
-      return [...visibleTags, ...allZoneHybrids];
+      return [...visibleTags, ...allZoneHybrids, ...allZoneHybridChildren];
     }
   }
 })

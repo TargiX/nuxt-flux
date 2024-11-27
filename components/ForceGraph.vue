@@ -382,9 +382,8 @@ function updateNodesAndLinks() {
 
 async function handleNodeClick(event: MouseEvent, d: Tag) {
   if (props.preview) return;
-  
   event.stopPropagation();
-  
+  console.log('d', d)
   if (d.isHybrid) {
     d.selected = !d.selected;
     
@@ -406,6 +405,18 @@ async function handleNodeClick(event: MouseEvent, d: Tag) {
     d.selected = !d.selected;
     updateNodeAppearance(d, false);
     
+    // If it's a hybrid child, update the selection in the parent's childTags array
+    if (d.isHybridChild) {
+      const parentHybrid = tagStore.getHybridTagsForZone(props.zone)
+        .find(hybrid => hybrid.childTags?.some(child => child.id === d.id));
+      if (parentHybrid && parentHybrid.childTags) {
+        const childTag = parentHybrid.childTags.find(child => child.id === d.id);
+        if (childTag) {
+          childTag.selected = d.selected;
+        }
+      }
+    }
+    
     // Get all selected tags from the same parent/context
     const selectedTags = zoneGraph.value.nodes.filter(node => {
       if (!node.selected || node.isHidden) return false;
@@ -420,7 +431,7 @@ async function handleNodeClick(event: MouseEvent, d: Tag) {
         return node.zone.includes('-secondary') && !node.isHybridChild;
       }
     });
-    
+
     if (d.selected) {
       // If we have 2 or more selected tags, create hybrid
       if (selectedTags.length >= 2) {
@@ -683,6 +694,7 @@ function updateNodeAppearance(d, updateForces = true) {
       zoneGraph.value.simulation.alpha(0.1).restart();
     }
   }
+  console.log('updated node appearance', d)
 }
 
 
