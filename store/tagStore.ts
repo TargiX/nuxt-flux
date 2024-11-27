@@ -39,7 +39,9 @@ interface ZoneGraph {
   svg: d3.Selection<SVGSVGElement, unknown, null, undefined> | null;
   lastClickedTagId: string | null;
   lastClickedNode: Tag | null;
-  hybridTags?: Tag[];
+  hybridTags: Tag[];
+  node?: d3.Selection<any, any, any, any>;
+  link?: d3.Selection<any, any, any, any>;
 }
 
 // Add new interface for hybrid tags
@@ -80,7 +82,9 @@ export const useTagStore = defineStore('tags', {
         svg: null,
         lastClickedTagId: null,
         lastClickedNode: null,
-        hybridTags: []
+        hybridTags: [],
+        node: null,
+        link: null
       } as ZoneGraph])
     ),
     focusedZone: 'Subject' as string,
@@ -677,8 +681,13 @@ export const useTagStore = defineStore('tags', {
         const tags = state.tags.filter(tag => tag.zone === zone);
         const selectedTag = tags.find(tag => tag.selected);
         
-        // If there's a selected tag, only return it; otherwise return all tags
-        return selectedTag ? [selectedTag] : tags;
+        // Get hybrid tags for this zone
+        const zoneGraph = state.zoneGraphs[zone];
+        const hybridTags = zoneGraph?.hybridTags || [];
+        const hybridChildTags = hybridTags.flatMap(hybrid => hybrid.childTags || []);
+        
+        // If there's a selected tag, only return it along with hybrid tags and their children
+        return selectedTag ? [selectedTag, ...hybridTags, ...hybridChildTags] : [...tags, ...hybridTags, ...hybridChildTags];
       }
     },
     selectedTags: (state) => {
@@ -712,9 +721,11 @@ export const useTagStore = defineStore('tags', {
         if (!primaryTag || primaryTag.isLoading) return [];
         
         const secondaryTags = primaryTag.secondaryTags || [];
-        const hybridTags = state.zoneGraphs[zone].hybridTags || [];
+        const zoneGraph = state.zoneGraphs[zone];
+        const hybridTags = zoneGraph?.hybridTags || [];
+        const hybridChildTags = hybridTags.flatMap(hybrid => hybrid.childTags || []);
         
-        return [...secondaryTags, ...hybridTags];
+        return [...secondaryTags, ...hybridChildTags];
       }
     },
     selectedTags(): Tag[] {

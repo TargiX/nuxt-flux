@@ -154,9 +154,9 @@ function updateNodesAndLinks() {
 
   const zoneTags = tagStore.tagsByZone(props.zone);
   const secondaryTags = tagStore.getAllSecondaryTagsForZone(props.zone);
+  const hybridTags = tagStore.getHybridTagsForZone(props.zone);
 
   // Extract child tags from hybrid tags
-  const hybridTags = tagStore.getHybridTagsForZone(props.zone);
   const hybridChildTags = hybridTags.flatMap(hybrid => hybrid.childTags || []);
 
   const selectedTag = zoneTags.find(tag => tag.selected && tag.isLoading);
@@ -164,7 +164,7 @@ function updateNodesAndLinks() {
   const oldNodes = new Map(zoneGraph.value.nodes.map(d => [d.id, d]));
 
   // Combine all nodes, including child tags of hybrid tags
-  const nodes = [...zoneTags, ...secondaryTags, ...hybridChildTags].map((tag) => {
+  const nodes = [...zoneTags, ...secondaryTags, ...hybridTags, ...hybridChildTags].map((tag) => {
     const oldNode = oldNodes.get(tag.id);
     let x, y;
 
@@ -184,39 +184,24 @@ function updateNodesAndLinks() {
         x = props.width / 2;
         y = props.height / 2;
       }
-    } else if (tag.zone.includes('-secondary')) {
-      // For secondary nodes, position them in a perfect circle around the parent
-      const parent = zoneTags[0];
-      if (parent) {
-        const parentX = parent.x || props.width / 2;
-        const parentY = parent.y || props.height / 2;
-        
-        // Calculate position in perfect circle
-        const secondaryIndex = secondaryTags.findIndex(t => t.id === tag.id);
-        const angle = SECONDARY_NODE_ANGLE_STEP * secondaryIndex - Math.PI / 2;
-        
-        x = parentX + Math.cos(angle) * RADIUS;
-        y = parentY + Math.sin(angle) * RADIUS;
-      } else {
-        x = props.width / 2;
-        y = props.height / 2;
-      }
     } else {
-      // Primary node should be centered
       x = props.width / 2;
       y = props.height / 2;
     }
 
     return {
       ...tag,
-      r: tag.size / 2, // Set size for hybrid tags
+      r: tag.size / 2,
       x,
       y,
-      vx: 0, // Reset velocity for smoother initialization
+      vx: 0,
       vy: 0,
       isLoading: tag.isLoading,
     };
   });
+
+  // Store nodes in zoneGraph for future reference
+  zoneGraph.value.nodes = nodes;
 
   const links = tagStore.createLinksBySourceId(props.zone);
 
