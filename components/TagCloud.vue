@@ -79,7 +79,7 @@
 
           <button
             @click="generateImage"
-            :disabled="!(isManualMode ? manualPrompt : generatedPromptResult) || isGeneratingImage"
+            :disabled="!(isManualMode ? manualPrompt :  generatedPrompt) || isGeneratingImage"
             class="flex items-center gap-2"
           >
             <ArrowPathIcon v-if="isGeneratingImage" class="animate-spin h-5 w-5" />
@@ -290,6 +290,7 @@ const generatePrompt = () => {
 
         if (currentRequestId === promptRequestId) {
           generatedPromptResult.value = await response.response.text();
+          console.log('generatedPromptResult', generatedPromptResult.value)
           resolve(generatedPromptResult.value);
         } else {
           resolve(null);

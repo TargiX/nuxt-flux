@@ -498,11 +498,33 @@ export const useTagStore = defineStore('tags', {
 
         // Hide source tags
         tags.forEach(sourceTag => {
-          const tag = this.allTags.find(t => t.id === sourceTag.id);
-          if (tag) {
-            tag.isHidden = true;
-            tag.selected = false;
+          // Update in the store's tags array
+          const storeTag = this.tags.find(t => t.id === sourceTag.id);
+          if (storeTag) {
+            storeTag.isHidden = true;
+            storeTag.selected = false;
           }
+
+          // Update in secondary tags if it's a secondary tag
+          const primaryTag = this.tags.find(t => t.secondaryTags?.some(st => st.id === sourceTag.id));
+          if (primaryTag) {
+            const secondaryTag = primaryTag.secondaryTags?.find(st => st.id === sourceTag.id);
+            if (secondaryTag) {
+              secondaryTag.isHidden = true;
+              secondaryTag.selected = false;
+            }
+          }
+
+          // Update in hybrid child tags if it's a hybrid child
+          Object.values(this.zoneGraphs).forEach(zoneGraph => {
+            zoneGraph.hybridTags?.forEach(hybrid => {
+              const childTag = hybrid.childTags?.find(child => child.id === sourceTag.id);
+              if (childTag) {
+                childTag.isHidden = true;
+                childTag.selected = false;
+              }
+            });
+          });
         });
 
         return hybridTag;
@@ -567,9 +589,28 @@ export const useTagStore = defineStore('tags', {
       const hybridTag = zoneGraph.hybridTags?.find(t => t.id === hybridTagId);
       
       if (hybridTag) {
+        // Find all child hybrids that were created from this hybrid's children
+        const childHybrids = zoneGraph.hybridTags?.filter(otherHybrid => 
+          otherHybrid.sourceTags?.some(sourceTag => 
+            hybridTag.childTags?.some(childTag => childTag.id === sourceTag.id)
+          )
+        ) || [];
+
+        // Recursively remove child hybrids
+        childHybrids.forEach(childHybrid => {
+          this.removeSelectedHybridTag(childHybrid.id, zone);
+        });
+
+        // Unselect all child tags
+        hybridTag.childTags?.forEach(childTag => {
+          childTag.selected = false;
+          childTag.isHidden = false;
+        });
+
+        // Remove the hybrid tag itself
         zoneGraph.hybridTags = zoneGraph.hybridTags?.filter(t => t.id !== hybridTagId) || [];
         
-        // Only unhide source tags, not child tags
+        // Unhide source tags
         hybridTag.sourceTags?.forEach(sourceTag => {
           const tag = this.allTags.find(t => t.id === sourceTag.id);
           if (tag) {
