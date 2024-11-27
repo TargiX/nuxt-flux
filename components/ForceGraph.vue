@@ -166,7 +166,7 @@ function updateNodesAndLinks() {
   const oldNodes = new Map(zoneGraph.value.nodes.map(d => [d.id, d]));
 
   // Combine all nodes, including child tags of hybrid tags
-  const nodes = [...zoneTags, ...secondaryTags, ...hybridChildTags].map((tag) => {
+  const nodes = [...zoneTags, ...secondaryTags].map((tag) => {
     const oldNode = oldNodes.get(tag.id);
     let x, y;
 

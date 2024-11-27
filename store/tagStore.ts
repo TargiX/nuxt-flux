@@ -675,7 +675,7 @@ export const useTagStore = defineStore('tags', {
           .filter(tag => !tag.isHidden);
         
         // If there's a selected tag, only return it along with visible hybrid tags and their children
-        return selectedTag ? [selectedTag, ...hybridTags, ...hybridChildTags] : [...tags, ...hybridTags, ...hybridChildTags];
+        return selectedTag ? [selectedTag, ...hybridTags,] : [...tags, ...hybridTags];
       }
     },
     selectedTags: (state) => {
