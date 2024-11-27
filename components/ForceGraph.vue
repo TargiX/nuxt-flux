@@ -156,25 +156,24 @@ function updateNodesAndLinks() {
   const secondaryTags = tagStore.getAllSecondaryTagsForZone(props.zone);
   const hybridTags = tagStore.getHybridTagsForZone(props.zone);
 
-  // Extract child tags from hybrid tags
-  const hybridChildTags = hybridTags
-          .flatMap(hybrid => hybrid.childTags || [])
-          .filter(tag => !tag.isHidden);
+  // Extract child tags from hybrid tags and maintain their visibility state
 
   const selectedTag = zoneTags.find(tag => tag.selected && tag.isLoading);
 
   const oldNodes = new Map(zoneGraph.value.nodes.map(d => [d.id, d]));
 
-  // Combine all nodes, including child tags of hybrid tags
+  // Combine all nodes, preserving visibility states
   const nodes = [...zoneTags, ...secondaryTags].map((tag) => {
     const oldNode = oldNodes.get(tag.id);
     let x, y;
+
+    // Preserve isHidden state from old node if it exists
+    const isHidden = oldNode ? oldNode.isHidden : tag.isHidden;
 
     if (oldNode) {
       x = oldNode.x;
       y = oldNode.y;
     } else if (tag.isHybrid && tag.childTags) {
-      // Position hybrid tag at the average position of its child tags
       const childPositions = tag.childTags
         .map(child => oldNodes.get(child.id))
         .filter(Boolean);
@@ -199,15 +198,32 @@ function updateNodesAndLinks() {
       vx: 0,
       vy: 0,
       isLoading: tag.isLoading,
+      isHidden // Preserve the hidden state
     };
   });
 
-  console.log('nodes', nodes)
+  // Update node visibility in the DOM
+  zoneGraph.value.svg.selectAll(".nodes g")
+    .style("opacity", d => d.isHidden ? 0 : 1)
+    .style("pointer-events", d => d.isHidden ? "none" : "all");
 
   // Store nodes in zoneGraph for future reference
   zoneGraph.value.nodes = nodes;
 
   const links = tagStore.createLinksBySourceId(props.zone);
+
+  // Update link visibility - hide links connected to hidden nodes
+  zoneGraph.value.svg.selectAll(".links line")
+    .style("opacity", d => {
+      const sourceNode = nodes.find(n => n.id === (typeof d.source === 'object' ? d.source.id : d.source));
+      const targetNode = nodes.find(n => n.id === (typeof d.target === 'object' ? d.target.id : d.target));
+      return (sourceNode?.isHidden || targetNode?.isHidden) ? 0 : 0.6;
+    })
+    .style("pointer-events", d => {
+      const sourceNode = nodes.find(n => n.id === (typeof d.source === 'object' ? d.source.id : d.source));
+      const targetNode = nodes.find(n => n.id === (typeof d.target === 'object' ? d.target.id : d.target));
+      return (sourceNode?.isHidden || targetNode?.isHidden) ? "none" : "all";
+    });
 
   tagStore.updateZoneGraph(props.zone, nodes, links);
 
