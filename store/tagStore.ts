@@ -51,9 +51,22 @@ interface HybridTag extends Tag {
 // Add these constants at the top of the file, after imports
 const DEFAULT_WIDTH = 600;  // Default width matching ForceGraph default
 const DEFAULT_HEIGHT = 728; // Default height matching ForceGraph default
-const HYBRID_DISTANCE = 280; // Reduced from ~400 (30% less)
+const HYBRID_DISTANCE = 300; // Reduced from ~400 (30% less)
 const CHILD_RADIUS = 120;   // Reduced from 150 (much closer to parent)
-const CHILD_TAG_RADIUS = 150; // Adjust as needed for spacing
+const CHILD_TAG_RADIUS = 130; // Adjust as needed for spacing
+
+// Add these constants at the top with other constants
+const HYBRID_DIRECTIONS = [
+  { angle: 0, label: 'right' },    // Right
+  { angle: Math.PI / 2, label: 'bottom' },  // Bottom
+  { angle: Math.PI, label: 'left' },     // Left
+  { angle: -Math.PI / 2, label: 'top' }   // Top
+];
+
+const HYBRID_SPACING = {
+  initialDistance: HYBRID_DISTANCE,
+  incrementDistance: 290, // Additional distance for each subsequent hybrid in same direction
+};
 
 export const useTagStore = defineStore('tags', {
   state: () => ({
@@ -72,6 +85,7 @@ export const useTagStore = defineStore('tags', {
     ),
     focusedZone: 'Subject' as string,
     dynamicTags: new Map<string, Tag[]>(), // Store dynamic tags by parent ID
+    hybridPositions: new Map<string, { direction: number, count: number }>(), // Track hybrid positions by zone
   }),
   actions: {
     async fetchTags() {
@@ -355,11 +369,48 @@ export const useTagStore = defineStore('tags', {
         const response = await result.response;
         const hybridText = await response.text();
 
-        // Calculate position for hybrid tag
-        const angle = Math.random() * Math.PI * 2;
-        const distance = HYBRID_DISTANCE;
-        const hybridX = DEFAULT_WIDTH / 2 + Math.cos(angle) * distance;
-        const hybridY = DEFAULT_HEIGHT / 2 + Math.sin(angle) * distance;
+        // Check if this is a child hybrid (created from another hybrid's child tags)
+        const parentHybrid = this.zoneGraphs[zone].hybridTags?.find(hybrid => 
+          tags.every(tag => hybrid.childTags?.some(child => child.id === tag.id))
+        );
+
+        let hybridX, hybridY, direction;
+
+        if (parentHybrid) {
+          // This is a child hybrid - use parent's direction but increase distance
+          const parentDirection = HYBRID_DIRECTIONS.find(d => 
+            Math.abs(Math.atan2(parentHybrid.y - DEFAULT_HEIGHT/2, parentHybrid.x - DEFAULT_WIDTH/2) - d.angle) < 0.1
+          );
+          direction = parentDirection || HYBRID_DIRECTIONS[0];
+          const distance = Math.sqrt(
+            Math.pow(parentHybrid.x - DEFAULT_WIDTH/2, 2) + 
+            Math.pow(parentHybrid.y - DEFAULT_HEIGHT/2, 2)
+          ) + HYBRID_SPACING.incrementDistance;
+
+          hybridX = DEFAULT_WIDTH/2 + Math.cos(direction.angle) * distance;
+          hybridY = DEFAULT_HEIGHT/2 + Math.sin(direction.angle) * distance;
+        } else {
+          // This is a new primary hybrid - get next available direction
+          if (!this.hybridPositions.has(zone)) {
+            this.hybridPositions.set(zone, { direction: 0, count: 0 });
+          }
+          const positionInfo = this.hybridPositions.get(zone)!;
+
+          direction = HYBRID_DIRECTIONS[positionInfo.direction];
+          const distance = HYBRID_SPACING.initialDistance + 
+            (HYBRID_SPACING.incrementDistance * Math.floor(positionInfo.count / HYBRID_DIRECTIONS.length));
+
+          hybridX = DEFAULT_WIDTH/2 + Math.cos(direction.angle) * distance;
+          hybridY = DEFAULT_HEIGHT/2 + Math.sin(direction.angle) * distance;
+
+          // Update position tracking for next primary hybrid
+          positionInfo.count++;
+          if (positionInfo.count % HYBRID_DIRECTIONS.length === 0) {
+            positionInfo.direction = 0;
+          } else {
+            positionInfo.direction = (positionInfo.direction + 1) % HYBRID_DIRECTIONS.length;
+          }
+        }
 
         const hybridTag: Tag = {
           id: `hybrid-${Date.now()}`,
@@ -411,9 +462,9 @@ export const useTagStore = defineStore('tags', {
           childTags = ['Variation 1', 'Variation 2', 'Variation 3', 'Variation 4', 'Variation 5'];
         }
 
-        // Create child tags with fixed positions
+        // When creating child tags, align them with the hybrid's direction
         const generatedTags = childTags.map((text, index) => {
-          const childAngle = (index / 8) * Math.PI * 2;
+          const childAngle = (index / childTags.length) * Math.PI * 2 + direction.angle;
           const childX = hybridX + Math.cos(childAngle) * CHILD_RADIUS;
           const childY = hybridY + Math.sin(childAngle) * CHILD_RADIUS;
           return {
@@ -572,6 +623,11 @@ export const useTagStore = defineStore('tags', {
           .velocityDecay(0.6)
           .restart();
       }
+    },
+
+    // Add this helper method to reset hybrid positions when needed
+    resetHybridPositions(zone: string) {
+      this.hybridPositions.set(zone, { direction: 0, count: 0 });
     }
   },
   getters: {
