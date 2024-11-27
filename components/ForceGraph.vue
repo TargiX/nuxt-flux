@@ -166,7 +166,7 @@ function updateNodesAndLinks() {
   const oldNodes = new Map(zoneGraph.value.nodes.map(d => [d.id, d]));
 
   // Combine all nodes, including child tags of hybrid tags
-  const nodes = [...zoneTags, ...secondaryTags, ...hybridTags, ...hybridChildTags].map((tag) => {
+  const nodes = [...zoneTags, ...secondaryTags, ...hybridChildTags].map((tag) => {
     const oldNode = oldNodes.get(tag.id);
     let x, y;
 
@@ -201,6 +201,8 @@ function updateNodesAndLinks() {
       isLoading: tag.isLoading,
     };
   });
+
+  console.log('nodes', nodes)
 
   // Store nodes in zoneGraph for future reference
   zoneGraph.value.nodes = nodes;
@@ -391,7 +393,17 @@ async function handleNodeClick(event: MouseEvent, d: Tag) {
     // Toggle selection
     d.selected = !d.selected;
     updateNodeAppearance(d, false);
-    
+   
+    if (d.isHybridChild) {
+      const parentHybrid = tagStore.getHybridTagsForZone(props.zone)
+        .find(hybrid => hybrid.childTags?.some(child => child.id === d.id));
+      if (parentHybrid && parentHybrid.childTags) {
+        const childTag = parentHybrid.childTags.find(child => child.id === d.id);
+        if (childTag) {
+          childTag.selected = d.selected;
+        }
+      }
+    }
     // Get all selected tags from the same parent/context
     const selectedTags = zoneGraph.value.nodes.filter(node => {
       if (!node.selected || node.isHidden) return false;

@@ -71,7 +71,7 @@
 
           <textarea
             v-if="isManualMode"
-
+            v-model="manualPrompt"
             class="manual-prompt-input"
             placeholder="Enter your prompt..."
           ></textarea>
@@ -259,7 +259,7 @@ const generatePrompt = () => {
               role: 'user',
               parts: [
                 {
-                  text: `You are creating an image prompt based on the following tags: ${prompt}. You should create prompt as much exactly matching the tags as possible, do not make up tags, the result is a prompt for an image generator, no words before, no words after, just the prompt.`,
+                  text: `You are creating an image prompt based on the following tags: ${prompt}. You should create prompt as strictly based on the tags as possible but transformed in to united concept, do not make things up, use the tags as the foundation of the prompt, the result is a prompt for an image generator, no words before, no words after, just the prompt.`,
                 },
               ],
             },
@@ -358,7 +358,7 @@ const manualPrompt = ref('')
 watch(isManualMode, (newValue) => {
   if (newValue) {
     // When switching to manual mode, initialize with current prompt
-    manualPrompt.value = generatedPromptResult.value
+    manualPrompt.value = generatedPromptResult.value || generatedPrompt.value
   } else {
     // When switching back to auto mode, trigger regeneration
     generatePrompt()
