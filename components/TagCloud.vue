@@ -8,9 +8,9 @@
           :width="600"
           :height="728"
           :zone="focusedZone"
+          ref="forceGraphRef"
           class="main-graph"
           @tagSelected="handleTagSelection"
-          @secondaryTagSelected="handleSecondaryTagSelection"
           @zoneChange="handleZoneChange"
           :zoomConfig="{ scale: 1.4, translateX: -90, translateY: -130 }"
         />
@@ -79,7 +79,7 @@
 
           <button
             @click="generateImage"
-            :disabled="!(isManualMode ? manualPrompt :  generatedPrompt) || isGeneratingImage"
+            :disabled="!(isManualMode ? manualPrompt : generatedPrompt) || isGeneratingImage"
             class="flex items-center gap-2"
           >
             <ArrowPathIcon v-if="isGeneratingImage" class="animate-spin h-5 w-5" />
@@ -97,142 +97,129 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
-import { useTagStore } from '~/store/tagStore'
+import { ref, onMounted, computed } from 'vue'
+import { useTagStore } from '~/store/tagStoreV2'
 import ForceGraph from './ForceGraph.vue'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { ArrowPathIcon } from '@heroicons/vue/24/solid'
 import { HarmCategory, HarmBlockThreshold } from '@google/generative-ai'
+import { useRuntimeConfig } from '#app'
 import { mockTags } from '~/store/mockTags'
 const config = useRuntimeConfig()
-
 const apiKey = config.public.GEMINI_API_KEY
-const fluxApiKey = config.public.FLUX_API_KEY
 if (!apiKey) {
   throw new Error('GEMINI_API_KEY is not defined')
 }
-if (!fluxApiKey) {
-  throw new Error('FLUX_API_KEY is not defined')
-}
 const genAI = new GoogleGenerativeAI(apiKey)
-
 const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-8b' })
 
 const imageUrl = ref('')
 const generatedPromptResult = ref('')
+const isManualMode = ref(false)
+const manualPrompt = ref('')
+const isGeneratingImage = ref(false)
 let promptRequestId = 0
 let imageRequestId = 0
 
 const tagStore = useTagStore()
-const { fetchTags } = tagStore
+const {
+  fetchTags,
+  zones,
+  focusedZone,
+  setFocusedZone,
+  selectedNodes,
+  toggleNodeSelection,
+} = tagStore
 
 const loading = ref(true)
 
-const focusedZone = computed(() => tagStore.focusedZone)
-
 const previewZones = computed(() => {
-  return tagStore.zones.filter((zone) => zone !== focusedZone.value)
+  return zones.filter((zone) => zone !== focusedZone)
 })
+const forceGraphRef = ref<InstanceType<typeof ForceGraph> | null>(null)
 
 onMounted(async () => {
   await fetchTags()
   loading.value = false
 })
 
-const setFocusedZone = (zone: string) => {
-  tagStore.setFocusedZone(zone)
-}
-
 const handleTagSelection = async (tagId: string, zone: string) => {
-  const tag = tagStore.tags.find((t) => t.id === tagId)
+  console.log('this is tagId', tagId)
+  console.log('this is zone', zone)
+  const tag = tagStore.findNode(zone, tagId)
   if (!tag) return
 
-  // Handle unselecting current tag if needed
-  const currentSelectedTag = tagStore.tags.find(
-    (t) => t.zone === zone && t.selected && t.id !== tagId
-  )
-  if (currentSelectedTag) {
-    tagStore.toggleTag(currentSelectedTag.id, zone)
-    currentSelectedTag.secondaryTags?.forEach((secTag) => {
-      if (secTag.selected) {
-        tagStore.toggleSecondaryTag(currentSelectedTag.id, secTag.id)
-      }
-    })
-    tagStore.removeSecondaryTagsByParent(currentSelectedTag.id)
+  // Find currently selected node in the same zone (other than this one)
+  const currentSelected = selectedNodes.find((n) => n.zone === zone && n.id !== tagId)
+  if (currentSelected) {
+    // Unselect currently selected node
+    toggleNodeSelection(zone, currentSelected.id)
+    // Remove its dynamic children
+    tagStore.removeDynamicChildren(zone, currentSelected.id)
   }
 
   if (!tag.selected) {
-    // Tag is being selected
-    tagStore.toggleTag(tagId, zone)
-
+    // Select this node
+    toggleNodeSelection(zone, tagId)
     // Set loading state
-    tagStore.setTagLoading(tagId, true)
+    tagStore.setNodeLoading(tagId, true)
 
-    // Store preconfigured tags temporarily
-    const preconfiguredTags = tag.secondaryTags || []
-    // Clear secondary tags immediately so they don't show up
-    tag.secondaryTags = []
+    // Temporarily store existing children
+    const preconfiguredChildren = [...tag.children]
 
-    // Generate new dynamic secondary tags
-    const newTags = await generateRelatedTags(tag.text)
+    // Clear children to avoid showing them before we get dynamic tags
+    tag.children.splice(0, tag.children.length)
 
-    // Prepare all tags (both preconfigured and dynamic)
-    const allTags = [
-      ...preconfiguredTags.map((t) => ({
-        ...t,
-        parentId: tagId,
-        isDynamic: false,
-      })),
-      ...newTags.map((tagText, index) => ({
-        id: `${tagId}-dynamic-${index}`,
-        text: tagText,
-        parentId: tagId,
-        zone: `${zone}-secondary`,
-        size: tag.size * 0.8,
-        selected: false,
-        isDynamic: true,
-        x: tag.x || 0,
-        y: tag.y || 0,
-        fx: null,
-        fy: null,
-        alias: tagText.toLowerCase().replace(/\s+/g, '-'),
-      })),
-    ]
+    // Generate new dynamic tags
+    const newTagsTexts = await generateRelatedTags(tag.text)
+    const newTags = newTagsTexts.map((txt, index) => ({
+      id: `${tagId}-dynamic-${index}`,
+      text: txt,
+      zone: `${zone}-secondary`,
+      selected: false,
+      hidden: false,
+      x: tag.x || 0,
+      y: tag.y || 0,
+      fx: null,
+      fy: null,
+      parentId: tagId,
+      children: [],
+      metadata: { origin: 'ai-generated', dynamic: true }, // Mark as dynamic
+    }))
 
-    // Clear loading state
-    tagStore.setTagLoading(tagId, false)
+    // Clear loading
+    tagStore.setNodeLoading(tagId, false)
 
-    // Add all tags at once
-    allTags.forEach((newTag) => {
-      tagStore.addSecondaryTag(tagId, newTag)
-    })
+    // Add back preconfigured children
+    for (const child of preconfiguredChildren) {
+      // Ensure these are also marked properly if needed
+      child.metadata = child.metadata || {}
+      child.metadata.preconfigured = true
+      tagStore.addChildNode(zone, tagId, child)
+    }
+
+    // Add dynamic children
+    for (const child of newTags) {
+      tagStore.addChildNode(zone, tagId, child)
+    }
   } else {
-    // Tag is being unselected
-    tagStore.toggleTag(tagId, zone)
-    // Remove all secondary tags when parent is unselected
-    tag.secondaryTags?.forEach((secTag) => {
-      if (secTag.selected) {
-        tagStore.toggleSecondaryTag(tagId, secTag.id)
-      }
-    })
-    // Remove dynamic tags
-    tagStore.removeSecondaryTagsByParent(tagId)
+    // Unselect this node
+    toggleNodeSelection(zone, tagId)
+    // Remove dynamic children
+    tagStore.removeDynamicChildren(zone, tagId)
   }
+  forceGraphRef.value?.updateGraph()
 }
 
-const handleSecondaryTagSelection = (tagId: string) => {
-  const primaryTag = tagStore.tags.find((tag) =>
-    tag.secondaryTags?.some((secTag) => secTag.id === tagId)
-  )
-  if (primaryTag) {
-    tagStore.toggleSecondaryTag(primaryTag.id, tagId)
-  }
+const handleZoneChange = (zone: string) => {
+  setFocusedZone(zone)
 }
 
 const generatedPrompt = computed(() => {
-  return tagStore.allSelectedTags.map((tag) => tag.text).join(', ')
+  return selectedNodes.map((node) => node.text).join(', ')
 })
 
+// Debounce utility
 const debounce = (func: Function, delay: number) => {
   let timeoutId: ReturnType<typeof setTimeout>
   return (...args: any[]) => {
@@ -240,18 +227,18 @@ const debounce = (func: Function, delay: number) => {
     timeoutId = setTimeout(() => func(...args), delay)
   }
 }
-
 const generatePrompt = () => {
   return new Promise((resolve) => {
     const debouncedGenerate = debounce(async () => {
       if (isManualMode.value) {
-        resolve(null);
-        return;
+        // In manual mode, we just resolve immediately with no changes
+        resolve(null)
+        return
       }
 
-      const prompt = generatedPrompt.value;
-      if (prompt.length > 0) {
-        const currentRequestId = ++promptRequestId;
+      const prompt = generatedPrompt.value // From computed selected tags
+      if (prompt && prompt.length > 0) {
+        const currentRequestId = ++promptRequestId
 
         const response = await model.generateContent({
           contents: [
@@ -259,7 +246,7 @@ const generatePrompt = () => {
               role: 'user',
               parts: [
                 {
-                  text: `You are creating an image prompt based on the following tags: ${prompt}. You should create prompt as strictly based on the tags as possible but transformed in to united concept, do not make things up, use the tags as the foundation of the prompt, the result is a prompt for an image generator, no words before, no words after, just the prompt.`,
+                  text: `You are creating an image prompt based on the following tags: ${prompt}. You should create a prompt that unites these tags into a coherent concept for an image generator. Do not add extra words beyond what is needed. Return only the prompt itself.`,
                 },
               ],
             },
@@ -286,33 +273,33 @@ const generatePrompt = () => {
             temperature: 0.5,
             maxOutputTokens: 1000,
           },
-        });
+        })
 
         if (currentRequestId === promptRequestId) {
-          generatedPromptResult.value = await response.response.text();
-          console.log('generatedPromptResult', generatedPromptResult.value)
-          resolve(generatedPromptResult.value);
+          generatedPromptResult.value = await response.response.text()
+          resolve(generatedPromptResult.value)
         } else {
-          resolve(null);
+          // Another request was made in the meantime, ignore this result
+          resolve(null)
         }
       } else {
-        resolve(null);
+        // No prompt or empty, reset result
+        generatedPromptResult.value = ''
+        resolve(null)
       }
-    }, 300);
+    }, 300)
 
-    debouncedGenerate();
-  });
+    debouncedGenerate()
+  })
 }
 
-const isGeneratingImage = ref(false)
-
+// Update the generateImage function:
 const generateImage = async () => {
-    await generatePrompt()
+  await generatePrompt() // Ensure prompt is up-to-date before generating image
   isGeneratingImage.value = true
   const currentImageRequestId = ++imageRequestId
 
   const url = 'https://api.segmind.com/v1/fast-flux-schnell'
-
   const data = {
     prompt: isManualMode.value ? manualPrompt.value : generatedPromptResult.value,
     steps: 4,
@@ -336,7 +323,7 @@ const generateImage = async () => {
       }
     }
   } catch (error) {
-    console.error('Error:', error)
+    console.error('Error generating image:', error)
   } finally {
     if (currentImageRequestId === imageRequestId) {
       isGeneratingImage.value = false
@@ -344,35 +331,31 @@ const generateImage = async () => {
   }
 }
 
-// Watch for changes in the generatedPrompt computed property
-// watch(generatedPrompt, () => {
-//   // return;
-//   generatePrompt()
-// })
-
-// Add this ref near the top of the script section with other refs
-const isManualMode = ref(false)
-const manualPrompt = ref('')
-
-// Add this watch effect
+// Watch for isManualMode changes:
 watch(isManualMode, (newValue) => {
   if (newValue) {
-    // When switching to manual mode, initialize with current prompt
+    // When switching to manual mode, initialize with current prompt content
+    // Use generatedPromptResult if available, else fallback to generatedPrompt
     manualPrompt.value = generatedPromptResult.value || generatedPrompt.value
   } else {
-    // When switching back to auto mode, trigger regeneration
+    // Switching back to auto mode triggers a prompt regeneration
     generatePrompt()
   }
 })
 
-// Update the generateRelatedTags function
+// Update generateRelatedTags function:
 const generateRelatedTags = async (parentTag: string) => {
-  // Get existing tags from mockTags data
-  const mockTagData = Object.values(mockTags).flat().find(tag => tag.text === parentTag);
-  const existingTags = mockTagData?.secondaryTags || [];
+  // Attempt to find existing tags in mockTags
+  console.log('this is parent tag', parentTag)
+  console.log('this is focused zone', mockTags[focusedZone].flat().find((tag) => tag.text === parentTag))
 
-  // Create a set of existing tags for case-insensitive comparison
-  const existingTagSet = new Set(existingTags.map(t => t.toLowerCase()))
+  const mockTagData = Object.values(mockTags[focusedZone])
+    .flat()
+    .find((tag) => tag.text === parentTag)
+  const existingTags = mockTagData?.children.map((tag) => tag.text.toLowerCase()) || [] // Adjust if secondary tags differ now
+
+  // Create a set for case-insensitive comparison
+  const existingTagSet = new Set(existingTags)
 
   const response = await model.generateContent({
     contents: [
@@ -380,21 +363,16 @@ const generateRelatedTags = async (parentTag: string) => {
         role: 'user',
         parts: [
           {
-            text: `You are helping users find relevant tags for their image generation. 
-            When user selects "${parentTag}" as their main subject, suggest 6 additional descriptive tags.
-
+            text: `You are helping users find relevant tags for image generation. 
+            For the main subject "${parentTag}", suggest 6 additional descriptive tags:
+            
             Requirements:
-            - Each tag should be 1-2 words
-            - Always start with a capital letter
-            - Avoid duplicating these existing tags: ${existingTags.join(', ')}
-            - Think about what users might want to achieve when they selected "${parentTag}"
-            - Include both common and creative but relevant associations
-            - Focus on visual and artistic aspects
-            - Suggest tags that would help create interesting image variations
-            - Keep tags concrete and imagery-focused
-
-            Return only a JSON array of strings, no explanation.
-            Example format: ["Mountain Peak", "Dense Forest", "Morning Mist"]`,
+            - Each tag is 1-2 words
+            - Capitalize first letter
+            - Avoid duplicates of: ${existingTags.join(', ')}
+            - Relevant, imagery-focused, helpful for creative image variations.
+            
+            Return as a JSON array of strings, no explanation.`,
           },
         ],
       },
@@ -410,20 +388,14 @@ const generateRelatedTags = async (parentTag: string) => {
     const cleanedText = text.replace(/```json\n?|\n?```/g, '').trim()
     const tags = JSON.parse(cleanedText)
 
-    // Filter out duplicates using the Set
+    // Filter duplicates
     const uniqueTags = tags.filter((tag: string) => !existingTagSet.has(tag.toLowerCase()))
-
     return Array.isArray(uniqueTags) ? uniqueTags.slice(0, 5) : []
   } catch (error) {
     console.error('Failed to parse generated tags:', error)
     console.error('Raw response:', text)
     return []
   }
-}
-
-// Add the handler for zone change in the script section
-const handleZoneChange = (newZone: string) => {
-  setFocusedZone(newZone)
 }
 </script>
 

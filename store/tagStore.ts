@@ -117,7 +117,8 @@ export const useTagStore = defineStore('tags', {
             fx: null,
             fy: null,
             alias: secondaryText.toLowerCase().replace(/\s+/g, '-'),
-            isPreconfigured: true
+            isPreconfigured: true,
+            isHidden: false
           }))
         }))
       );
@@ -302,6 +303,7 @@ export const useTagStore = defineStore('tags', {
     },
     async addSecondaryTag(parentId: string, tag: Tag) {
       const parent = this.tags.find(t => t.id === parentId)
+      console.log('this is parent', parent)
       if (parent) {
         if (!parent.secondaryTags) {
           parent.secondaryTags = []
@@ -501,6 +503,8 @@ export const useTagStore = defineStore('tags', {
               tagInStore.isHidden = true;
               tagInStore.selected = false;
             }
+            console.log('Source tag in store', sourceTag.id);
+            console.log('tagInStore', tags)
 
             // Also update the tag in the zoneGraph's nodes
             const nodeInGraph = zoneGraph.nodes.find(n => n.id === sourceTag.id);
@@ -508,6 +512,7 @@ export const useTagStore = defineStore('tags', {
               nodeInGraph.isHidden = true;
               nodeInGraph.selected = false;
             }
+            console.log('nodeInGraph', nodeInGraph)
           });
 
           // Just a gentle simulation restart
@@ -566,7 +571,6 @@ export const useTagStore = defineStore('tags', {
               const tag = this.allTags.find(t => t.id === childTag.id);
               if (tag) {
                 tag.isHidden = true;
-                tag.selected = false;
               }
             });
           }
@@ -677,14 +681,6 @@ export const useTagStore = defineStore('tags', {
         // If there's a selected tag, only return it along with visible hybrid tags and their children
         return selectedTag ? [selectedTag, ...hybridTags,] : [...tags, ...hybridTags];
       }
-    },
-    selectedTags: (state) => {
-      return state.tags.filter(tag => tag.selected)
-    },
-    selectedSecondaryTags: (state) => {
-      return state.tags.flatMap(tag => 
-        tag.secondaryTags ? tag.secondaryTags.filter(secTag => secTag.selected) : []
-      )
     },
     allTags: (state) => {
       return [
