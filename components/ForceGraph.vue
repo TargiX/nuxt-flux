@@ -1,7 +1,9 @@
+/// <reference types="d3" />
 <template>
   <div
     class="relative"
     ref="chartContainer"
+    :data-zone="zone"
     :style="{ width: `${width}px`, height: `${height}px` }"
   >
     <div v-if="!preview" class="absolute bottom-4 right-4 flex gap-2">
@@ -49,11 +51,52 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, computed, onBeforeUnmount } from 'vue'
 import * as d3 from 'd3'
 import { useTagStore } from '~/store/tagStoreV2'
-import type { Tag } from '~/store/tagStoreV2' // Import Tag type
 import type { Node } from '~/store/tagStoreV2'
+import { graphUpdateEvent } from '~/store/tagStoreV2'
+
+interface BaseNode {
+  id: string
+  text: string
+  children: BaseNode[]
+  metadata?: { loading?: boolean }
+  selected: boolean
+  zone: string
+  hidden: boolean
+  parentId: string | null
+  x?: number
+  y?: number
+}
+
+interface SimNode extends Omit<BaseNode, 'children'> {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  fx: number | null
+  fy: number | null
+  index?: number
+  children: { id: string }[]
+}
+
+interface SimLink extends d3.SimulationLinkDatum<SimNode> {
+  source: SimNode
+  target: SimNode
+  value: number
+  index?: number
+}
+
+interface ZoneGraph {
+  nodes: SimNode[]
+  links: SimLink[]
+  simulation: d3.Simulation<SimNode, SimLink>
+  svg: d3.Selection<SVGSVGElement, unknown, null, undefined> | null
+  node?: d3.Selection<SVGGElement, SimNode, SVGGElement, unknown>
+  link?: d3.Selection<SVGLineElement, SimLink, SVGGElement, unknown>
+  lastClickedNode: BaseNode | null
+}
 
 const props = defineProps<{
   width: number
@@ -75,11 +118,41 @@ defineExpose({
 const chartContainer = ref<HTMLElement | null>(null)
 const tagStore = useTagStore()
 
-// Listen to changes in visible nodes for this zone and update the graph accordingly
-// watch(() => tagStore.visibleNodes(props.zone), updateGraph, { deep: true })
+// Navigation computed properties
+const isFirstZone = computed(() => {
+  const index = tagStore.zones.indexOf(props.zone)
+  return index === 0
+})
+
+const isLastZone = computed(() => {
+  const index = tagStore.zones.indexOf(props.zone)
+  return index === tagStore.zones.length - 1
+})
+
+// Navigation methods
+const handlePrevZone = () => {
+  const currentIndex = tagStore.zones.indexOf(props.zone)
+  if (currentIndex > 0) {
+    emit('zoneChange', tagStore.zones[currentIndex - 1])
+  }
+}
+
+const handleNextZone = () => {
+  const currentIndex = tagStore.zones.indexOf(props.zone)
+  if (currentIndex < tagStore.zones.length - 1) {
+    emit('zoneChange', tagStore.zones[currentIndex + 1])
+  }
+}
 
 // Compute the current zone graph reference
 const zoneGraph = computed(() => tagStore.getZoneGraph(props.zone))
+
+// Handle graph update events
+const handleGraphUpdate = (event: CustomEvent<{ zone: string }>) => {
+  if (event.detail.zone === props.zone) {
+    updateGraph()
+  }
+}
 
 onMounted(async () => {
   // Fetch initial tags if needed
@@ -87,6 +160,14 @@ onMounted(async () => {
     await tagStore.fetchTags()
   }
   createForceGraph()
+  
+  // Add event listener
+  graphUpdateEvent.addEventListener('updateGraph', handleGraphUpdate as EventListener)
+})
+
+onBeforeUnmount(() => {
+  // Remove event listener
+  graphUpdateEvent.removeEventListener('updateGraph', handleGraphUpdate as EventListener)
 })
 
 // Create the force-directed graph
@@ -124,7 +205,7 @@ function createForceGraph() {
   g.append('g').attr('class', 'nodes')
 
   // Initialize the simulation
-  zoneGraph.value.simulation = d3.forceSimulation<Node>()
+  zoneGraph.value.simulation = d3.forceSimulation<SimNode>()
     .alphaDecay(0.05)
     .on('tick', onTick)
 
@@ -138,53 +219,128 @@ function updateGraph() {
 
   zg.simulation.stop();
 
-  const nodes = tagStore.visibleNodes(props.zone);
+  // Convert BaseNodes to SimNodes
+  console.log('this is tagStore.visibleNodes', tagStore.visibleNodes(props.zone))
+  const nodes = tagStore.visibleNodes(props.zone).map(node => ({
+    ...node, // Preserve all original node properties
+    x: node.x || props.width / 2,
+    y: node.y || props.height / 2,
+    vx: 0,
+    vy: 0,
+    fx: node.fx || null,
+    fy: node.fy || null,
+    // Don't map children to just id, preserve all child properties
+    children: node.children.map(child => ({
+      ...child,
+      x: child.x || props.width / 2,
+      y: child.y || props.height / 2,
+      vx: 0,
+      vy: 0,
+      fx: child.fx || null,
+      fy: child.fy || null
+    }))
+  })) as SimNode[];
+
   // Overwrite zg.nodes with the latest nodes
-  zg.nodes = nodes;
+  zg.nodes.value = nodes;
 
   // Generate links fresh each time
-  const links = tagStore.createLinksFromNodes(zg.nodes);
- 
+  const links = tagStore.createLinksFromNodes(nodes).map(link => {
+    const sourceNode = nodes.find(n => n.id === (typeof link.source === 'object' ? link.source.id : link.source));
+    const targetNode = nodes.find(n => n.id === (typeof link.target === 'object' ? link.target.id : link.target));
+    
+    if (!sourceNode || !targetNode) {
+      console.warn('Missing source or target node for link:', link);
+      return null;
+    }
 
+    return {
+      source: sourceNode,
+      target: targetNode,
+      value: link.value || 1
+    } as SimLink;
+  }).filter((link): link is SimLink => link !== null);
+ 
   // Set zg.links
-  zg.links = links;
+  zg.links.value = links;
+
+  // Find parent nodes (nodes with children)
+  const parentNodes = nodes.filter(n => n.children.length > 0);
+  
+  // Calculate positions for parent nodes to distribute them evenly
+  parentNodes.forEach((parent, index) => {
+    const angle = (index / parentNodes.length) * 2 * Math.PI;
+    const radius = Math.min(props.width, props.height) * 0.3;
+    const centerX = props.width / 2 + Math.cos(angle) * radius;
+    const centerY = props.height / 2 + Math.sin(angle) * radius;
+    parent.fx = centerX;
+    parent.fy = centerY;
+    
+    // Position children in a circle around their parent
+    if (parent.children.length > 0) {
+      const childRadius = 80; // Distance from parent to children
+      parent.children.forEach((child, childIndex) => {
+        const childAngle = (childIndex / parent.children.length) * 2 * Math.PI;
+        const childNode = nodes.find(n => n.id === child.id);
+        if (childNode) {
+          childNode.fx = centerX + Math.cos(childAngle) * childRadius;
+          childNode.fy = centerY + Math.sin(childAngle) * childRadius;
+        }
+      });
+    }
+  });
 
   zg.simulation.nodes(nodes);
 
-  zg.simulation.force(
-    'link',
-    d3.forceLink<Node, { source: Node; target: Node; value: number }>(links)
-      .id(d => d.id)
-      .distance(150)
-      .strength(0.3)
-  )
-  .force('charge', d3.forceManyBody().strength(-30).distanceMax(200))
-  .force('collision', d3.forceCollide<Node>().radius(() => 30).strength(0.4))
-  .force('center', d3.forceCenter(props.width / 2, props.height / 2).strength(0.3));
+  // Adjust force parameters for more stability
+  zg.simulation
+    .force('link', d3.forceLink<SimNode, SimLink>(links)
+      .id((d: SimNode) => d.id)
+      .distance(80)
+      .strength(1)
+    )
+    .force('charge', d3.forceManyBody<SimNode>()
+      .strength(d => d.children.length > 0 ? -500 : -100)
+      .distanceMax(200)
+    )
+    .force('collision', d3.forceCollide<SimNode>()
+      .radius(d => d.children.length > 0 ? 50 : 30)
+      .strength(1)
+    )
+    .force('x', d3.forceX<SimNode>(props.width / 2).strength(0.1))
+    .force('y', d3.forceY<SimNode>(props.height / 2).strength(0.1));
 
   // Update links selection
-  const linkSelection = zg.svg.select('.links')
-    .selectAll('line')
-    .data(links, d => `${d.source.id}-${d.target.id}`);
+  const linkSelection = zg.svg.select<SVGGElement>('.links')
+    .selectAll<SVGLineElement, SimLink>('line')
+    .data<SimLink>(links);
 
   // Remove old links
   linkSelection.exit().remove();
 
   // Add new links
-  linkSelection.enter()
+  const linkEnter = linkSelection.enter()
     .append('line')
     .attr('stroke', '#999')
     .attr('stroke-opacity', 0.6)
-    .attr('stroke-width', d => Math.sqrt(d.value || 1));
+    .attr('stroke-width', (d: SimLink) => Math.sqrt(d.value));
 
-  zg.link = zg.svg.select('.links').selectAll('line');
+  zg.link = linkSelection.merge(linkEnter);
 
   // Update nodes
-  const nodeSelection = zg.svg.select('.nodes')
-    .selectAll<SVGGElement, Node>('g')
-    .data(nodes, d => d.id);
+  const nodeSelection = zg.svg.select<SVGGElement>('.nodes')
+    .selectAll<SVGGElement, SimNode>('g')
+    .data<SimNode>(nodes);
 
   nodeSelection.exit().remove();
+
+  // Update existing nodes
+  nodeSelection.select('circle')
+    .attr('fill', (d: SimNode) => d.selected ? '#4CAF50' : d3.schemeCategory10[0])
+    .classed('loading-node', (d: SimNode) => Boolean(d.metadata?.loading))
+    .attr('stroke', (d: SimNode) => d.metadata?.loading ? '#2196f3' : '#fff')
+    .attr('stroke-width', (d: SimNode) => d.metadata?.loading ? 2 : 1.5)
+    .attr('r', (d: SimNode) => d.children.length > 0 ? 25 : 20);
 
   const nodeEnter = nodeSelection.enter()
     .append('g')
@@ -192,12 +348,13 @@ function updateGraph() {
     .on('click', handleNodeClick);
 
   nodeEnter.append('circle')
-    .attr('r', 20)
-    .attr('fill', d => d.selected ? '#4CAF50' : d3.schemeCategory10[0])
-    .attr('stroke', '#fff')
-    .attr('stroke-width', 1.5);
+    .attr('r', (d: SimNode) => d.children.length > 0 ? 25 : 20)
+    .attr('fill', (d: SimNode) => d.selected ? '#4CAF50' : d3.schemeCategory10[0])
+    .classed('loading-node', (d: SimNode) => Boolean(d.metadata?.loading))
+    .attr('stroke', (d: SimNode) => d.metadata?.loading ? '#2196f3' : '#fff')
+    .attr('stroke-width', (d: SimNode) => d.metadata?.loading ? 2 : 1.5);
 
-  nodeEnter.each(function(d) {
+  nodeEnter.each(function(this: SVGGElement, d: SimNode) {
     const node = d3.select(this);
     const lines = formatNodeText(d.text);
     lines.forEach((line, i) => {
@@ -211,68 +368,86 @@ function updateGraph() {
     });
   });
 
-  nodeEnter.append('title').text(d => d.id);
+  nodeEnter.append('title').text((d: SimNode) => d.id);
 
-  zg.node = zg.svg.select('.nodes').selectAll('g');
+  zg.node = nodeSelection.merge(nodeEnter);
 
-  zg.simulation.alpha(0.3).restart();
+  // Set a lower alpha decay for smoother transitions
+  zg.simulation.alphaDecay(0.02).alpha(0.3).restart();
 }
 
 function onTick() {
   const zg = zoneGraph.value
   if (!zg.link || !zg.node) return
 
+  // Update link positions
   zg.link
-    .attr('x1', d => d.source.x || 0)
-    .attr('y1', d => d.source.y || 0)
-    .attr('x2', d => d.target.x || 0)
-    .attr('y2', d => d.target.y || 0)
+    .attr('x1', (d: SimLink) => Math.round((d.source.x || 0) * 100) / 100)
+    .attr('y1', (d: SimLink) => Math.round((d.source.y || 0) * 100) / 100)
+    .attr('x2', (d: SimLink) => Math.round((d.target.x || 0) * 100) / 100)
+    .attr('y2', (d: SimLink) => Math.round((d.target.y || 0) * 100) / 100);
 
-  zg.node.attr('transform', d => `translate(${d.x || 0},${d.y || 0})`)
+  // Update node positions with damping for smoother movement
+  zg.node.attr('transform', (d: SimNode) => {
+    // Apply damping to velocity
+    if (d.vx) d.vx *= 0.7;
+    if (d.vy) d.vy *= 0.7;
+    
+    // Round positions for stability
+    const x = Math.round((d.x || 0) * 100) / 100;
+    const y = Math.round((d.y || 0) * 100) / 100;
+    
+    return `translate(${x},${y})`;
+  });
 }
 
-function handleNodeClick(event: MouseEvent, d: Node) {
+function handleNodeClick(event: MouseEvent, d: SimNode) {
+  console.log('this is d', d)
   if (props.preview) return
   event.stopPropagation()
-  // Toggle selection state via store
-  // tagStore.toggleNodeSelection(props.zone, d.id)
-  console.log('this is d', d)
+  
+  // Toggle node selection in store
+  tagStore.toggleNodeSelection(props.zone, d.id)
+  
+  // Emit event for parent components
   emit('tagSelected', d.id, props.zone)
 }
 
-function drag(simulation) {
-  function dragstarted(event) {
+function drag(simulation: d3.Simulation<SimNode, undefined>) {
+  function dragstarted(event: d3.D3DragEvent<SVGGElement, SimNode, SimNode>) {
     if (!event.active) simulation.alphaTarget(0.3).restart()
     event.subject.fx = event.subject.x
     event.subject.fy = event.subject.y
   }
 
-  function dragged(event) {
+  function dragged(event: d3.D3DragEvent<SVGGElement, SimNode, SimNode>) {
     event.subject.fx = event.x
     event.subject.fy = event.y
   }
 
-  function dragended(event) {
+  function dragended(event: d3.D3DragEvent<SVGGElement, SimNode, SimNode>) {
     if (!event.active) simulation.alphaTarget(0)
     event.subject.fx = null
     event.subject.fy = null
   }
 
-  return d3.drag<SVGGElement, Node>()
+  return d3.drag<SVGGElement, SimNode>()
     .on('start', dragstarted)
     .on('drag', dragged)
     .on('end', dragended)
 }
 
 function addZoomBehavior() {
-  const zg = zoneGraph.value
+  const zg = zoneGraph.value;
+  if (!zg.svg) return;
+
   const zoom = d3.zoom<SVGSVGElement, unknown>()
     .scaleExtent([0.5, 2])
-    .on('zoom', (event) => {
-      zg.svg.select('g').attr('transform', event.transform)
-    })
+    .on('zoom', (event: d3.D3ZoomEvent<SVGSVGElement, unknown>) => {
+      zg.svg?.select('g').attr('transform', event.transform.toString());
+    });
 
-  zg.svg.call(zoom)
+  zg.svg.call(zoom);
 }
 
 // Simple text formatting: keep text readable
@@ -297,24 +472,23 @@ div {
 @keyframes loadingPulse {
   0% {
     fill: #4caf50;
-  }
-  25% {
-    fill: #2196f3;
+    fill-opacity: 1;
+    stroke-opacity: 1;
   }
   50% {
-    fill: #4caf50;
-  }
-  75% {
     fill: #2196f3;
+    fill-opacity: 0.7;
+    stroke-opacity: 0.7;
   }
   100% {
     fill: #4caf50;
+    fill-opacity: 1;
+    stroke-opacity: 1;
   }
 }
 
-/* Use ::v-deep to target elements inside the SVG */
-::v-deep .loading-node circle {
-  animation: loadingPulse 1s infinite;
+::v-deep circle.loading-node {
+  animation: loadingPulse 1.5s ease-in-out infinite;
 }
 
 ::v-deep .nodes g[data-is-hybrid='true'] circle {

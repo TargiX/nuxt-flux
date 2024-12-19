@@ -1,8 +1,21 @@
 import { defineStore } from 'pinia'
-import { shallowRef } from 'vue'
+import { shallowRef, type Ref } from 'vue'
 import * as d3 from 'd3'
 
+// Import mockTags and define MockTag interface
 import { mockTags } from './mockTags'
+
+interface MockTag {
+  text: string
+  children: { text: string }[]
+}
+
+interface MockTags {
+  [key: string]: MockTag[]
+}
+
+// Create a simple event emitter
+export const graphUpdateEvent = new EventTarget()
 
 // NodeMetadata for additional info
 interface NodeMetadata {
@@ -30,17 +43,12 @@ export interface Node {
 }
 
 interface ZoneGraph {
-  nodes: Node[]
-  links: { source: Node; target: Node; value: number }[]
+  nodes: Ref<Node[]>
+  links: Ref<{ source: Node; target: Node; value: number }[]>
   simulation: d3.Simulation<any, undefined> | null
   svg: d3.Selection<SVGSVGElement, unknown, null, undefined> | null
-  node?: d3.Selection<SVGGElement, Node, SVGGElement, unknown>
-  link?: d3.Selection<
-    SVGLineElement,
-    { source: Node; target: Node; value: number },
-    SVGGElement,
-    unknown
-  >
+  node: d3.Selection<SVGGElement, Node, SVGGElement, unknown> | null
+  link: d3.Selection<SVGLineElement, { source: Node; target: Node; value: number }, SVGGElement, unknown> | null
   lastClickedNode: Node | null
 }
 
@@ -50,9 +58,9 @@ const DEFAULT_HEIGHT = 728
 
 export const useTagStore = defineStore('tags', {
   state: () => ({
-    zones: Object.keys(mockTags),
+    zones: Object.keys(mockTags as MockTags),
     zoneGraphs: Object.fromEntries(
-      Object.keys(mockTags).map((zone) => [
+      Object.keys(mockTags as MockTags).map((zone) => [
         zone,
         {
           nodes: shallowRef<Node[]>([]),
@@ -79,12 +87,20 @@ export const useTagStore = defineStore('tags', {
         // Traverse the zone's top-level nodes and return all visible nodes
         const result: Node[] = []
         const traverse = (node: Node) => {
+          if (!node) return
           if (!node.hidden) {
             result.push(node)
-            node.children.forEach(traverse)
+            if (Array.isArray(node.children)) {
+              node.children.forEach(traverse)
+            }
           }
         }
-        state.zoneGraphs[zone].nodes.forEach(traverse)
+        const zoneGraph = state.zoneGraphs[zone]
+        if (!zoneGraph?.nodes?.value) {
+          console.warn('No nodes found for zone:', zone)
+          return []
+        }
+        zoneGraph.nodes.value.forEach(traverse)
         return result
       },
     selectedNodes: (state) => {
@@ -96,22 +112,24 @@ export const useTagStore = defineStore('tags', {
           }
           node.children.forEach(traverse)
         }
-        state.zoneGraphs[zone].nodes.forEach(traverse)
+        const nodes = state.zoneGraphs[zone]?.nodes?.value || []
+        nodes.forEach(traverse)
       }
       return allSelected
     },
   },
   actions: {
     async fetchTags() {
+      console.log('Fetching tags...')
       // Convert mockTags into Node structure
       for (const zone of this.zones) {
-        console.log('zone', zone)
-        console.log('mockTags', mockTags[zone])
-        const topNodes = mockTags[zone].map((item, index) => {
-          const id = `${zone}-${index}`
-          const children = item.children.map((sec, i) => {
-            const childId = `${id}-child-${i}`
-            return <Node>{
+        console.log('Processing zone:', zone)
+        const zoneTags = (mockTags as MockTags)[zone]
+        const topNodes = zoneTags.map((item: MockTag, index: number) => {
+          const id = `${zone.toLowerCase()}-${index + 1}`
+          const children = item.children?.map((sec: { text: string }, i: number) => {
+            const childId = `${id}-${i + 1}`
+            return {
               id: childId,
               text: sec.text,
               zone,
@@ -124,9 +142,10 @@ export const useTagStore = defineStore('tags', {
               parentId: id,
               children: [],
               metadata: { origin: 'preconfigured', dynamic: false, loading: false },
-            }
-          })
-          return <Node>{
+            } as Node
+          }) || []
+
+          return {
             id,
             text: item.text,
             zone,
@@ -139,26 +158,81 @@ export const useTagStore = defineStore('tags', {
             parentId: null,
             children,
             metadata: { origin: 'preconfigured', dynamic: false, loading: false },
-          }
+          } as Node
         })
-        console.log('this is zoneGraphs[zone]', this.zoneGraphs[zone].nodes)
-        this.zoneGraphs[zone].nodes = topNodes
+
+        console.log('Created nodes for zone:', zone, topNodes)
+        if (this.zoneGraphs[zone]) {
+          this.zoneGraphs[zone].nodes.value = topNodes
+        }
       }
-     
+    },
+
+    unselectAllNodesInZone(zone: string) {
+      const traverse = (node: Node) => {
+        if (!node) return
+        node.selected = false
+        if (Array.isArray(node.children)) {
+          node.children.forEach(traverse)
+        }
+      }
+      
+      const zoneGraph = this.zoneGraphs[zone]
+      if (!zoneGraph?.nodes?.value) {
+        console.warn('No nodes found for zone:', zone)
+        return
+      }
+      
+      zoneGraph.nodes.value.forEach(traverse)
+    },
+
+    findNode(zone: string, nodeId: string): Node | null {
+      // Get nodes from the zone graph
+      const zoneGraph = this.zoneGraphs[zone]
+      if (!zoneGraph) {
+        console.warn('Zone graph not found:', zone)
+        return null
+      }
+
+      const nodes = zoneGraph.nodes.value
+      console.log('Finding node in zone:', zone, 'nodes:', nodes)
+
+      if (!Array.isArray(nodes)) {
+        console.warn('Nodes is not an array:', nodes)
+        return null
+      }
+
+      const traverse = (nodeList: Node[]): Node | null => {
+        for (const node of nodeList) {
+          if (node.id === nodeId) return node
+          if (Array.isArray(node.children)) {
+            const found = traverse(node.children)
+            if (found) return found
+          }
+        }
+        return null
+      }
+
+      return traverse(nodes)
     },
 
     setFocusedZone(zone: string) {
       this.focusedZone = zone
     },
 
+    // Helper method to trigger graph updates
+    triggerGraphUpdate(zone: string) {
+      console.log('this is triggerGraphUpdate', zone)
+      graphUpdateEvent.dispatchEvent(new CustomEvent('updateGraph', { detail: { zone } }))
+    },
+
     setNodeLoading(nodeId: string, loading: boolean) {
-      // Find the node in any zone
       for (const zone of this.zones) {
         const node = this.findNode(zone, nodeId)
         if (node) {
           node.metadata = node.metadata || {}
-          // Use a `loading` property in metadata to represent loading state
           node.metadata.loading = loading
+          this.triggerGraphUpdate(zone)
           return
         }
       }
@@ -172,6 +246,7 @@ export const useTagStore = defineStore('tags', {
       }
   
       parent.children.push(child)
+      this.triggerGraphUpdate(zone)
     },
 
     removeDynamicChildren(zone: string, parentId: string) {
@@ -179,53 +254,45 @@ export const useTagStore = defineStore('tags', {
       if (!parent) return
   
       parent.children = parent.children.filter(child => {
-        // If `metadata.dynamic` is used to mark dynamic children, filter them out
         return !(child.metadata && child.metadata.dynamic)
       })
+      this.triggerGraphUpdate(zone)
     },
 
     toggleNodeSelection(zone: string, nodeId: string) {
-      console.log('this is find node', this.findNode(zone, nodeId))
       const node = this.findNode(zone, nodeId)
-      console.log('this is node selected', node)
-      if (!node) return
+      console.log('this is node', node)
+      if (!node) {
+        console.warn(`Node ${nodeId} not found in zone ${zone}`)
+        return
+      }
 
-      // If selecting a node in this zone, we might unselect others
+      // Unselect all other nodes first if we're selecting this node
       if (!node.selected) {
         this.unselectAllNodesInZone(zone)
       }
-      console.log('this is node selected before', node)
+
+      // Toggle the selection
       node.selected = !node.selected
+
+      // If node is now selected, position it and its children
       if (node.selected) {
-        // Position at center and layout children
-        console.log('this is node selected', node)
         this.positionNodeAtCenter(node)
+        // Make children visible before laying them out
+        node.children.forEach(child => {
+          child.hidden = false
+        })
         this.layoutChildrenCircularly(node)
       } else {
+        // If node is unselected, hide its children and reset its fixed position
+        node.children.forEach(child => {
+          child.hidden = true
+        })
         node.fx = null
         node.fy = null
       }
-      console.log('this is all zone tags after selection', this.zoneGraphs[zone].nodes)
-    },
 
-    unselectAllNodesInZone(zone: string) {
-      const traverse = (node: Node) => {
-        node.selected = false
-        node.children.forEach(traverse)
-      }
-      this.zoneGraphs[zone].nodes.forEach(traverse)
-    },
-
-    findNode(zone: string, nodeId: string): Node | null {
-      const traverse = (nodes: Node[]): Node | null => {
-        for (const n of nodes) {
-          if (n.id === nodeId) return n
-          const found = traverse(n.children)
-          if (found) return found
-        }
-        return null
-      }
-      return traverse(this.zoneGraphs[zone].nodes)
+      this.triggerGraphUpdate(zone)
     },
 
     positionNodeAtCenter(node: Node) {
@@ -264,21 +331,36 @@ export const useTagStore = defineStore('tags', {
       const links: { source: Node; target: Node; value: number }[] = [];
     
       const traverse = (parent: Node) => {
-        parent.children.forEach(child => {
-          // Only create a link if the child has a parentId and is not hidden
-          if (child.parentId && !child.hidden) {
-            links.push({ source: parent, target: child, value: 1 });
+        // Ensure parent.children exists and is an array
+        if (!parent || !Array.isArray(parent.children)) {
+          return;
+        }
+
+        // Only process visible children
+        const visibleChildren = parent.children.filter(child => child && !child.hidden);
+        
+        visibleChildren.forEach(child => {
+          // Only create a link if the child has a parentId
+          if (child && child.parentId) {
+            links.push({
+              source: parent,
+              target: child,
+              value: 1
+            });
           }
+          // Continue traversing with visible children
           traverse(child);
         });
       };
     
-      rootNodes.forEach(traverse);
-      return links
+      // Only traverse visible root nodes
+      const visibleRootNodes = (rootNodes || []).filter(node => node && !node.hidden);
+      visibleRootNodes.forEach(traverse);
+      
+      return links;
     },
 
     // Example: add AI-generated children to a node (hybrid)
-    // In a real scenario, you'd call your AI API here
     async createHybridChildren(
       zone: string,
       parentId: string,
@@ -313,12 +395,14 @@ export const useTagStore = defineStore('tags', {
       if (parentNode.selected) {
         this.layoutChildrenCircularly(parentNode)
       }
+      
+      this.triggerGraphUpdate(zone)
     },
 
     resetZoneGraphLayout(zone: string) {
       // Optionally reset fixed positions or do a simulation restart
       const zoneGraph = this.zoneGraphs[zone]
-      if (zoneGraph.simulation) {
+      if (zoneGraph?.simulation) {
         zoneGraph.simulation.alpha(0.3).restart()
       }
     },
