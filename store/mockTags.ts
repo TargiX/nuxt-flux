@@ -4,7 +4,7 @@ export const mockTags = {
     {
       text: 'Humans',
         alias: 'humans',
-        secondaryTags: [
+        children: [
           'Adult Male',
           'Adult Female',
           'Child',
@@ -18,7 +18,7 @@ export const mockTags = {
       {
         text: 'Animals',
         alias: 'animals',
-        secondaryTags: [
+        children: [
           'Mammals',
           'Birds',
           'Reptiles',
@@ -32,7 +32,7 @@ export const mockTags = {
       {
         text: 'Mythical Creatures',
         alias: 'mythical creatures',
-        secondaryTags: [
+        children: [
           'Dragons',
           'Unicorns',
           'Phoenix',
@@ -46,7 +46,7 @@ export const mockTags = {
       {
         text: 'Plants',
         alias: 'plants',
-        secondaryTags: [
+        children: [
           'Trees',
           'Flowers',
           'Grass',
@@ -60,7 +60,7 @@ export const mockTags = {
       {
         text: 'Objects',
         alias: 'objects',
-        secondaryTags: [
+        children: [
           'Vehicles',
           'Instruments',
           'Tools',
@@ -74,7 +74,7 @@ export const mockTags = {
       {
         text: 'Abstract Concepts',
         alias: 'abstract concepts',
-        secondaryTags: [
+        children: [
           'Love',
           'Time',
           'Freedom',
@@ -88,7 +88,7 @@ export const mockTags = {
       {
         text: 'Landscapes',
         alias: 'landscapes',
-        secondaryTags: [
+        children: [
           'Mountains',
           'Forests',
           'Beaches',
@@ -102,7 +102,7 @@ export const mockTags = {
       {
         text: 'Structures',
         alias: 'structures',
-        secondaryTags: [
+        children: [
           'Castles',
           'Skyscrapers',
           'Bridges',
@@ -118,7 +118,7 @@ export const mockTags = {
         {
           text: 'Roles',
           alias: 'roles',
-          secondaryTags: [
+          children: [
             'Hero',
             'Villain',
             'Mentor',
@@ -132,7 +132,7 @@ export const mockTags = {
         {
           text: 'Characteristics',
           alias: 'characteristics',
-          secondaryTags: [
+          children: [
             'Brave',
             'Intelligent',
             'Cunning',
@@ -146,7 +146,7 @@ export const mockTags = {
         {
           text: 'Emotions',
           alias: 'emotions',
-          secondaryTags: [
+          children: [
             'Happy',
             'Sad',
             'Angry',
@@ -160,7 +160,7 @@ export const mockTags = {
         {
           text: 'Abilities',
           alias: 'abilities',
-          secondaryTags: [
+          children: [
             'Flying',
             'Invisibility',
             'Super Strength',
@@ -174,7 +174,7 @@ export const mockTags = {
         {
           text: 'Occupations',
           alias: 'occupations',
-          secondaryTags: [
+          children: [
             'Doctor',
             'Engineer',
             'Artist',
@@ -188,7 +188,7 @@ export const mockTags = {
         {
           text: 'Personality Traits',
           alias: 'personality traits',
-          secondaryTags: [
+          children: [
             'Optimistic',
             'Pessimistic',
             'Introverted',
@@ -202,7 +202,7 @@ export const mockTags = {
         {
           text: 'Physical Traits',
           alias: 'physical traits',
-          secondaryTags: [
+          children: [
             'Tall',
             'Short',
             'Athletic',
@@ -216,7 +216,7 @@ export const mockTags = {
         {
           text: 'Relationships',
           alias: 'relationships',
-          secondaryTags: [
+          children: [
             'Friend',
             'Enemy',
             'Sibling',
@@ -232,7 +232,7 @@ export const mockTags = {
       {
         text: 'Action',
         alias: 'action',
-        secondaryTags: [
+        children: [
           'Running',
           'Jumping',
           'Flying',
@@ -246,7 +246,7 @@ export const mockTags = {
       {
         text: 'Celebration',
         alias: 'celebration',
-        secondaryTags: [
+        children: [
           'Party',
           'Festival',
           'Parade',
@@ -260,7 +260,7 @@ export const mockTags = {
       {
         text: 'Exploration',
         alias: 'exploration',
-        secondaryTags: [
+        children: [
           'Hiking',
           'Sailing',
           'Space Travel',
@@ -274,7 +274,7 @@ export const mockTags = {
       {
         text: 'Conflict',
         alias: 'conflict',
-        secondaryTags: [
+        children: [
           'Battle',
           'Argument',
           'Duel',
@@ -288,7 +288,7 @@ export const mockTags = {
       {
         text: 'Transformation',
         alias: 'transformation',
-        secondaryTags: [
+        children: [
           'Metamorphosis',
           'Evolution',
           'Aging',
@@ -302,7 +302,7 @@ export const mockTags = {
       {
         text: 'Creation',
         alias: 'creation',
-        secondaryTags: [
+        children: [
           'Painting',
           'Sculpting',
           'Building',
@@ -316,7 +316,7 @@ export const mockTags = {
       {
         text: 'Destruction',
         alias: 'destruction',
-        secondaryTags: [
+        children: [
           'Explosion',
           'Fire',
           'Collapse',
@@ -330,7 +330,7 @@ export const mockTags = {
       {
         text: 'Peaceful Moments',
         alias: 'peaceful moments',
-        secondaryTags: [
+        children: [
           'Sleeping',
           'Meditating',
           'Reading',
@@ -347,7 +347,7 @@ export const mockTags = {
       {
         text: 'Realism',
         alias: 'realism',
-        secondaryTags: [
+        children: [
           'Photorealism',
           'Hyperrealism',
           'Naturalism',
@@ -361,7 +361,7 @@ export const mockTags = {
       {
         text: 'Impressionism',
         alias: 'impressionism',
-        secondaryTags: [
+        children: [
           'Pointillism',
           'Plein Air',
           'Light Play',
@@ -375,7 +375,7 @@ export const mockTags = {
       {
         text: 'Surrealism',
         alias: 'surrealism',
-        secondaryTags: [
+        children: [
           'Dreamlike',
           'Juxtaposition',
           'Symbolism',
@@ -389,7 +389,7 @@ export const mockTags = {
       {
         text: 'Abstract',
         alias: 'abstract',
-        secondaryTags: [
+        children: [
           'Geometric',
           'Expressionism',
           'Cubism',
@@ -403,7 +403,7 @@ export const mockTags = {
       {
         text: 'Pop Art',
         alias: 'pop art',
-        secondaryTags: [
+        children: [
           'Bold Colors',
           'Comic Style',
           'Celebrity Imagery',
@@ -417,7 +417,7 @@ export const mockTags = {
       {
         text: 'Minimalism',
         alias: 'minimalism',
-        secondaryTags: [
+        children: [
           'Monochromatic',
           'Simple Forms',
           'Negative Space',
@@ -431,7 +431,7 @@ export const mockTags = {
       {
         text: 'Futurism',
         alias: 'futurism',
-        secondaryTags: [
+        children: [
           'Dynamic Lines',
           'Movement',
           'Industrial Themes',
@@ -445,7 +445,7 @@ export const mockTags = {
       {
         text: 'Vintage',
         alias: 'vintage',
-        secondaryTags: [
+        children: [
           'Retro',
           'Sepia Tones',
           'Nostalgic',
@@ -462,7 +462,7 @@ export const mockTags = {
       {
         text: 'Joyful',
         alias: 'joyful',
-        secondaryTags: [
+        children: [
           'Cheerful',
           'Playful',
           'Excited',
@@ -476,7 +476,7 @@ export const mockTags = {
       {
         text: 'Melancholic',
         alias: 'melancholic',
-        secondaryTags: [
+        children: [
           'Sad',
           'Nostalgic',
           'Lonely',
@@ -490,7 +490,7 @@ export const mockTags = {
       {
         text: 'Mysterious',
         alias: 'mysterious',
-        secondaryTags: [
+        children: [
           'Enigmatic',
           'Suspenseful',
           'Cryptic',
@@ -504,7 +504,7 @@ export const mockTags = {
       {
         text: 'Energetic',
         alias: 'energetic',
-        secondaryTags: [
+        children: [
           'Vibrant',
           'Dynamic',
           'Lively',
@@ -518,7 +518,7 @@ export const mockTags = {
       {
         text: 'Calm',
         alias: 'calm',
-        secondaryTags: [
+        children: [
           'Peaceful',
           'Serene',
           'Tranquil',
@@ -532,7 +532,7 @@ export const mockTags = {
       {
         text: 'Fearful',
         alias: 'fearful',
-        secondaryTags: [
+        children: [
           'Terrifying',
           'Horrific',
           'Anxious',
@@ -546,7 +546,7 @@ export const mockTags = {
       {
         text: 'Romantic',
         alias: 'romantic',
-        secondaryTags: [
+        children: [
           'Passionate',
           'Loving',
           'Affectionate',
@@ -560,7 +560,7 @@ export const mockTags = {
       {
         text: 'Inspirational',
         alias: 'inspirational',
-        secondaryTags: [
+        children: [
           'Uplifting',
           'Motivational',
           'Empowering',
@@ -577,7 +577,7 @@ export const mockTags = {
       {
         text: 'Urban',
         alias: 'urban',
-        secondaryTags: [
+        children: [
           'City Streets',
           'Skyscrapers',
           'Suburbs',
@@ -591,7 +591,7 @@ export const mockTags = {
       {
         text: 'Nature',
         alias: 'nature',
-        secondaryTags: [
+        children: [
           'Forest',
           'Ocean',
           'Desert',
@@ -605,7 +605,7 @@ export const mockTags = {
       {
         text: 'Space',
         alias: 'space',
-        secondaryTags: [
+        children: [
           'Planets',
           'Stars',
           'Galaxies',
@@ -619,7 +619,7 @@ export const mockTags = {
       {
         text: 'Underwater',
         alias: 'underwater',
-        secondaryTags: [
+        children: [
           'Coral Reefs',
           'Deep Sea',
           'Shipwrecks',
@@ -633,7 +633,7 @@ export const mockTags = {
       {
         text: 'Fantasy World',
         alias: 'fantasy world',
-        secondaryTags: [
+        children: [
           'Enchanted Forest',
           'Floating Islands',
           'Magical Cities',
@@ -647,7 +647,7 @@ export const mockTags = {
       {
         text: 'Historical Period',
         alias: 'historical period',
-        secondaryTags: [
+        children: [
           'Medieval',
           'Ancient Egypt',
           'Victorian Era',
@@ -661,7 +661,7 @@ export const mockTags = {
       {
         text: 'Futuristic',
         alias: 'futuristic',
-        secondaryTags: [
+        children: [
           'Cyberpunk City',
           'Utopian Society',
           'Dystopian Wasteland',
@@ -675,7 +675,7 @@ export const mockTags = {
       {
         text: 'Domestic',
         alias: 'domestic',
-        secondaryTags: [
+        children: [
           'Living Room',
           'Kitchen',
           'Bedroom',
@@ -692,7 +692,7 @@ export const mockTags = {
       {
         text: 'Symmetry',
         alias: 'symmetry',
-        secondaryTags: [
+        children: [
           'Mirror Reflection',
           'Radial Symmetry',
           'Bilateral Symmetry',
@@ -706,7 +706,7 @@ export const mockTags = {
       {
         text: 'Rule of Thirds',
         alias: 'rule of thirds',
-        secondaryTags: [
+        children: [
           'Off-Center Subject',
           'Grid Alignment',
           'Asymmetrical Balance',
@@ -720,7 +720,7 @@ export const mockTags = {
       {
         text: 'Leading Lines',
         alias: 'leading lines',
-        secondaryTags: [
+        children: [
           'Roads',
           'Rivers',
           'Bridges',
@@ -734,7 +734,7 @@ export const mockTags = {
       {
         text: 'Framing',
         alias: 'framing',
-        secondaryTags: [
+        children: [
           'Natural Frames',
           'Doorways',
           'Windows',
@@ -748,7 +748,7 @@ export const mockTags = {
       {
         text: 'Depth of Field',
         alias: 'depth of field',
-        secondaryTags: [
+        children: [
           'Shallow Focus',
           'Deep Focus',
           'Bokeh Effect',
@@ -762,7 +762,7 @@ export const mockTags = {
       {
         text: 'Close-Up',
         alias: 'close-up',
-        secondaryTags: [
+        children: [
           'Macro',
           'Detail Shot',
           'Texture Emphasis',
@@ -776,7 +776,7 @@ export const mockTags = {
       {
         text: 'Bird’s Eye View',
         alias: 'bird’s eye view',
-        secondaryTags: [
+        children: [
           'Aerial Landscape',
           'Top-Down Cityscape',
           'Maps',
@@ -790,7 +790,7 @@ export const mockTags = {
       {
         text: 'Worm’s Eye View',
         alias: 'worm’s eye view',
-        secondaryTags: [
+        children: [
           'Looking Up',
           'Tall Structures',
           'Sky Emphasis',

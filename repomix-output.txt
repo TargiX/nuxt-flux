@@ -1,0 +1,4945 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+================================================================
+File Summary
+================================================================
+
+Purpose:
+--------
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+
+File Format:
+------------
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Multiple file entries, each consisting of:
+  a. A separator line (================)
+  b. The file path (File: path/to/file)
+  c. Another separator line
+  d. The full contents of the file
+  e. A blank line
+
+Usage Guidelines:
+-----------------
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+
+Notes:
+------
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+
+Additional Info:
+----------------
+
+================================================================
+Directory Structure
+================================================================
+.ai/
+  blueprints/
+    flux-with-replicate.md
+    supabase-drizzle-actions.md
+  codex/
+    codex.md
+    learn.md
+    split-codex.md
+  lib/
+    nuqs.md
+  plugins/
+    v0.md
+  rules/
+    code-tutor.md
+    mckay.md
+  session/
+    end-session.md
+    start-session.md
+  snippets/
+    create-snippet.md
+    efc.md
+    shadcn.md
+  status/
+    2024-10-08.md
+    2024-11-11.md
+    2024-12-11.md
+  CHANGELOG.md
+  README.md
+assets/
+  scss/
+    main.scss
+    variables.scss
+components/
+  ForceGraph.vue
+  Tag.vue
+  TagCloud.vue
+pages/
+  index.vue
+public/
+  robots.txt
+server/
+  tsconfig.json
+store/
+  mockTags.ts
+  tagStore.ts
+.eslintrc.js
+.gitignore
+.prettierrc
+app.vue
+nuxt.config.ts
+package.json
+postcss.config.js
+README.md
+tailwind.config.js
+tsconfig.json
+
+================================================================
+Files
+================================================================
+
+================
+File: .ai/blueprints/flux-with-replicate.md
+================
+# Flux with Replicate Documentation
+
+Use this guide to setup generating images with Flux and Replicate.
+
+Write the complete code for every step. Do not get lazy. Write everything that is needed.
+
+Your goal is to completely finish the feature.
+
+## Helpful Links
+
+- [Replicate](https://replicate.com)
+- [Flux Schnell](https://replicate.com/black-forest-labs/flux-schnell?input=nodejs)
+
+## Required Environment Variables
+
+Make sure the user has the following environment variables set:
+
+- REPLICATE_API_TOKEN=
+
+## Install Replicate
+
+Make sure the user has the Replicate package installed:
+
+```bash
+npm install replicate
+```
+
+## Setup Steps
+
+### Create a Replicate Client
+
+This file should go in `/lib/replicate.ts`
+
+```ts
+import Replicate from "replicate";
+
+const replicate = new Replicate({
+  auth: process.env.REPLICATE_API_TOKEN,
+});
+```
+
+### Create a Server Action
+
+This file should go in `/actions/replicate-actions.ts`
+
+```ts
+"use server";
+
+import replicate from "@/lib/replicate";
+
+export async function generateFluxImage(prompt: string) {
+const input = {
+prompt: prompt,
+num_outputs: 1,
+aspect_ratio: "1:1",
+output_format: "webp",
+output_quality: 80
+};
+
+const output = await http://replicate.run("black-forest-labs/flux-schnell", { input });
+return output;
+}
+```
+
+### Build the Frontend
+
+This file should go in `/app/flux/page.tsx`.
+
+- Create a form that takes a prompt
+- Create a button that calls the server action
+- Have a nice ui for when the image is blank or loading
+- Display the image that is returned
+- Have a button to generate a new image
+- Have a button to download the image
+
+================
+File: .ai/blueprints/supabase-drizzle-actions.md
+================
+# Backend Setup Instructions
+
+Use this guide to setup the backend for this project.
+
+It uses Supabase, Drizzle ORM, and Server Actions.
+
+Write the complete code for every step. Do not get lazy. Write everything that is needed.
+
+Your goal is to completely finish the backend setup.
+
+## Helpful Links
+
+If the user gets stuck, refer them to the following links:
+
+- [Supabase Docs](https://supabase.com)
+- [Drizzle Docs](https://orm.drizzle.team/docs/overview)
+- [Drizzle with Supabase Quickstart](https://orm.drizzle.team/learn/tutorials/drizzle-with-supabase)
+
+## Install Libraries
+
+Make sure the user knows to install the following libraries:
+
+```bash
+npm i drizzle-orm dotenv postgres
+npm i -D drizzle-kit
+```
+
+## Setup Steps
+
+- [ ] Create a `/db` folder in the root of the project
+
+- [ ] Create a `/types` folder in the root of the project
+
+- [ ] Add a `drizzle.config.ts` file to the root of the project with the following code:
+
+```ts
+import { config } from "dotenv";
+import { defineConfig } from "drizzle-kit";
+
+config({ path: ".env.local" });
+
+export default defineConfig({
+  schema: "./db/schema/index.ts",
+  out: "./db/migrations",
+  dialect: "postgresql",
+  dbCredentials: {
+    url: process.env.DATABASE_URL!,
+  },
+});
+```
+
+- [ ] Add a file called `db.ts` to the `/db` folder with the following code:
+
+```ts
+import { config } from "dotenv";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+import { exampleTable } from "./schema";
+
+config({ path: ".env.local" });
+
+const schema = {
+  exampleTable,
+};
+
+const client = postgres(process.env.DATABASE_URL!);
+
+export const db = drizzle(client, { schema });
+```
+
+- [ ] Create 2 folders in the `/db` folder:
+
+- `/schema`
+- Add a file called `index.ts` to the `/schema` folder
+- `/queries`
+
+- [ ] Create an example table in the `/schema` folder called `example-schema.ts` with the following code:
+
+```ts
+import { integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+
+export const exampleTable = pgTable("example", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  age: integer("age").notNull(),
+  email: text("email").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+export type InsertExample = typeof exampleTable.$inferInsert;
+export type SelectExample = typeof exampleTable.$inferSelect;
+```
+
+- [ ] Export the example table in the `/schema/index.ts` file like so:
+
+```ts
+export * from "./example-schema";
+```
+
+- [ ] Create a new file called `example-queries.ts` in the `/queries` folder with the following code:
+
+```ts
+"use server";
+
+import { eq } from "drizzle-orm";
+import { db } from "../db";
+import { InsertExample, SelectExample } from "../schema/example-schema";
+import { exampleTable } from "./../schema/example-schema";
+
+export const createExample = async (data: InsertExample) => {
+try {
+const [newExample] = await db.insert(exampleTable).values(data).returning();
+return newExample;
+} catch (error) {
+console.error("Error creating example:", error);
+throw new Error("Failed to create example");
+}
+};
+
+export const getExampleById = async (id: string) => {
+try {
+const example = await db.query.exampleTable.findFirst({
+where: eq(http://exampleTable.id, id)
+});
+if (!example) {
+throw new Error("Example not found");
+}
+return example;
+} catch (error) {
+console.error("Error getting example by ID:", error);
+throw new Error("Failed to get example");
+}
+};
+
+export const getAllExamples = async (): Promise<SelectExample[]> => {
+return db.query.exampleTable.findMany();
+};
+
+export const updateExample = async (id: string, data: Partial<InsertExample>) => {
+try {
+const [updatedExample] = await db.update(exampleTable).set(data).where(eq(http://exampleTable.id, id)).returning();
+return updatedExample;
+} catch (error) {
+console.error("Error updating example:", error);
+throw new Error("Failed to update example");
+}
+};
+
+export const deleteExample = async (id: string) => {
+try {
+await db.delete(exampleTable).where(eq(http://exampleTable.id, id));
+} catch (error) {
+console.error("Error deleting example:", error);
+throw new Error("Failed to delete example");
+}
+};
+```
+
+- [ ] In `package.json`, add the following scripts:
+
+```json
+"scripts": {
+"db:generate": "npx drizzle-kit generate",
+"db:migrate": "npx drizzle-kit migrate"
+}
+```
+
+- [ ] Run the following command to generate the tables:
+
+```bash
+npm run db:generate
+```
+
+- [ ] Run the following command to migrate the tables:
+
+```bash
+npm run db:migrate
+```
+
+- [ ] Create a folder called `/actions` in the root of the project for server actions
+
+- [ ] Create folder called `/types` in the root of the project for shared types
+
+- [ ] Create a file called `action-types.ts` in the `/types/actions` folder for server action types with the following code:
+
+- [ ] Create file called `/types/index.ts` and export all the types from the `/types` folder like so:
+
+```ts
+export * from "./action-types";
+```
+
+- [ ] Create a file called `example-actions.ts` in the `/actions` folder for the example table's actions:
+
+```ts
+"use server";
+
+import {
+  createExample,
+  deleteExample,
+  getAllExamples,
+  getExampleById,
+  updateExample,
+} from "@/db/queries/example-queries";
+import { InsertExample } from "@/db/schema/example-schema";
+import { ActionState } from "@/types";
+import { revalidatePath } from "next/cache";
+
+export async function createExampleAction(
+  data: InsertExample
+): Promise<ActionState> {
+  try {
+    const newExample = await createExample(data);
+    revalidatePath("/examples");
+    return {
+      status: "success",
+      message: "Example created successfully",
+      data: newExample,
+    };
+  } catch (error) {
+    return { status: "error", message: "Failed to create example" };
+  }
+}
+
+export async function getExampleByIdAction(id: string): Promise<ActionState> {
+  try {
+    const example = await getExampleById(id);
+    return {
+      status: "success",
+      message: "Example retrieved successfully",
+      data: example,
+    };
+  } catch (error) {
+    return { status: "error", message: "Failed to get example" };
+  }
+}
+
+export async function getAllExamplesAction(): Promise<ActionState> {
+  try {
+    const examples = await getAllExamples();
+    return {
+      status: "success",
+      message: "Examples retrieved successfully",
+      data: examples,
+    };
+  } catch (error) {
+    return { status: "error", message: "Failed to get examples" };
+  }
+}
+
+export async function updateExampleAction(
+  id: string,
+  data: Partial<InsertExample>
+): Promise<ActionState> {
+  try {
+    const updatedExample = await updateExample(id, data);
+    revalidatePath("/examples");
+    return {
+      status: "success",
+      message: "Example updated successfully",
+      data: updatedExample,
+    };
+  } catch (error) {
+    return { status: "error", message: "Failed to update example" };
+  }
+}
+
+export async function deleteExampleAction(id: string): Promise<ActionState> {
+  try {
+    await deleteExample(id);
+    revalidatePath("/examples");
+    return { status: "success", message: "Example deleted successfully" };
+  } catch (error) {
+    return { status: "error", message: "Failed to delete example" };
+  }
+}
+```
+
+```ts
+export type ActionState = {
+  status: "success" | "error";
+  message: string;
+  data?: any;
+};
+```
+
+- [ ] Implement the server actions in the `/app/page.tsx` file to allow for manual testing.
+
+- [ ] The backend is now setup.
+
+================
+File: .ai/codex/codex.md
+================
+# AI Codex
+
+## Usage
+
+- Review: @codex.md (silent load, no output)
+- Update: @learn.md
+- File paths: Always use absolute paths from project root
+
+## Errors
+
+E000:
+
+- Context: [Relevant project area or file]
+- Error: [Precise description]
+- Correction: [Exact fix]
+- Prevention: [Specific strategy]
+- Related: [IDs of related errors/learnings]
+
+E001:
+
+- Context: File path suggestions
+- Error: Relative path used instead of absolute
+- Correction: Use absolute paths from project root
+- Prevention: Always prefix paths with '/'
+- Related: None
+
+
+## Learnings
+
+
+L000:
+
+- Context: [Relevant project area or file]
+- Insight: [Concise description]
+- Application: [How to apply this knowledge]
+- Impact: [Potential effects on project]
+- Related: [IDs of related errors/learnings]
+
+L001:
+
+- Context: @codex.md usage
+- Insight: @codex.md is for context, not for direct modification
+- Application: Use @codex.md for silent loading and context only; execute subsequent commands separately
+- Impact: Improved accuracy in responding to user intentions
+- Related: None
+
+L002:
+Context: store/tagStore.ts and components/ForceGraph.vue
+Insight: Separation of concerns between data management and presentation logic
+Application: Move size-related logic from the store to the component
+Impact: Improved maintainability and clearer responsibility distribution
+Related: None
+
+
+L003:
+Context: components/ForceGraph.vue
+Insight: TypeScript linter errors in D3.js integration
+Application: Need to properly type D3.js elements and event handlers
+Impact: Improved type safety and code quality in visualization components
+Related: None
+
+
+L004:
+- Context: components/ForceGraph.vue and store/tagStore.ts
+- Insight: Implementing visual transitions for hybrid tag creation and removal
+- Application: 
+  - Use opacity transitions for smooth appearance/disappearance of nodes
+  - Keep nodes in graph data structure but visually hide them
+  - Update both store data and visual representation when removing hybrids
+  - Ensure child tags are properly unselected when hybrid is removed
+- Impact: 
+  - Improved user experience with smooth transitions
+  - Maintained graph stability by avoiding abrupt node removals
+  - Better state management between store and visual representation
+- Related: L002, L003
+
+================
+File: .ai/codex/learn.md
+================
+# AI Insight Acquisition Protocol
+
+Invocation: @learn.md
+
+Process:
+
+1. Analyze current session for error and learning indicators
+2. Extract contextual information
+3. Format new entries
+4. Edit `.ai/codex/codex.md` (Append to relevant section)
+5. Report updates
+
+Error identification:
+
+- Correction phrases: "I apologize", "That was incorrect", "Let me correct"
+- Misunderstandings: Clarifications requested by user
+- Inconsistencies: Contradictions in AI responses
+
+Learning identification:
+
+- New information phrases: "I see", "I understand", "It appears that"
+- Project updates: Changes in structure, dependencies, or requirements
+- User preferences: Specific requests or feedback on AI's approach
+
+Entry format:
+
+- Context: Specific file, function, or project area
+- Error/Insight: Concise description
+- Correction/Application: Precise fix or usage
+- Prevention/Impact: Strategy to avoid future errors or potential effects
+- Related: IDs of connected entries
+
+Absolute path usage: Enforce '/path/from/root' format for all file references
+
+1. CRITICAL: Edit `.ai/codex/codex.md`
+
+- Append new entries to the relevant section (Errors or Learnings)
+- Maintain descending order (newest first)
+- Ensure unique, incremental IDs
+- Cross-reference related entries
+
+Exclusions:
+
+- CI/CD configuration errors
+- Linting and code style issues (e.g., ESLint, Prettier)
+- TypeScript configuration problems (tsconfig.json)
+- Build tool configuration (e.g., webpack, Vite)
+- Environment setup issues (e.g., .env files)
+
+Focus on:
+
+- Functional errors in application code
+- Architectural and design pattern insights
+- State management and data flow learnings
+- Performance optimizations
+- User experience improvements
+- API integration and data handling
+
+CRITICAL: This process is for AI optimization. Prioritize precision and relevance over human readability. Always edit `.ai/codex/codex.md` directly.
+
+================
+File: .ai/codex/split-codex.md
+================
+# AI Codex Splitting Protocol
+
+Invocation: @split-codex.md
+
+## Purpose
+
+This protocol is used to intelligently split the AI Codex when it becomes too long, grouping related Errors (E) and Learnings (L) into separate codex pages.
+
+## Process
+
+1. Analyze the current @codex.md file
+2. Identify common themes or categories among entries
+3. Group related E and L entries
+4. Create new codex pages for each group
+5. Update the main @codex.md with links to new pages
+6. Report the new structure
+
+## Grouping Criteria
+
+- Project area (e.g., frontend, backend, database)
+- Technology or framework (e.g., React, Node.js, Prisma)
+- Concept (e.g., authentication, state management, testing)
+- File type or location (e.g., configuration files, utility functions)
+
+## File Structure
+
+1. Main codex remains at: .ai/codex/codex.md
+2. New pages: .ai/codex/[category]-codex.md
+
+## Update Process
+
+1. Move relevant entries to new category-specific files
+2. In the main codex (.ai/codex/codex.md), replace moved entries with links to new files
+3. Ensure cross-references are updated across all files
+
+## Naming Convention
+
+Use kebab-case for new codex file names, e.g.:
+
+- frontend-codex.md
+- database-operations-codex.md
+- authentication-codex.md
+
+## Reporting
+
+After splitting, provide a summary of:
+
+1. Number of new codex pages created
+2. Categories identified
+3. Entry distribution across new pages
+
+IMPORTANT: Maintain the original entry IDs (E001, L001, etc.) in the new files to preserve existing references.
+
+================
+File: .ai/lib/nuqs.md
+================
+# Using nuqs for URL Query State Management
+
+`nuqs` is used for managing URL query state in Next.js applications. Follow these guidelines when working with it:
+
+1. Import necessary functions from `nuqs`:
+
+   ```typescript
+   import { parseAsBoolean, parseAsStringEnum, useQueryState } from 'nuqs';
+   ```
+
+2. Create a custom hook for each query parameter:
+
+   ```typescript
+   export const useMyParameterState = () => {
+     return useQueryState(
+       'parameterName',
+       parseAsStringEnum(['option1', 'option2'])
+         .withDefault('option1')
+         .withOptions({ history: 'push' })
+     );
+   };
+   ```
+
+3. Use history push if you think the user will want to navigate back to the previous state:
+
+   ```typescript
+   export const useBooleanState = () => {
+     return useQueryState(
+       'boolParam',
+       parseAsBoolean.withDefault(false).withOptions({
+         history: 'push',
+       })
+     );
+   };
+   ```
+
+4. Use the custom hooks in your components:
+
+   ```typescript
+   const [value, setValue] = useMyParameterState();
+   ```
+
+5. Update the URL query when changing values:
+
+   ```typescript
+   void setValue('newValue');
+   ```
+
+6. Use `clearOnDefault` option to remove the parameter from the URL when it's set to its default value:
+
+   ```typescript
+   export const useConfigurationItemsState = () => {
+     return useQueryState(
+       'configItems',
+       parseAsJson<Record<string, string>>().withDefault({}).withOptions({
+         clearOnDefault: true,
+         history: 'push',
+       })
+     );
+   };
+   ```
+
+   This ensures that empty or default values are not included in the URL search params, keeping the URL clean and only including relevant information.
+
+Remember to define your query state hooks in a central location (e.g., `useQueryState.ts`) for easy reuse across your application.
+
+Reference: `apps/web/src/lib/navigation/useQueryState.ts`
+
+================
+File: .ai/plugins/v0.md
+================
+- think carefully about the component
+- generate a prompt
+- then with the prompt create a clickable link: [component name](https://v0.dev/chat?q={prompt})
+- make sure prompt is url encoded
+
+================
+File: .ai/rules/code-tutor.md
+================
+You are an AI coding instructor designed to assist and guide me as I learn to code. Your primary goal is to help me learn programming concepts, best practices, and problem-solving skills while writing code. Always assume I'm a beginner with limited programming knowledge.
+
+Follow these guidelines in all interactions:
+1. Explain concepts thoroughly but in simple terms, avoiding jargon when possible.
+2. When introducing new terms, provide clear definitions and examples.
+3. Break down complex problems into smaller, manageable steps.
+4. Encourage good coding practices and explain why they are important.
+5. Provide examples and analogies to illustrate programming concepts.
+6. Be patient and supportive, understanding that learning to code can be challenging.
+7. Offer praise for correct implementations and gentle corrections for mistakes.
+8. When correcting errors, explain why the error occurred and how to fix it.
+9. Suggest resources for further learning when appropriate.
+10. Encourage me to ask questions and seek clarification.
+11. Foster problem-solving skills by guiding me to find solutions rather than always providing direct answers.
+12. Adapt your teaching style to my pace and learning preferences.
+13. Provide code snippets to illustrate concepts, but always explain the code line by line.
+14. Use comments throughout the code to help document what is happening
+
+Address the my questions thoroughly, keeping in mind the guidelines above. If the question is unclear or lacks context, ask me for clarification.
+
+Review the code and provide feedback. If there are errors or areas for improvement, explain them clearly and suggest corrections. If the code is correct, offer praise and explain why it's a good implementation.
+
+Structure your responses as follows:
+1. Format your response as markdown
+2. Answer my question
+3. Code review and feedback
+4. Suggestions for further learning or practice
+
+Remember, your goal is not just to help me write correct code, but to help me understand the underlying principles and develop my programming skills. Always strive to be clear, patient, and encouraging in your responses.
+
+================
+File: .ai/rules/mckay.md
+================
+DO NOT GIVE ME HIGH LEVEL STUFF, IF I ASK FOR FIX OR EXPLANATION, I WANT ACTUAL CODE OR EXPLANATION!!! I DON'T WANT "Here's how you can blablabla"
+
+- Be casual unless otherwise specified
+- Be terse
+- Suggest solutions that I didn’t think about—anticipate my needs
+- Treat me as an expert
+- Be accurate and thorough
+- Give the answer immediately. Provide detailed explanations and restate my query in your own words if necessary after giving the answer
+- Value good arguments over authorities, the source is irrelevant
+- Consider new technologies and contrarian ideas, not just the conventional wisdom
+- You may use high levels of speculation or prediction, just flag it for me
+- No moral lectures
+- Discuss safety only when it's crucial and non-obvious
+- If your content policy is an issue, provide the closest acceptable response and explain the content policy issue afterward
+- Cite sources whenever possible at the end, not inline
+- No need to mention your knowledge cutoff
+- No need to disclose you're an AI
+- Please respect my prettier preferences when you provide code.
+- Split into multiple responses if one response isn't enough to answer the question.
+  If I ask for adjustments to code I have provided you, do not repeat all of my code unnecessarily. Instead try to keep the answer brief by giving just a couple lines before/after any changes you make. Multiple code blocks are ok.
+
+================
+File: .ai/session/end-session.md
+================
+# End Session Instructions
+
+1. Create a new file: `.ai/status/YYYY-MM-DD.md`
+
+2. Structure the update with sections:
+
+   - Development Steps
+   - Key Decisions
+   - Next Steps
+
+3. For each section:
+
+   - Use bullet points
+   - Be specific and use technical terms
+   - Keep content concise
+
+4. Development Steps:
+
+   - List modified files in dependency order
+   - Number each step
+   - Briefly describe changes and purpose for each file
+   - Use past tense
+
+5. Key Decisions:
+
+   - List important decisions, their reasoning, and trade-offs
+   - Use past tense
+
+6. Next Steps:
+
+   - List 3-5 prioritized tasks/features to work on next
+   - Specify affected components/code areas
+   - Highlight blockers or challenges
+   - Use future tense
+   - We don't care about performance and optimization for now. We need to get the core functionality working for MVP.
+
+7. For code blocks, prepend triple quotes with a space
+
+8. End with a brief summary of overall progress and next session's focus
+
+Example:
+
+# Session Update: 2023-04-15
+
+## Development Steps
+
+1. `app/styles/globals.css`: Updated color scheme and typography
+   - Defined new color variables and font styles
+2. `app/utils/api.ts`: Created new API utility functions
+   - Implemented functions for fetching user data and posts
+3. `app/components/Header.tsx`: Added responsive navigation menu
+   - Created mobile-friendly dropdown menu using new styles
+4. `app/pages/index.tsx`: Implemented hero section with CTA
+   - Utilized new API functions to display dynamic content
+
+## Key Decisions
+
+- Chose Tailwind CSS for styling to improve development speed
+- Implemented server-side rendering for better SEO performance
+
+## Next Steps
+
+1. Implement user authentication system
+2. Create dashboard page for logged-in users
+3. Optimize image loading and caching
+
+Progress: Completed main layout and homepage. Next session will focus on user authentication and dashboard implementation.
+
+================
+File: .ai/session/start-session.md
+================
+# Start Session Instructions
+
+1. Locate and analyze the most recent status update file in the `.ai/status/` directory (format: `YYYY-MM-DD.md`).
+
+2. Understand the current project state, recent decisions, and prepare to assist with outlined next steps.
+
+3. If no specific task is requested:
+
+   - List all next steps from the latest session.
+   - Suggest which step to take first, providing a brief rationale.
+   - Be ready to address any challenges or blockers mentioned.
+
+4. Provide context-aware assistance throughout the session, referencing the status update when discussing project status or next steps.
+
+5. Be prepared to help implement tasks and features listed in the Next Steps section, recalling relevant details for specific components or code areas.
+
+6. At the end of the session, create a new status update using the guidelines in `end-session.md`.
+
+================
+File: .ai/snippets/create-snippet.md
+================
+Title: Create Snippet Prompt
+Description: Generates a snippet template based on provided example code. Template contains instructions and example code. Provide more examples for coverage if needed. Don't include obvious steps you already know like imports.
+Body:
+
+### Instructions
+
+Title: ${1:Create ${2:Component}}
+Description: Generates a template for ${3:a ${2}}
+Body:
+
+${5:$TM_SELECTED_TEXT}
+
+### Example
+
+Title: ${1}
+Description: ${3}
+Body:
+
+${5}
+
+================
+File: .ai/snippets/efc.md
+================
+Title: Extract File Component
+Description: Extracts into its own (camel-case) file React component with destructured props and inline type. Avoid prop drilling, especially using context hooks (including react-query).
+Body:
+
+export function ${1:ComponentName}({ ${2:prop}, ...props }: { ${2}: ${3:type} }) {
+  return (
+    $0
+  )
+}
+
+### Example
+
+Title: Extract File Component
+Description: Extracts into its own (camel-case) file React component with destructured props and inline type. Avoid prop drilling, especially using context hooks (including react-query).
+Body:
+
+export function ${1:ComponentName}({ ${2:prop}, ...props }: { ${2}: ${3:type} }) {
+  return (
+    $0
+  )
+}
+
+================
+File: .ai/snippets/shadcn.md
+================
+Title: Create React Component with Variants
+Description: Generates a template for a React component with customizable variants using class-variance-authority
+Body:
+
+import * as React from "react"
+import { Slot } from "@radix-ui/react-slot"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
+
+const ${1:component}Variants = cva(
+  "${2:base classes}",
+  {
+    variants: {
+      ${3:variantName}: {
+        ${4:variantValue}: "${5:classes}",
+      },
+    },
+    defaultVariants: {
+      ${3}: "${4}",
+    },
+  }
+)
+
+export interface ${6:ComponentName}Props
+  extends React.${7:HTMLAttributes}<HTML${8:Element}Element>,
+    VariantProps<typeof ${1}Variants> {
+  asChild?: boolean
+}
+
+const ${6} = React.forwardRef<HTML${8}Element, ${6}Props>(
+  ({ className, ${3}, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : "${9:element}"
+    return (
+      <Comp
+        className={cn(${1}Variants({ ${3}, className }))}
+        ref={ref}
+        {...props}
+      />
+    )
+  }
+)
+${6}.displayName = "${6}"
+
+export { ${6}, ${1}Variants }
+
+### Example
+
+Title: Create React Component with Variants
+Description: Generates a template for a React component with customizable variants using class-variance-authority
+Body:
+
+import * as React from "react"
+import { Slot } from "@radix-ui/react-slot"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
+
+const buttonVariants = cva(
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        link: "text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default: "h-10 px-4 py-2",
+        sm: "h-9 rounded-md px-3",
+        lg: "h-11 rounded-md px-8",
+        icon: "h-10 w-10",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+)
+
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean
+}
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : "button"
+    return (
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        {...props}
+      />
+    )
+  }
+)
+Button.displayName = "Button"
+
+export { Button, buttonVariants }
+
+================
+File: .ai/status/2024-10-08.md
+================
+Session Update: 2023-04-15
+Development Steps
+/store/tagStore.ts: Updated tag store logic
+Removed size-related logic from tag toggling
+Simplified tag and secondary tag toggling functions
+/components/ForceGraph.vue: Refactored force graph component
+Implemented consistent sizing logic for primary and secondary tags
+Added stems (links) connecting first-level circles with second-level ones
+Updated node appearance function to handle size changes
+/components/TagCloud.vue: Updated tag cloud component
+Added handler for secondary tag selection
+Updated computed property for generated prompt to include secondary tags
+Key Decisions
+Moved size-related logic from the store to the ForceGraph component to improve separation of concerns
+Implemented a consistent 20% size increase for both primary and secondary tags when selected
+Added visual connections (stems) between primary and secondary tags to improve user understanding of relationships
+Next Steps
+1. Rework force graphs levels to work differently, initially user will only be able to select primary tags, and then secondary tags will pop up on the click of a primary tag when its become selected. This will allow for a more interactive and informative user experience. So each primary tag will spawn its childrens on click. If user unselects a primary tag, all its childrens should be unselected too. 
+
+Implement a search or filter functionality to allow users to quickly find specific tags across all zones
+Progress: Improved the core functionality of the tag selection and visualization system. The next session will focus on enhancing the TypeScript integration with D3.js and improving the user interaction with the force graph.
+
+================
+File: .ai/status/2024-11-11.md
+================
+# Session Update: 2024-03-20
+
+## Development Steps
+
+1. `/store/tagStore.ts`: Added hybrid tag functionality
+   - Created HybridTag interface extending Tag
+   - Added hybridTags Map to store state
+   - Implemented createHybridTag action using Gemini API
+   - Added removeHybridTag action
+   - Enhanced prompt for better hybrid tag name generation
+
+2. `/components/ForceGraph.vue`: Enhanced visualization with hybrid tags
+   - Added selectedSecondaryTags tracking
+   - Implemented hybrid tag creation on multiple selections
+   - Added smooth transitions for hybrid tag creation/removal
+   - Added visual styling for hybrid containers
+   - Implemented proper cleanup of hybrid tags and child nodes
+   - Fixed child tag selection state management
+
+## Key Decisions
+
+- Used opacity transitions instead of removing nodes to maintain graph stability
+- Implemented 1-second delay before creating hybrid tags to allow multiple selections
+- Positioned hybrid tags between their child nodes for intuitive visualization
+- Enhanced Gemini API prompt to generate more meaningful hybrid tag names
+- Used visual indicators (dashed borders, semi-transparent fill) for hybrid containers
+- Maintained both store data and visual state synchronization
+
+## Next Steps
+
+0. Most important: Hybrid tags are magnifiying to parent tags more that others, but they should be less force in them. Also when se select 3rd tag, it should recreates that hybrid tag with combined concept of all 3 tags.
+
+1. Next thing that we need to introduce concept of 3 level tags that will spread from that hybrid tags. 
+
+2. Also tags creation process must be like an user plays with AI in game where AI must understand that user have in mind (like akinator game). User selects tags and AI must understand that user have in mind and create new tag with combined concept of all selected tags. And so on, so forth. Until user will be satisfied with the result.
+
+2. Add type definitions for better TypeScript support
+   - Create proper interfaces for D3.js
+   - Add type declarations for Vue components
+   - Define types for Heroicons
+   - Create comprehensive Tag type definitions
+
+2. Improve hybrid tag interactions
+   - Add visual feedback when tags can be combined
+   - Implement smoother transitions between states
+   - Add hover states to show potential combinations
+
+3. Handle edge cases
+   - Maximum number of tags that can be combined
+   - Conflict resolution for overlapping combinations
+   - Error handling for failed hybrid tag generation
+
+Progress: Successfully implemented core hybrid tag functionality with smooth transitions and proper state management. Next session will focus on improving TypeScript support and enhancing user interactions.
+
+================
+File: .ai/status/2024-12-11.md
+================
+Session Update: 2024-03-12
+Development Steps
+store/tagStore.ts: Enhanced tag management system
+Implemented zone-specific hybrid tag storage
+Added improved LLM prompts for hybrid tag generation
+Fixed link creation and management for hybrid nodes
+Removed redundant selectedHybridTags state
+Added proper cleanup for hybrid tags during zone switches
+components/ForceGraph.vue: Enhanced visualization and interaction
+Added prev/next zone navigation buttons with disabled states
+Implemented multi-line text formatting for node labels
+Fixed hybrid tag visualization and connections
+Added constants for consistent sizing and spacing
+Improved node positioning and force simulation
+components/TagCloud.vue: UI and UX improvements
+Added animated particle-based loading indicator
+Enhanced dynamic tag generation with context-aware prompts
+Added manual mode for prompt editing
+Improved image generation handling
+Fixed hybrid tag persistence in prompts across zones
+Key Decisions
+Moved hybrid tag storage to zoneGraphs to maintain state during zone transitions
+Removed selectedHybridTags in favor of zone-specific storage to prevent duplication
+Enhanced LLM prompts for both hybrid tags and dynamic tags to be more specific and meaningful
+Chose particle-based animation for loading state to provide better visual feedback
+Implemented proper tag state preservation when switching between zones
+Next Steps
+1. Enhance hybrid tag interaction
+Add visual indicator for hybrid tag composition
+Implement hover state to show component tags
+Add animation for tag combination process
+Improve error handling
+Add fallback UI for failed LLM requests
+Implement retry mechanism for failed requests
+Add user feedback for errors
+3. Enhance zone navigation
+Add smooth transitions between zones
+Implement keyboard shortcuts
+Add zone thumbnails preview
+Improve tag generation
+Further refine LLM prompts for more relevant suggestions
+Add user feedback for tag generation process
+Implement tag categories or grouping
+Progress: Successfully implemented core hybrid tag functionality with proper state management and improved UX. Next session will focus on enhancing the hybrid tag interaction and visual feedback.
+
+================
+File: .ai/CHANGELOG.md
+================
+# Changelog
+
+## snippets@1.3.0
+
+Introducing Snippets. Snippets include code templates that AI can use to generate or refactor code. They help in writing shorter prompts for better results.
+
+- [create-snippet.md](snippets/create-snippet.md)
+
+## rules@1.2.0
+
+- New rule [mckay.md](rules/mckay.md) by @mckaywrigley
+- New rule [code-tutor.md](rules/code-tutor.md) by @mckaywrigley
+
+## codex@1.1.1
+
+- [learn.md](codex/learn.md): add exclusions and focus. Cursor captures many TS and ESLint errors that we should ignore.
+
+## 1.1.0
+
+- New folder [session](session):
+  - [start-session](session/start-session.md)
+  - [end-session](session/end-session.md)
+- New folder [blueprints](blueprints):
+  - [supabase-drizzle-actions](blueprints/supabase-drizzle-actions.md) by @mckaywrigley
+  - [flux-with-replicate](blueprints/flux-with-replicate.md) by @mckaywrigley
+- New folder [plugins](plugins):
+  - [v0](plugins/v0.md) by @mckaywrigley
+- New folder [lib](lib):
+  - [nuqs](lib/nuqs.md) example for library usage
+
+## codex@1.0.0
+
+- New folder [codex](codex):
+  - [codex.md](codex/codex.md)
+  - [learn.md](codex/learn.md)
+  - [split-codex.md](codex/split-codex.md)
+
+================
+File: .ai/README.md
+================
+# .ai
+
+This folder contains AI-assisted development tools for improving code quality and consistency.
+
+## How to use?
+
+- Click on the "Use this template" button
+- Create a `.ai` folder in your repository
+- Move the content of this template into the `.ai` folder
+
+## Codex
+
+### Files
+
+- [codex.md](codex/codex.md): AI Codex - A repository of learnings and errors.
+- [learn.md](codex/learn.md): AI Learn - Protocol for updating the AI Codex.
+
+### Usage
+
+1. Review the Codex: [codex.md](codex/codex.md) (silent load, no output)
+2. Update the Codex: [learn.md](codex/learn.md)
+
+### Important Note
+
+[codex.md](codex/codex.md) should be added to the context of every chat:
+
+- For regular chats: Use the plus button at the top of the chat to add the file.
+- For Composers: Add the file to a Project Composer so all Composers created in that project will automatically have the file.
+
+### Structure
+
+The [Codex](codex/codex.md) is divided into two main sections:
+
+1. Errors: Mistakes made and how to prevent them.
+2. Learnings: Insights gained and their applications.
+
+Each entry includes context, description, correction/application, and related entries.
+
+## Snippets
+
+Snippets include code templates that AI can use to generate or refactor code. They help in writing shorter prompts for better results.
+
+- [create-snippet.md](snippets/create-snippet.md): Prompt for creating new snippets
+
+## Session
+
+- [start-session.md](session/start-session.md): Initiates a new AI session
+- [end-session.md](session/end-session.md): Concludes the current AI session
+
+Session files create a "memory layer" for the AI across multiple interactions, enabling contextual awareness and adaptive assistance.
+
+Key benefits:
+
+- Maintains project context between sessions
+- Reduces repetition of project details
+- Provides consistent guidance aligned with project direction
+
+Usage:
+
+1. End a session: Use [@end-session](session/end-session.md) command
+2. Start a new session: Use [@start-session](session/start-session.md) command
+
+The AI will generate and read status files in [status](status) to maintain project continuity.
+
+## Blueprints
+
+Blueprints are comprehensive guides for implementing specific technical architectures or project setups. They provide step-by-step instructions for installing, configuring, and integrating various technologies to create a functional foundation for your project.
+
+- [supabase-drizzle-actions.md](blueprints/supabase-drizzle-actions.md): Backend architecture with Supabase, Drizzle ORM, and Server Actions
+- [flux-with-replicate.md](blueprints/flux-with-replicate.md): Image generation using Flux and Replicate
+
+## Libraries
+
+- [lib](lib): Contains documentation examples for library usage
+
+## Plugins
+
+### v0
+
+- [v0.dev](https://v0.dev/) is a tool for generating React components from screenshots and chat. Currently, they don't have a Cursor plugin, so you can use [v0](v0/v0.md) bridging prompt.
+- [v0.md](v0/v0.md): Guide for using v0.dev to generate component ideas and prompts
+
+## Rules of AI
+
+[Rules](rules) contains rules for default AI behavior and interaction. These rules are meant to be added to the global "Rules of AI" setting.
+
+## Contributing
+
+This is an open-source template. Contributions are welcome! Please add a changelog entry with your contribution.
+
+## Note
+
+This system is designed for AI consumption. Entries should prioritize precision and relevance over human readability
+
+================
+File: assets/scss/main.scss
+================
+@use 'variables' as v;
+
+body {
+  font-family: v.$font-family;
+  color: v.$text-color;
+  background-color: v.$background-color;
+  background-image: 
+      linear-gradient(0deg, transparent 24%, 
+          rgba(65, 105, 225, 0.05) 25%,
+          rgba(65, 105, 225, 0.05) 26%, 
+          transparent 27%, transparent 74%,
+          rgba(65, 105, 225, 0.05) 75%,
+          rgba(65, 105, 225, 0.05) 76%, transparent 77%),
+      linear-gradient(90deg, transparent 24%, 
+          rgba(65, 105, 225, 0.05) 25%,
+          rgba(65, 105, 225, 0.05) 26%, 
+          transparent 27%, transparent 74%,
+          rgba(65, 105, 225, 0.05) 75%,
+          rgba(65, 105, 225, 0.05) 76%, transparent 77%);
+  background-size: 50px 50px;
+}
+
+================
+File: assets/scss/variables.scss
+================
+$font-family: 'Arial', sans-serif;
+$text-color: #333;
+$background-color: #dcdaf0;
+
+================
+File: components/ForceGraph.vue
+================
+<template>
+  <div class="relative" ref="chartContainer" :style="{ width: `${width}px`, height: `${height}px` }">
+    <div v-if="!preview" class="absolute bottom-4 right-4 flex gap-2">
+      <button 
+        @click="handlePrevZone"
+        class="bg-green-500 hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md flex items-center gap-2 transition-colors duration-200"
+        :disabled="isFirstZone"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 rotate-180" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+        </svg>
+        Prev
+      </button>
+      
+      <button 
+        @click="handleNextZone"
+        class="bg-green-500 hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md flex items-center gap-2 transition-colors duration-200"
+        :disabled="isLastZone"
+      >
+        Next
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+        </svg>
+      </button>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted, watch, computed } from 'vue';
+import * as d3 from 'd3';
+import { useTagStore } from '~/store/tagStore';
+import { ArrowPathIcon } from '@heroicons/vue/24/solid';
+import type { Tag } from '~/store/tagStore'; // Import Tag type
+import { gsap } from 'gsap';
+
+const props = defineProps<{
+  width: number;
+  height: number;
+  zone: string;
+  preview?: boolean;
+  zoomConfig?: {
+    scale: number;
+    translateX: number;
+    translateY: number;
+  };
+}>();
+
+// Initialize refs at the top level
+const chartContainer = ref<HTMLElement | null>(null);
+const selectedSecondaryTags = ref<Tag[]>([]);
+const hybridCreationTimeout = ref<NodeJS.Timeout | null>(null);
+const tagStore = useTagStore();
+
+const RADIUS = 150; // Distance from parent for secondary nodes
+const CHILD_RADIUS = 120; // Distance from hybrid parent to its children
+const SECONDARY_NODE_SIZE = 30;
+const PRIMARY_NODE_SIZE = 40;
+const SECONDARY_NODE_ANGLE_STEP = (2 * Math.PI) / 10;
+
+const emit = defineEmits(['tagSelected', 'secondaryTagSelected', 'zoneChange']);
+
+const zoneGraph = computed(() => tagStore.getZoneGraph(props.zone));
+
+const loadingColors = ['#4CAF50', '#2196F3', '#4CAF50', '#2196F3', '#4CAF50']
+
+onMounted(() => {
+  createForceGraph(); 
+});
+
+watch(() => tagStore.tagsByZone(props.zone), updateGraph, { deep: true });
+
+function createForceGraph() {
+  if (!chartContainer.value) return;
+
+  const { width, height } = props;
+  
+  setupSvgAndSimulation(width, height);
+  updateNodesAndLinks();
+  if (!props.preview) {
+    addZoomBehavior();
+    preventCollapseOnEmptyClick();
+  }
+}
+
+function updateGraph() {
+  if (!zoneGraph.value.simulation || !zoneGraph.value.svg) return;
+
+  zoneGraph.value.simulation.stop();
+
+  // Store current nodes before updating
+  const oldNodesMap = new Map(
+    zoneGraph.value.nodes.map(d => [d.id, { ...d }])
+  );
+
+  // Update nodes and links, passing oldNodesMap
+  updateNodesAndLinks(oldNodesMap);
+
+  // Adjust node positions based on old positions
+  zoneGraph.value.nodes.forEach(node => {
+    const oldNode = oldNodesMap.get(node.id);
+    if (oldNode) {
+      // Preserve old position and velocities
+      node.x = oldNode.x;
+      node.y = oldNode.y;
+      node.vx = oldNode.vx;
+      node.vy = oldNode.vy;
+    } else if (node.isDynamic && node.parentId) {
+      // Position new dynamic nodes near their parent
+      const parent = zoneGraph.value.nodes.find(n => n.id === node.parentId);
+      if (parent) {
+        const angle = Math.random() * 2 * Math.PI;
+        const distance = 100;
+        node.x = parent.x + Math.cos(angle) * distance;
+        node.y = parent.y + Math.sin(angle) * distance;
+        node.vx = 0;
+        node.vy = 0;
+      } else {
+        // Parent not found, position at center
+        node.x = props.width / 2;
+        node.y = props.height / 2;
+        node.vx = 0;
+        node.vy = 0;
+      }
+    } else {
+      // Node without old position and not dynamic, keep current position or set to center
+      node.x = node.x || props.width / 2;
+      node.y = node.y || props.height / 2;
+      node.vx = 0;
+      node.vy = 0;
+    }
+  });
+
+  // Restart simulation gently
+  zoneGraph.value.simulation
+    .alpha(0.1)
+    .alphaDecay(0.05)
+    .velocityDecay(0.6)
+    .restart();
+}
+function updateNodeAndLinkPositions() {
+  zoneGraph.value.svg.selectAll(".nodes g")
+    .attr("transform", d => `translate(${d.x},${d.y})`);
+
+  zoneGraph.value.svg.selectAll(".links line")
+    .attr("x1", d => d.source.x)
+    .attr("y1", d => d.source.y)
+    .attr("x2", d => d.target.x)
+    .attr("y2", d => d.target.y);
+}
+
+function updateNodesAndLinks() {
+  const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+  const zoneTags = tagStore.tagsByZone(props.zone);
+  const secondaryTags = tagStore.getAllSecondaryTagsForZone(props.zone);
+
+  // Extract child tags from hybrid tags
+  const hybridTags = tagStore.getHybridTagsForZone(props.zone);
+  const hybridChildTags = hybridTags.flatMap(hybrid => hybrid.childTags || []);
+
+  const selectedTag = zoneTags.find(tag => tag.selected && tag.isLoading);
+
+  const oldNodes = new Map(zoneGraph.value.nodes.map(d => [d.id, d]));
+
+  // Combine all nodes, including child tags of hybrid tags
+  const nodes = [...zoneTags, ...secondaryTags, ...hybridChildTags].map((tag) => {
+    const oldNode = oldNodes.get(tag.id);
+    let x, y;
+
+    if (oldNode) {
+      x = oldNode.x;
+      y = oldNode.y;
+    } else if (tag.isHybrid && tag.childTags) {
+      // Position hybrid tag at the average position of its child tags
+      const childPositions = tag.childTags
+        .map(child => oldNodes.get(child.id))
+        .filter(Boolean);
+      
+      if (childPositions.length > 0) {
+        x = childPositions.reduce((sum, pos) => sum + pos.x, 0) / childPositions.length;
+        y = childPositions.reduce((sum, pos) => sum + pos.y, 0) / childPositions.length;
+      } else {
+        x = props.width / 2;
+        y = props.height / 2;
+      }
+    } else if (tag.zone.includes('-secondary')) {
+      // For secondary nodes, position them in a perfect circle around the parent
+      const parent = zoneTags[0];
+      if (parent) {
+        const parentX = parent.x || props.width / 2;
+        const parentY = parent.y || props.height / 2;
+        
+        // Calculate position in perfect circle
+        const secondaryIndex = secondaryTags.findIndex(t => t.id === tag.id);
+        const angle = SECONDARY_NODE_ANGLE_STEP * secondaryIndex - Math.PI / 2;
+        
+        x = parentX + Math.cos(angle) * RADIUS;
+        y = parentY + Math.sin(angle) * RADIUS;
+      } else {
+        x = props.width / 2;
+        y = props.height / 2;
+      }
+    } else {
+      // Primary node should be centered
+      x = props.width / 2;
+      y = props.height / 2;
+    }
+
+    return {
+      ...tag,
+      r: tag.size / 2, // Set size for hybrid tags
+      x,
+      y,
+      vx: 0, // Reset velocity for smoother initialization
+      vy: 0,
+      isLoading: tag.isLoading,
+    };
+  });
+
+  const links = tagStore.createLinksBySourceId(props.zone);
+
+  tagStore.updateZoneGraph(props.zone, nodes, links);
+
+  // Update simulation with separate forces for primary and secondary nodes
+  zoneGraph.value.simulation.nodes(nodes);
+  console.log('links', links)
+  // Adjust force parameters
+  zoneGraph.value.simulation
+    .force("link", d3.forceLink(links)
+      .id(d => d.id)
+      .distance(link => {
+        if (link.isHybridChainLink) {
+          return RADIUS * 4;
+        }
+        if (link.isHybridLink) {
+          return CHILD_RADIUS;
+        }
+        if (link.source.isHybrid || link.target.isHybrid) {
+          return RADIUS * 5;
+        }
+        return RADIUS;
+      })
+      .strength(link => {
+        // Only apply forces to non-hybrid links
+        if (link.source.isHybrid || link.target.isHybrid || 
+            link.isHybridChainLink || link.isHybridLink) {
+          return 0;
+        }
+        return 0.5;
+      })
+    )
+    .force("charge", d3.forceManyBody()
+      .strength(d => {
+        if (d.isHybrid || d.isHybridChild) {
+          return 0;
+        }
+        return d.zone.includes('-secondary') ? -50 : -40;
+      }))
+    .force("collision", d3.forceCollide()
+      .radius(d => {
+        if (d.isHybrid) return d.r + 20;
+        if (d.isHybridChild) return d.r + 10;
+        return d.r + (d.zone.includes('-secondary') ? 30 : 20);
+      })
+      .strength(1)) // Maximum strength to prevent overlaps
+    .force("centerPrimary", d3.forceRadial(0, props.width / 2, props.height / 2)
+      .strength(d => {
+        if (d.isHybrid || d.isHybridChild) {
+          return 0;
+        }
+        return d.zone.includes('-secondary') ? 0 : 0.1;
+      }))
+    .force("circularSecondary", d3.forceRadial(RADIUS, props.width / 2, props.height / 2)
+      .strength(d => {
+        if (d.isHybrid || d.isHybridChild) {
+          return 0;
+        }
+        return d.zone.includes('-secondary') ? 0.8 : 0;
+      }));
+
+  // Adjust simulation parameters for smoother movement
+  zoneGraph.value.simulation
+    .alpha(0.3)
+    .alphaDecay(0.02)
+    .velocityDecay(0.4);
+
+  // Important: Use the filtered nodes array here instead of zoneGraph.value.nodes
+  const node = zoneGraph.value.svg.select(".nodes").selectAll("g")
+    .data(nodes, d => d.id);
+
+  const nodeEnter = node.enter().append("g")
+    .call(drag(zoneGraph.value.simulation))
+    .on("click", handleNodeClick);
+
+  // Add circle to entering nodes
+  nodeEnter.append("circle")
+    .attr("r", d => d.r)
+    .attr("fill", d => d.selected ? "#4CAF50" : color(d.zone))
+    .attr("stroke", "#fff")
+    .attr("stroke-width", 1.5);
+
+  // Add text to entering nodes
+  nodeEnter.each(function(d: any) {
+    const node = d3.select(this);
+    const lines = formatNodeText(d.text);
+    
+    lines.forEach((line, i) => {
+      node.append("text")
+        .text(line)
+        .attr("x", 0)
+        .attr("y", d.r + 10 + (i * 12)) // 12px line height
+        .attr("text-anchor", "middle")
+        .attr("font-size", "10px")
+        .attr("class", "node-text");
+    });
+  });
+
+  // Update existing nodes and their classes
+  const allNodes = node.merge(nodeEnter);
+
+  // Update classes for all nodes
+  allNodes.each(function(d) {
+    const node = d3.select(this);
+    if (d.isLoading) {
+      node.classed("loading-node", true);
+    } else {
+      node.classed("loading-node", false);
+    }
+  });
+
+  allNodes.select("circle")
+    .attr("r", d => d.r)
+    .attr("fill", d => {
+      if (d.isLoading) return loadingColors[0];
+      return d.selected ? "#4CAF50" : color(d.zone);
+    });
+
+  // If there's a loading node, start its animation
+  if (selectedTag?.isLoading) {
+    const loadingNode = allNodes.filter(d => d.id === selectedTag.id);
+    updateNodeAppearance(selectedTag);
+  }
+
+  // Add title to entering nodes
+  nodeEnter.append("title")
+    .text(d => d.id);
+
+  // Remove exiting nodes
+  node.exit().remove();
+  zoneGraph.value.node = node.merge(nodeEnter);
+
+  // Update links
+  updateLinks();
+
+  zoneGraph.value.simulation.on("tick", () => {
+    // First ensure hybrid systems maintain their positions
+    nodes.forEach(node => {
+      if (node.fx !== null && node.fy !== null) {
+        node.x = node.fx;
+        node.y = node.fy;
+      }
+    });
+
+    const links = zoneGraph.value.simulation.force("link").links();
+
+    zoneGraph.value.link
+      .data(links)
+      .attr("x1", d => d.source.x || 0)
+      .attr("y1", d => d.source.y || 0)
+      .attr("x2", d => d.target.x || 0)
+      .attr("y2", d => d.target.y || 0);
+
+    zoneGraph.value.node
+      .attr("transform", d => `translate(${d.x || 0},${d.y || 0})`);
+  });
+
+  // After updating nodes and links, update node colors
+  updateNodeColors();
+}
+
+
+async function handleNodeClick(event: MouseEvent, d: Tag) {
+  if (props.preview) return;
+  event.stopPropagation();
+  console.log('d', d)
+  if (d.isHybrid) {
+    d.selected = !d.selected;
+    
+    if (d.selected) {
+      tagStore.addSelectedHybridTag(d);
+    } else {
+      tagStore.removeSelectedHybridTag(d.id, props.zone);
+    }
+    
+    updateHybridRelatedNodes(d, !d.selected);
+    updateNodeAppearance(d, false);
+    updateGraph();
+    return;
+  }
+
+  // Handle both secondary tags and hybrid child tags the same way
+  if (d.zone.includes('-secondary') || d.isHybridChild) {
+    // Toggle selection
+    d.selected = !d.selected;
+    updateNodeAppearance(d, false);
+    
+    // If it's a hybrid child, update the selection in the parent's childTags array
+    if (d.isHybridChild) {
+      const parentHybrid = tagStore.getHybridTagsForZone(props.zone)
+        .find(hybrid => hybrid.childTags?.some(child => child.id === d.id));
+      if (parentHybrid && parentHybrid.childTags) {
+        const childTag = parentHybrid.childTags.find(child => child.id === d.id);
+        if (childTag) {
+          childTag.selected = d.selected;
+        }
+      }
+    }
+    
+    // Get all selected tags from the same parent/context
+    const selectedTags = zoneGraph.value.nodes.filter(node => {
+      if (!node.selected || node.isHidden) return false;
+
+      if (d.isHybridChild) {
+        // If current tag is a hybrid child, only select other children of the same hybrid parent
+        const parentHybrid = tagStore.getHybridTagsForZone(props.zone)
+          .find(hybrid => hybrid.childTags?.some(child => child.id === d.id));
+        return node.isHybridChild && parentHybrid?.childTags?.some(child => child.id === node.id);
+      } else {
+        // If current tag is a secondary tag, only select other secondary tags
+        return node.zone.includes('-secondary') && !node.isHybridChild;
+      }
+    });
+
+    if (d.selected) {
+      // If we have 2 or more selected tags, create hybrid
+      if (selectedTags.length >= 2) {
+        if (hybridCreationTimeout.value) {
+          clearTimeout(hybridCreationTimeout.value);
+        }
+        
+        hybridCreationTimeout.value = setTimeout(async () => {
+          const hybridTag = await tagStore.createHybridTag(props.zone, selectedTags);
+          if (hybridTag) {
+            // If we're combining hybrid child tags, attach the new hybrid to the parent hybrid
+            if (d.isHybridChild) {
+              const parentHybrid = tagStore.getHybridTagsForZone(props.zone)
+                .find(hybrid => hybrid.childTags?.some(child => child.id === d.id));
+              
+              if (parentHybrid) {
+                // Create link between parent hybrid and new hybrid
+                const link = {
+                  source: parentHybrid.id,
+                  target: hybridTag.id,
+                  value: 1,
+                  isHybridLink: true,
+                  isHybridChainLink: true // Special flag for hybrid-to-hybrid links
+                };
+                
+                // Add to links
+                zoneGraph.value.links.push(link);
+              }
+            }
+
+            updateHybridRelatedNodes(hybridTag, false);
+            selectedTags.forEach(tag => {
+              tag.selected = false;
+              updateNodeAppearance(tag, false);
+            });
+            updateGraph();
+          }
+        }, 1000);
+      }
+    } else {
+      if (hybridCreationTimeout.value) {
+        clearTimeout(hybridCreationTimeout.value);
+      }
+    }
+
+    emit('secondaryTagSelected', d.id);
+    return;
+  }
+
+  // Rest of the primary tag click handling...
+  if (!d.selected) {
+    d.isLoading = true;
+    const node = zoneGraph.value.svg.selectAll(`.nodes g`).filter(n => n.id === d.id);
+    node.classed("loading-node", true);
+  }
+  
+  d.selected = !d.selected;
+
+  if (d.selected) {
+    tagStore.unselectAllSecondaryTagsFromZone(props.zone, d.alias);
+    tagStore.setLastClickedTag(props.zone, d.id, d.x, d.y);
+  } else {
+    tagStore.setLastClickedTag(props.zone, null);
+  }
+  
+  updateGraph();
+  emit('tagSelected', d.id, props.zone);
+}
+
+function updateLinks() {
+  const linkSelection = zoneGraph.value.svg.select(".links").selectAll("line")
+    .data(zoneGraph.value.links, d => {
+      const sourceId = typeof d.source === 'object' ? d.source.id : d.source;
+      const targetId = typeof d.target === 'object' ? d.target.id : d.target;
+      return `${sourceId}-${targetId}`;
+    });
+
+  linkSelection.exit().remove();
+
+  const linkEnter = linkSelection.enter()
+    .append("line")
+    .attr("stroke", "#999")
+    .attr("stroke-opacity", 0.6)
+    .attr("stroke-width", d => Math.sqrt(d.value));
+
+  zoneGraph.value.link = linkEnter.merge(linkSelection);
+}
+
+function setupSvgAndSimulation(width: number, height: number) {
+  const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+  // Filter tags for the current zone
+  const zoneTags = tagStore.tagsByZone(props.zone);
+  const secondaryTags = tagStore.getAllSecondaryTagsForZone(props.zone);
+  const hybridTags = tagStore.getHybridTagsForZone(props.zone);
+
+  // Prepare nodes with all necessary properties
+  zoneGraph.value.nodes = [...zoneTags, ...secondaryTags, ...hybridTags].map(tag => ({
+    ...tag,
+    r: tag.isHybrid ? 15 : tag.size / 2,
+    x: props.width / 2,
+    y: props.height / 2,
+    vx: 0,
+    vy: 0
+  }));
+
+  // Create links after nodes are prepared
+  zoneGraph.value.links = tagStore.createLinksBySourceId(props.zone);
+
+  // Initialize simulation with prepared nodes
+  const simulationForces = {
+    link: d3.forceLink(zoneGraph.value.links)
+      .id((d: any) => d.id)
+      .distance(props.preview ? 20 : RADIUS)
+      .strength(props.preview ? 0.8 : 0.3),
+    charge: d3.forceManyBody()
+      .strength(props.preview ? -20 : -30)
+      .distanceMax(200),
+    center: d3.forceCenter(width / 2, height / 2)
+      .strength(props.preview ? 0.8 : 0.3),
+    collision: d3.forceCollide()
+      .radius((d: any) => d.r + (props.preview ? 1 : 10))
+      .strength(props.preview ? 0.8 : 0.4),
+    x: d3.forceX(width / 2).strength(props.preview ? 0.2 : 0.05),
+    y: d3.forceY(height / 2).strength(props.preview ? 0.2 : 0.05)
+  };
+
+  // Create simulation with prepared nodes
+  zoneGraph.value.simulation = d3.forceSimulation(zoneGraph.value.nodes)
+    .force("link", simulationForces.link)
+    .force("charge", simulationForces.charge)
+    .force("center", simulationForces.center)
+    .force("collision", simulationForces.collision)
+    .force("x", simulationForces.x)
+    .force("y", simulationForces.y)
+    .alphaDecay(0.05);
+
+  zoneGraph.value.svg = d3.select(chartContainer.value)
+    .append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .attr("viewBox", [0, 0, width, height])
+    .attr("style", "width: 100%; height: 100%;");
+
+  // Add a background rect to catch mouse events
+  zoneGraph.value.svg.append("rect")
+    .attr("width", width)
+    .attr("height", height)
+    .attr("fill", "none")
+    .attr("pointer-events", "all");
+
+  const g = zoneGraph.value.svg.append("g");
+
+  // Apply zoom configuration if provided
+  if (props.zoomConfig) {
+    g.attr("transform", `translate(${props.zoomConfig.translateX}, ${props.zoomConfig.translateY}) scale(${props.zoomConfig.scale})`);
+  }
+
+  const link = g.append("g")
+    .attr("class", "links")
+    .selectAll("line")
+    .data(zoneGraph.value.links)
+    .join("line")
+    .attr("stroke", "#999")
+    .attr("stroke-opacity", 0.6)
+    .attr("stroke-width", d => Math.sqrt(d.value));
+
+  const node = g.append("g")
+    .attr("class", "nodes")
+    .selectAll("g")
+    .data(zoneGraph.value.nodes)
+    .join("g")
+    .call(drag(zoneGraph.value.simulation))
+    .on("click", handleNodeClick);
+
+  node.append("circle")
+    .attr("r", d => d.r)
+    .attr("fill", d => d.selected ? "#4CAF50" : color(d.zone))
+    .attr("stroke", "#fff")
+    .attr("stroke-width", 1.5);
+
+  node.each(function(d: any) {
+    const node = d3.select(this);
+    const lines = formatNodeText(d.text);
+    
+    lines.forEach((line, i) => {
+      node.append("text")
+        .text(line)
+        .attr("x", 0)
+        .attr("y", d.r + 10 + (i * 12)) // 12px line height
+        .attr("text-anchor", "middle")
+        .attr("font-size", "10px")
+        .attr("class", "node-text");
+    });
+  });
+
+  node.append("title")
+    .text(d => d.id);
+
+    zoneGraph.value.simulation.on("tick", () => {
+    zoneGraph.value.link
+      .attr("x1", d => d.source.x)
+      .attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x)
+      .attr("y2", d => d.target.y);
+
+    zoneGraph.value.node
+      .attr("transform", d => `translate(${d.x},${d.y})`);
+  });
+}
+
+function addZoomBehavior() {
+  // Add zoom behavior
+  const zoom = d3.zoom()
+    .scaleExtent([0.5, 2])
+    .on("zoom", (event) => {
+      zoneGraph.value.svg.select("g").attr("transform", event.transform);
+    });
+
+  zoneGraph.value.svg.call(zoom);
+}
+
+function preventCollapseOnEmptyClick() {
+  // Prevent collapsing when clicking on empty space
+  zoneGraph.value.svg.on("click", (event) => {
+    if (event.target.tagName === "svg" || event.target.tagName === "rect") {
+      event.stopPropagation();
+    }
+  });
+}
+
+function updateNodeAppearance(d, updateForces = true) {
+  const color = d3.scaleOrdinal(d3.schemeCategory10);
+  const nodes = zoneGraph.value.svg.selectAll(`.nodes g`).filter(n => n.id === d.id);
+
+  const baseSize = d.zone.includes('-secondary') ? SECONDARY_NODE_SIZE : PRIMARY_NODE_SIZE;
+  const nodeSize = d.isHybrid ? SECONDARY_NODE_SIZE : baseSize;
+
+  nodes.each(function() {
+    const node = d3.select(this);
+    const circle = node.select("circle");
+    circle.attr("r", nodeSize / 2);
+    
+    // Only update the color, no size changes
+    if (!d.isLoading) {
+      circle.attr("fill", d.selected ? "#4CAF50" : color(d.zone));
+    }
+  });
+
+  // Keep the node's radius constant
+  const index = zoneGraph.value.nodes.findIndex(n => n.id === d.id);
+  if (index !== -1) {
+    zoneGraph.value.nodes[index].r = baseSize / 2;
+    
+    // Only update forces for primary nodes
+    if (updateForces) {
+      zoneGraph.value.simulation.force("collision", d3.forceCollide()
+        .radius(n => n.r + 5)
+        .strength(0.1));
+      zoneGraph.value.simulation.alpha(0.1).restart();
+    }
+  }
+  console.log('updated node appearance', d)
+}
+
+
+function drag(simulation) {
+  function dragstarted(event) {
+    // Don't allow dragging of hybrid systems
+    if (event.subject.isHybrid || event.subject.isHybridChild) return;
+
+    if (!event.active) simulation.alphaTarget(0.3).restart();
+    event.subject.fx = event.subject.x;
+    event.subject.fy = event.subject.y;
+  }
+
+  function dragged(event) {
+    if (event.subject.isHybrid || event.subject.isHybridChild) return;
+    
+    event.subject.fx = event.x;
+    event.subject.fy = event.y;
+  }
+
+  function dragended(event) {
+    if (event.subject.isHybrid || event.subject.isHybridChild) return;
+    
+    if (!event.active) simulation.alphaTarget(0);
+    event.subject.fx = null;
+    event.subject.fy = null;
+  }
+
+  return d3.drag()
+    .on("start", dragstarted)
+    .on("drag", dragged)
+    .on("end", dragended);
+}
+
+// Add this new function to update node colors
+function updateNodeColors() {
+  const color = d3.scaleOrdinal(d3.schemeCategory10);
+  zoneGraph.value.svg.selectAll(".nodes circle")
+    .attr("fill", d => d.selected ? "#4CAF50" : color(d.zone));
+}
+
+// Add new function to handle hybrid-related visual updates
+function updateHybridRelatedNodes(hybridTag: Tag, visible: boolean) {
+  if (!hybridTag.sourceTags) return;
+
+  // Only hide/show source tags
+  const sourceIds = hybridTag.sourceTags.map(t => t.id);
+  
+  // Update visibility of source tags
+  zoneGraph.value.svg.selectAll(".nodes g")
+    .filter(d => sourceIds.includes(d.id))
+    .transition()
+    .duration(600)
+    .style("opacity", visible ? 1 : 0)
+    .style("pointer-events", visible ? "all" : "none");
+
+  // Update their links
+  zoneGraph.value.svg.selectAll(".links line")
+    .filter(d => sourceIds.includes(d.source.id) || sourceIds.includes(d.target.id))
+    .transition()
+    .duration(600)
+    .style("opacity", visible ? 0.6 : 0);
+
+  // Ensure child tags are always visible
+  if (hybridTag.childTags) {
+    const childIds = hybridTag.childTags.map(t => t.id);
+    zoneGraph.value.svg.selectAll(".nodes g")
+      .filter(d => childIds.includes(d.id))
+      .style("opacity", 1)
+      .style("pointer-events", "all");
+  }
+}
+
+// Add new function to handle next zone click
+function handleNextZone() {
+  const zones = tagStore.zones;
+  const currentIndex = zones.indexOf(props.zone);
+  const nextIndex = currentIndex < zones.length - 1 ? currentIndex + 1 : currentIndex;
+  emit('zoneChange', zones[nextIndex]);
+}
+
+// Add these computed properties
+const isFirstZone = computed(() => {
+  const zones = tagStore.zones;
+  return zones.indexOf(props.zone) === 0;
+});
+
+const isLastZone = computed(() => {
+  const zones = tagStore.zones;
+  return zones.indexOf(props.zone) === zones.length - 1;
+});
+
+// Add new function to handle previous zone click
+function handlePrevZone() {
+  const zones = tagStore.zones;
+  const currentIndex = zones.indexOf(props.zone);
+  const prevIndex = currentIndex > 0 ? currentIndex - 1 : 0;
+  emit('zoneChange', zones[prevIndex]);
+}
+
+// Add this function near the top of the script section
+function formatNodeText(text: string): string[] {
+  // Split by spaces but keep prepositions with their following word
+  const prepositions = ['of', 'in', 'on', 'at', 'by', 'for', 'with', 'to', '&', 'and'];
+  const words = text.split(' ');
+  const lines: string[] = [];
+  
+  for (let i = 0; i < words.length; i++) {
+    if (prepositions.includes(words[i].toLowerCase()) && i < words.length - 1) {
+      // Combine preposition with the next word
+      lines.push(`${words[i]} ${words[i + 1]}`);
+      i++; // Skip the next word since we've used it
+    } else {
+      lines.push(words[i]);
+    }
+  }
+  
+  return lines;
+}
+</script>
+
+<style scoped>
+div {
+  display: inline-block;
+}
+
+@keyframes loadingPulse {
+  0% { fill: #4CAF50; }
+  25% { fill: #2196F3; }
+  50% { fill: #4CAF50; }
+  75% { fill: #2196F3; }
+  100% { fill: #4CAF50; }
+}
+
+/* Use ::v-deep to target elements inside the SVG */
+::v-deep .loading-node circle {
+  animation: loadingPulse 1s infinite;
+}
+
+::v-deep .nodes g[data-is-hybrid="true"] circle {
+  stroke: #4CAF50;
+  stroke-width: 2;
+  stroke-dasharray: 4;
+  fill-opacity: 0.3;
+}
+
+/* Add to existing styles */
+::v-deep .nodes g {
+  transition: opacity 0.6s ease;
+}
+
+::v-deep .links line {
+  transition: opacity 0.6s ease;
+}
+
+/* Add to existing styles */
+.relative {
+  position: relative;
+}
+
+.absolute {
+  position: absolute;
+}
+
+.bottom-4 {
+  bottom: 1rem;
+}
+
+.right-4 {
+  right: 1rem;
+}
+
+button {
+  z-index: 10;
+}
+
+.flex {
+  display: flex;
+}
+
+.gap-2 {
+  gap: 0.5rem;
+}
+
+.rotate-180 {
+  transform: rotate(180deg);
+}
+
+button:disabled {
+  opacity: 0.7;
+}
+
+button:disabled:hover {
+  background-color: #9ca3af; /* Tailwind's gray-400 */
+}
+
+/* Add to existing styles */
+::v-deep .node-text {
+  pointer-events: none; /* Prevents text from interfering with click events */
+  user-select: none; /* Prevents text selection */
+}
+</style>
+
+================
+File: components/Tag.vue
+================
+<template>
+    <div 
+      :class="['tag', { 'selected': tag.selected }]" 
+      :style="{ 
+        fontSize: `${tag.size}px`,
+        left: `${tag.x}px`,
+        top: `${tag.y}px`
+      }"
+      @click="$emit('click')"
+    >
+      {{ tag.text }}
+    </div>
+  </template>
+  
+  <script setup lang="ts">
+  defineProps<{
+    tag: {
+      id: string
+      text: string
+      size: number
+      selected: boolean
+      x: number
+      y: number
+    }
+  }>()
+  
+  defineEmits<{
+    (e: 'click'): void
+  }>()
+  </script>
+  
+  <style lang="scss" scoped>
+  .tag {
+    position: absolute;
+    margin: 5px;
+    padding: 5px 10px;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    user-select: none;
+  
+    &:hover {
+      transform: scale(1.1);
+    }
+  
+    &.selected {
+      background-color: #4CAF50;
+      color: white;
+    }
+  }
+  </style>
+
+================
+File: components/TagCloud.vue
+================
+<template>
+  <div class="tag-cloud" v-if="!loading">
+    <div class="main-zone grid grid-cols-2 tw-gap-4">
+      <div class="graph-container">
+        <h2>{{ focusedZone }}</h2>
+        <ForceGraph
+          :key="focusedZone"
+          :width="600"
+          :height="728"
+          :zone="focusedZone"
+          class="main-graph"
+          @tagSelected="handleTagSelection"
+          @secondaryTagSelected="handleSecondaryTagSelection"
+          @zoneChange="handleZoneChange"
+          :zoomConfig="{ scale: 1.4, translateX: -90, translateY: -130 }"
+        />
+        <div class="preview-zones">
+          <div
+            v-for="zone in previewZones"
+            :key="zone"
+            class="preview-zone"
+            @click="setFocusedZone(zone)"
+          >
+            <h3>{{ zone }}</h3>
+            <ForceGraph
+              :width="100"
+              :height="150"
+              :zone="zone"
+              :preview="true"
+              :zoomConfig="{ scale: 0.3, translateX: 45, translateY: 50 }"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div class="prompt-container">
+        <h2>Image:</h2>
+        <div class="image-container">
+          <img v-if="imageUrl" :src="imageUrl" alt="Generated Image" class="generated-image" />
+          <div v-else-if="isGeneratingImage" class="loader-container">
+            <div class="loader">
+              <div class="particles">
+                <div class="particle"></div>
+                <div class="particle"></div>
+                <div class="particle"></div>
+                <div class="particle"></div>
+                <div class="particle"></div>
+                <div class="particle"></div>
+                <div class="particle"></div>
+                <div class="particle"></div>
+              </div>
+            </div>
+            <p class="loader-text">Generating your image...</p>
+          </div>
+          <div v-else class="placeholder-container"></div>
+        </div>
+
+        <div class="prompt-box">
+          <div class="prompt-header">
+            <h2>Generated Prompt:</h2>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" v-model="isManualMode" class="sr-only peer" />
+              <div
+                class="relative w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"
+              ></div>
+              <span class="ms-3 text-sm font-medium text-gray-900 dark:text-gray-300"
+                >Manual Mode</span
+              >
+            </label>
+          </div>
+
+          <textarea
+            v-if="isManualMode"
+
+            class="manual-prompt-input"
+            placeholder="Enter your prompt..."
+          ></textarea>
+          <p v-else>{{ generatedPromptResult }}</p>
+
+          <button
+            @click="generateImage"
+            :disabled="!(isManualMode ? manualPrompt :  generatedPrompt) || isGeneratingImage"
+            class="flex items-center gap-2"
+          >
+            <ArrowPathIcon v-if="isGeneratingImage" class="animate-spin h-5 w-5" />
+            {{ isGeneratingImage ? 'Generating...' : 'Generate Image' }}
+          </button>
+        </div>
+        <p class="w-full !text-left text-xs">
+          Selected Tags: <span class="font-bold">{{ generatedPrompt }}</span>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div v-else class="loading">Loading...</div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted, computed, watch } from 'vue'
+import { useTagStore } from '~/store/tagStore'
+import ForceGraph from './ForceGraph.vue'
+import { GoogleGenerativeAI } from '@google/generative-ai'
+import { ArrowPathIcon } from '@heroicons/vue/24/solid'
+import { HarmCategory, HarmBlockThreshold } from '@google/generative-ai'
+import { mockTags } from '~/store/mockTags'
+const config = useRuntimeConfig()
+
+const apiKey = config.public.GEMINI_API_KEY
+const fluxApiKey = config.public.FLUX_API_KEY
+if (!apiKey) {
+  throw new Error('GEMINI_API_KEY is not defined')
+}
+if (!fluxApiKey) {
+  throw new Error('FLUX_API_KEY is not defined')
+}
+const genAI = new GoogleGenerativeAI(apiKey)
+
+const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-8b' })
+
+const imageUrl = ref('')
+const generatedPromptResult = ref('')
+let promptRequestId = 0
+let imageRequestId = 0
+
+const tagStore = useTagStore()
+const { fetchTags } = tagStore
+
+const loading = ref(true)
+
+const focusedZone = computed(() => tagStore.focusedZone)
+
+const previewZones = computed(() => {
+  return tagStore.zones.filter((zone) => zone !== focusedZone.value)
+})
+
+onMounted(async () => {
+  await fetchTags()
+  loading.value = false
+})
+
+const setFocusedZone = (zone: string) => {
+  tagStore.setFocusedZone(zone)
+}
+
+const handleTagSelection = async (tagId: string, zone: string) => {
+  const tag = tagStore.tags.find((t) => t.id === tagId)
+  if (!tag) return
+
+  // Handle unselecting current tag if needed
+  const currentSelectedTag = tagStore.tags.find(
+    (t) => t.zone === zone && t.selected && t.id !== tagId
+  )
+  if (currentSelectedTag) {
+    tagStore.toggleTag(currentSelectedTag.id, zone)
+    currentSelectedTag.secondaryTags?.forEach((secTag) => {
+      if (secTag.selected) {
+        tagStore.toggleSecondaryTag(currentSelectedTag.id, secTag.id)
+      }
+    })
+    tagStore.removeSecondaryTagsByParent(currentSelectedTag.id)
+  }
+
+  if (!tag.selected) {
+    // Tag is being selected
+    tagStore.toggleTag(tagId, zone)
+
+    // Set loading state
+    tagStore.setTagLoading(tagId, true)
+
+    // Store preconfigured tags temporarily
+    const preconfiguredTags = tag.secondaryTags || []
+    // Clear secondary tags immediately so they don't show up
+    tag.secondaryTags = []
+
+    // Generate new dynamic secondary tags
+    const newTags = await generateRelatedTags(tag.text)
+
+    // Prepare all tags (both preconfigured and dynamic)
+    const allTags = [
+      ...preconfiguredTags.map((t) => ({
+        ...t,
+        parentId: tagId,
+        isDynamic: false,
+      })),
+      ...newTags.map((tagText, index) => ({
+        id: `${tagId}-dynamic-${index}`,
+        text: tagText,
+        parentId: tagId,
+        zone: `${zone}-secondary`,
+        size: tag.size * 0.8,
+        selected: false,
+        isDynamic: true,
+        x: tag.x || 0,
+        y: tag.y || 0,
+        fx: null,
+        fy: null,
+        alias: tagText.toLowerCase().replace(/\s+/g, '-'),
+      })),
+    ]
+
+    // Clear loading state
+    tagStore.setTagLoading(tagId, false)
+
+    // Add all tags at once
+    allTags.forEach((newTag) => {
+      tagStore.addSecondaryTag(tagId, newTag)
+    })
+  } else {
+    // Tag is being unselected
+    tagStore.toggleTag(tagId, zone)
+    // Remove all secondary tags when parent is unselected
+    tag.secondaryTags?.forEach((secTag) => {
+      if (secTag.selected) {
+        tagStore.toggleSecondaryTag(tagId, secTag.id)
+      }
+    })
+    // Remove dynamic tags
+    tagStore.removeSecondaryTagsByParent(tagId)
+  }
+}
+
+const handleSecondaryTagSelection = (tagId: string) => {
+  const primaryTag = tagStore.tags.find((tag) =>
+    tag.secondaryTags?.some((secTag) => secTag.id === tagId)
+  )
+  if (primaryTag) {
+    tagStore.toggleSecondaryTag(primaryTag.id, tagId)
+  }
+}
+
+const generatedPrompt = computed(() => {
+  return tagStore.allSelectedTags.map((tag) => tag.text).join(', ')
+})
+
+const debounce = (func: Function, delay: number) => {
+  let timeoutId: ReturnType<typeof setTimeout>
+  return (...args: any[]) => {
+    clearTimeout(timeoutId)
+    timeoutId = setTimeout(() => func(...args), delay)
+  }
+}
+
+const generatePrompt = () => {
+  return new Promise((resolve) => {
+    const debouncedGenerate = debounce(async () => {
+      if (isManualMode.value) {
+        resolve(null);
+        return;
+      }
+
+      const prompt = generatedPrompt.value;
+      if (prompt.length > 0) {
+        const currentRequestId = ++promptRequestId;
+
+        const response = await model.generateContent({
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                {
+                  text: `You are creating an image prompt based on the following tags: ${prompt}. You should create prompt as much exactly matching the tags as possible, do not make up tags, the result is a prompt for an image generator, no words before, no words after, just the prompt.`,
+                },
+              ],
+            },
+          ],
+          safetySettings: [
+            {
+              category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+              threshold: HarmBlockThreshold.BLOCK_NONE,
+            },
+            {
+              category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+              threshold: HarmBlockThreshold.BLOCK_NONE,
+            },
+            {
+              category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+              threshold: HarmBlockThreshold.BLOCK_NONE,
+            },
+            {
+              category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+              threshold: HarmBlockThreshold.BLOCK_NONE,
+            },
+          ],
+          generationConfig: {
+            temperature: 0.5,
+            maxOutputTokens: 1000,
+          },
+        });
+
+        if (currentRequestId === promptRequestId) {
+          generatedPromptResult.value = await response.response.text();
+          console.log('generatedPromptResult', generatedPromptResult.value)
+          resolve(generatedPromptResult.value);
+        } else {
+          resolve(null);
+        }
+      } else {
+        resolve(null);
+      }
+    }, 300);
+
+    debouncedGenerate();
+  });
+}
+
+const isGeneratingImage = ref(false)
+
+const generateImage = async () => {
+    await generatePrompt()
+  isGeneratingImage.value = true
+  const currentImageRequestId = ++imageRequestId
+
+  const url = 'https://api.segmind.com/v1/fast-flux-schnell'
+
+  const data = {
+    prompt: isManualMode.value ? manualPrompt.value : generatedPromptResult.value,
+    steps: 4,
+    seed: 1184522,
+    aspect_ratio: '1:1',
+    base64: true,
+  }
+
+  try {
+    const response = await $fetch(url, {
+      method: 'POST',
+      headers: { 'x-api-key': fluxApiKey as string },
+      body: data,
+    })
+
+    if (currentImageRequestId === imageRequestId) {
+      if (typeof response?.image === 'string') {
+        imageUrl.value = `data:image/jpeg;base64,${response.image}`
+      } else {
+        console.error('Unexpected response format:', response)
+      }
+    }
+  } catch (error) {
+    console.error('Error:', error)
+  } finally {
+    if (currentImageRequestId === imageRequestId) {
+      isGeneratingImage.value = false
+    }
+  }
+}
+
+// Watch for changes in the generatedPrompt computed property
+// watch(generatedPrompt, () => {
+//   // return;
+//   generatePrompt()
+// })
+
+// Add this ref near the top of the script section with other refs
+const isManualMode = ref(false)
+const manualPrompt = ref('')
+
+// Add this watch effect
+watch(isManualMode, (newValue) => {
+  if (newValue) {
+    // When switching to manual mode, initialize with current prompt
+    manualPrompt.value = generatedPromptResult.value
+  } else {
+    // When switching back to auto mode, trigger regeneration
+    generatePrompt()
+  }
+})
+
+// Update the generateRelatedTags function
+const generateRelatedTags = async (parentTag: string) => {
+  // Get existing tags from mockTags data
+  const mockTagData = Object.values(mockTags).flat().find(tag => tag.text === parentTag);
+  const existingTags = mockTagData?.secondaryTags || [];
+
+  // Create a set of existing tags for case-insensitive comparison
+  const existingTagSet = new Set(existingTags.map(t => t.toLowerCase()))
+
+  const response = await model.generateContent({
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          {
+            text: `You are helping users find relevant tags for their image generation. 
+            When user selects "${parentTag}" as their main subject, suggest 6 additional descriptive tags.
+
+            Requirements:
+            - Each tag should be 1-2 words
+            - Always start with a capital letter
+            - Avoid duplicating these existing tags: ${existingTags.join(', ')}
+            - Think about what users might want to achieve when they selected "${parentTag}"
+            - Include both common and creative but relevant associations
+            - Focus on visual and artistic aspects
+            - Suggest tags that would help create interesting image variations
+            - Keep tags concrete and imagery-focused
+
+            Return only a JSON array of strings, no explanation.
+            Example format: ["Mountain Peak", "Dense Forest", "Morning Mist"]`,
+          },
+        ],
+      },
+    ],
+    generationConfig: {
+      temperature: 0.7,
+      maxOutputTokens: 200,
+    },
+  })
+
+  const text = await response.response.text()
+  try {
+    const cleanedText = text.replace(/```json\n?|\n?```/g, '').trim()
+    const tags = JSON.parse(cleanedText)
+
+    // Filter out duplicates using the Set
+    const uniqueTags = tags.filter((tag: string) => !existingTagSet.has(tag.toLowerCase()))
+
+    return Array.isArray(uniqueTags) ? uniqueTags.slice(0, 5) : []
+  } catch (error) {
+    console.error('Failed to parse generated tags:', error)
+    console.error('Raw response:', text)
+    return []
+  }
+}
+
+// Add the handler for zone change in the script section
+const handleZoneChange = (newZone: string) => {
+  setFocusedZone(newZone)
+}
+</script>
+
+<style lang="scss" scoped>
+.tag-cloud {
+  display: flex;
+  flex-direction: column;
+  padding: 0px 20px 0 20px;
+  width: 100%;
+}
+
+.main-zone {
+  margin-bottom: 20px;
+  width: 100%;
+
+  h2 {
+    text-align: center;
+    margin-bottom: 2px;
+  }
+  .main-graph {
+    width: 100% !important;
+    border: 1px solid #cfcfcf;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    background: #fff;
+  }
+}
+
+/* Add these new container styles */
+.graph-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.prompt-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 0px 0 20px;
+  min-height: 600px; /* Ensures minimum height even without image */
+
+  h2 {
+    margin-bottom: 2px;
+  }
+
+  .prompt-box {
+    width: 100%;
+    min-height: 120px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 3px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+
+    p {
+      font-size: 0.9em;
+      line-height: 1.5;
+      margin: 0;
+      padding: 0 0 15px 0;
+      color: #333;
+      text-align: left;
+      flex-grow: 1;
+      min-height: 115px;
+    }
+
+    button {
+      align-self: flex-end;
+      padding: 8px 16px;
+      font-size: 0.95em;
+      background-color: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+
+      &:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+      }
+
+      &:hover:not(:disabled) {
+        background-color: #45a049;
+      }
+    }
+
+    .prompt-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 3px;
+
+      .manual-mode-toggle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.9em;
+        cursor: pointer;
+
+        input[type='checkbox'] {
+          cursor: pointer;
+        }
+      }
+    }
+
+    .manual-prompt-input {
+      width: 100%;
+      min-height: 100px;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin-bottom: 15px;
+      font-size: 0.9em;
+      line-height: 1.5;
+      resize: vertical;
+
+      &:focus {
+        outline: none;
+        border-color: #4caf50;
+      }
+    }
+  }
+
+  .image-container {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8f9fa;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .placeholder-container {
+    width: 100%;
+    height: 100%;
+    background-color: #f5f5f5;
+    border: 2px dashed #ddd;
+    border-radius: 8px;
+  }
+
+  .generated-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 8px;
+  }
+
+  button {
+    padding: 10px 20px;
+    font-size: 1em;
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: auto;
+    width: fit-content;
+
+    &:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+
+    &:hover:not(:disabled) {
+      background-color: #45a049;
+    }
+  }
+}
+
+.preview-zones {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.preview-zone {
+  width: calc(20% - 10px);
+  padding-top: 5px;
+  border: 1px solid #cfcfcf;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.2s;
+  background: #fff;
+  &:hover {
+    transform: scale(1.05);
+  }
+
+  h3 {
+    text-align: center;
+    margin-bottom: 5px;
+  }
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  font-size: 1.5rem;
+}
+
+.loader-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.loader {
+  width: 120px;
+  height: 120px;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.particles {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  animation: rotate 10s linear infinite;
+}
+
+.particle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #4caf50;
+  opacity: 0.6;
+  left: calc(50% - 5px);
+  top: calc(50% - 5px);
+
+  @for $i from 1 through 8 {
+    &:nth-child(#{$i}) {
+      transform: rotate($i * 45deg) translateY(-30px);
+      animation: particle-animation 2s infinite;
+      animation-delay: $i * 0.2s;
+    }
+  }
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes particle-animation {
+  0% {
+    transform: rotate(0deg) translateY(-30px) scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: rotate(180deg) translateY(-40px) scale(1.5);
+    opacity: 1;
+    background: #2196f3;
+  }
+  100% {
+    transform: rotate(360deg) translateY(-30px) scale(1);
+    opacity: 0.6;
+  }
+}
+
+.loader-text {
+  margin-top: 20px;
+  color: #666;
+  font-size: 0.9em;
+  animation: text-pulse 2s ease-in-out infinite;
+}
+
+@keyframes text-pulse {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+</style>
+
+================
+File: pages/index.vue
+================
+<template>
+    <div class="container mx-auto">
+      <h1 class="text-center text-2xl font-bold">Tag Cloud Image Prompt Generator</h1>
+      <TagCloud />
+    </div>
+  </template>
+  
+  <script setup lang="ts">
+  import TagCloud from '~/components/TagCloud.vue'
+  </script>
+
+================
+File: public/robots.txt
+================
+
+
+================
+File: server/tsconfig.json
+================
+{
+  "extends": "../.nuxt/tsconfig.server.json"
+}
+
+================
+File: store/mockTags.ts
+================
+export const mockTags = {
+  Subject: [
+    {
+      text: 'Humans',
+        alias: 'humans',
+        secondaryTags: [
+          'Adult Male',
+          'Adult Female',
+          'Child',
+          'Elderly',
+          'Group of People',
+          'Portrait',
+          'Silhouette',
+          'Diverse Cultures'
+        ]
+      },
+      {
+        text: 'Animals',
+        alias: 'animals',
+        secondaryTags: [
+          'Mammals',
+          'Birds',
+          'Reptiles',
+          'Fish',
+          'Insects',
+          'Amphibians',
+          'Prehistoric Animals',
+          'Sea Creatures'
+        ]
+      },
+      {
+        text: 'Mythical Creatures',
+        alias: 'mythical creatures',
+        secondaryTags: [
+          'Dragons',
+          'Unicorns',
+          'Phoenix',
+          'Griffins',
+          'Mermaids',
+          'Centaurs',
+          'Fairies',
+          'Giants'
+        ]
+      },
+      {
+        text: 'Plants',
+        alias: 'plants',
+        secondaryTags: [
+          'Trees',
+          'Flowers',
+          'Grass',
+          'Mushrooms',
+          'Vines',
+          'Underwater Plants',
+          'Desert Plants',
+          'Carnivorous Plants'
+        ]
+      },
+      {
+        text: 'Objects',
+        alias: 'objects',
+        secondaryTags: [
+          'Vehicles',
+          'Instruments',
+          'Tools',
+          'Weapons',
+          'Furniture',
+          'Technology',
+          'Clothing',
+          'Food Items'
+        ]
+      },
+      {
+        text: 'Abstract Concepts',
+        alias: 'abstract concepts',
+        secondaryTags: [
+          'Love',
+          'Time',
+          'Freedom',
+          'Knowledge',
+          'Chaos',
+          'Harmony',
+          'Infinity',
+          'Emotion'
+        ]
+      },
+      {
+        text: 'Landscapes',
+        alias: 'landscapes',
+        secondaryTags: [
+          'Mountains',
+          'Forests',
+          'Beaches',
+          'Deserts',
+          'Fields',
+          'Islands',
+          'Cliffs',
+          'Valleys'
+        ]
+      },
+      {
+        text: 'Structures',
+        alias: 'structures',
+        secondaryTags: [
+          'Castles',
+          'Skyscrapers',
+          'Bridges',
+          'Monuments',
+          'Ruins',
+          'Temples',
+          'Houses',
+          'Towers'
+        ]
+      }
+    ],
+    Attributes: [
+        {
+          text: 'Roles',
+          alias: 'roles',
+          secondaryTags: [
+            'Hero',
+            'Villain',
+            'Mentor',
+            'Sidekick',
+            'Leader',
+            'Rebel',
+            'Guardian',
+            'Ninja' // Added 'Ninja' here
+          ]
+        },
+        {
+          text: 'Characteristics',
+          alias: 'characteristics',
+          secondaryTags: [
+            'Brave',
+            'Intelligent',
+            'Cunning',
+            'Kind',
+            'Funny',
+            'Mysterious',
+            'Energetic',
+            'Stealthy'
+          ]
+        },
+        {
+          text: 'Emotions',
+          alias: 'emotions',
+          secondaryTags: [
+            'Happy',
+            'Sad',
+            'Angry',
+            'Fearful',
+            'Surprised',
+            'Disgusted',
+            'Calm',
+            'Excited'
+          ]
+        },
+        {
+          text: 'Abilities',
+          alias: 'abilities',
+          secondaryTags: [
+            'Flying',
+            'Invisibility',
+            'Super Strength',
+            'Telepathy',
+            'Speed',
+            'Magic',
+            'Stealth',
+            'Martial Arts' // Added 'Martial Arts'
+          ]
+        },
+        {
+          text: 'Occupations',
+          alias: 'occupations',
+          secondaryTags: [
+            'Doctor',
+            'Engineer',
+            'Artist',
+            'Scientist',
+            'Teacher',
+            'Detective',
+            'Farmer',
+            'Pirate' // Added 'Pirate' for variety
+          ]
+        },
+        {
+          text: 'Personality Traits',
+          alias: 'personality traits',
+          secondaryTags: [
+            'Optimistic',
+            'Pessimistic',
+            'Introverted',
+            'Extroverted',
+            'Ambitious',
+            'Lazy',
+            'Curious',
+            'Stubborn'
+          ]
+        },
+        {
+          text: 'Physical Traits',
+          alias: 'physical traits',
+          secondaryTags: [
+            'Tall',
+            'Short',
+            'Athletic',
+            'Old',
+            'Young',
+            'Scarred',
+            'Bearded',
+            'Glasses'
+          ]
+        },
+        {
+          text: 'Relationships',
+          alias: 'relationships',
+          secondaryTags: [
+            'Friend',
+            'Enemy',
+            'Sibling',
+            'Parent',
+            'Child',
+            'Lover',
+            'Rival',
+            'Colleague'
+          ]
+        }
+      ],
+    ActivityEvent: [
+      {
+        text: 'Action',
+        alias: 'action',
+        secondaryTags: [
+          'Running',
+          'Jumping',
+          'Flying',
+          'Dancing',
+          'Fighting',
+          'Chasing',
+          'Racing',
+          'Swimming'
+        ]
+      },
+      {
+        text: 'Celebration',
+        alias: 'celebration',
+        secondaryTags: [
+          'Party',
+          'Festival',
+          'Parade',
+          'Wedding',
+          'Victory',
+          'Birthday',
+          'Graduation',
+          'Reunion'
+        ]
+      },
+      {
+        text: 'Exploration',
+        alias: 'exploration',
+        secondaryTags: [
+          'Hiking',
+          'Sailing',
+          'Space Travel',
+          'Deep Sea Diving',
+          'Time Travel',
+          'Discovery',
+          'Expedition',
+          'Journey'
+        ]
+      },
+      {
+        text: 'Conflict',
+        alias: 'conflict',
+        secondaryTags: [
+          'Battle',
+          'Argument',
+          'Duel',
+          'War',
+          'Competition',
+          'Protest',
+          'Struggle',
+          'Survival'
+        ]
+      },
+      {
+        text: 'Transformation',
+        alias: 'transformation',
+        secondaryTags: [
+          'Metamorphosis',
+          'Evolution',
+          'Aging',
+          'Healing',
+          'Rebirth',
+          'Shape-shifting',
+          'Growth',
+          'Decay'
+        ]
+      },
+      {
+        text: 'Creation',
+        alias: 'creation',
+        secondaryTags: [
+          'Painting',
+          'Sculpting',
+          'Building',
+          'Writing',
+          'Invention',
+          'Programming',
+          'Cooking',
+          'Designing'
+        ]
+      },
+      {
+        text: 'Destruction',
+        alias: 'destruction',
+        secondaryTags: [
+          'Explosion',
+          'Fire',
+          'Collapse',
+          'Erosion',
+          'Storm',
+          'Flood',
+          'Earthquake',
+          'Apocalypse'
+        ]
+      },
+      {
+        text: 'Peaceful Moments',
+        alias: 'peaceful moments',
+        secondaryTags: [
+          'Sleeping',
+          'Meditating',
+          'Reading',
+          'Watching Sunset',
+          'Listening to Music',
+          'Gardening',
+          'Fishing',
+          'Stargazing'
+        ]
+      }
+    ],
+  
+    StyleAesthetic: [
+      {
+        text: 'Realism',
+        alias: 'realism',
+        secondaryTags: [
+          'Photorealism',
+          'Hyperrealism',
+          'Naturalism',
+          'Documentary Style',
+          'Classical Realism',
+          'Contemporary Realism',
+          'Academic Art',
+          'Trompe-l’œil'
+        ]
+      },
+      {
+        text: 'Impressionism',
+        alias: 'impressionism',
+        secondaryTags: [
+          'Pointillism',
+          'Plein Air',
+          'Light Play',
+          'Soft Brushwork',
+          'Color Emphasis',
+          'Atmospheric Effects',
+          'Broken Color',
+          'Loose Composition'
+        ]
+      },
+      {
+        text: 'Surrealism',
+        alias: 'surrealism',
+        secondaryTags: [
+          'Dreamlike',
+          'Juxtaposition',
+          'Symbolism',
+          'Automatism',
+          'Fantastical',
+          'Bizarre',
+          'Metaphorical',
+          'Dadaism'
+        ]
+      },
+      {
+        text: 'Abstract',
+        alias: 'abstract',
+        secondaryTags: [
+          'Geometric',
+          'Expressionism',
+          'Cubism',
+          'Fluid Forms',
+          'Minimalist Abstract',
+          'Color Field',
+          'Deconstructivism',
+          'Suprematism'
+        ]
+      },
+      {
+        text: 'Pop Art',
+        alias: 'pop art',
+        secondaryTags: [
+          'Bold Colors',
+          'Comic Style',
+          'Celebrity Imagery',
+          'Mass Media Themes',
+          'Irony',
+          'Repetition',
+          'Consumerism',
+          'Collage'
+        ]
+      },
+      {
+        text: 'Minimalism',
+        alias: 'minimalism',
+        secondaryTags: [
+          'Monochromatic',
+          'Simple Forms',
+          'Negative Space',
+          'Clean Lines',
+          'Reductionism',
+          'Sparse Composition',
+          'Geometric Shapes',
+          'Minimal Detail'
+        ]
+      },
+      {
+        text: 'Futurism',
+        alias: 'futurism',
+        secondaryTags: [
+          'Dynamic Lines',
+          'Movement',
+          'Industrial Themes',
+          'Technological Imagery',
+          'Urban Scenes',
+          'Speed Emphasis',
+          'Abstract Forms',
+          'Metallic Colors'
+        ]
+      },
+      {
+        text: 'Vintage',
+        alias: 'vintage',
+        secondaryTags: [
+          'Retro',
+          'Sepia Tones',
+          'Nostalgic',
+          'Art Deco',
+          'Victorian Style',
+          'Film Noir',
+          'Antique Aesthetic',
+          'Old Photographs'
+        ]
+      }
+    ],
+  
+    MoodAtmosphere: [
+      {
+        text: 'Joyful',
+        alias: 'joyful',
+        secondaryTags: [
+          'Cheerful',
+          'Playful',
+          'Excited',
+          'Content',
+          'Blissful',
+          'Optimistic',
+          'Festive',
+          'Whimsical'
+        ]
+      },
+      {
+        text: 'Melancholic',
+        alias: 'melancholic',
+        secondaryTags: [
+          'Sad',
+          'Nostalgic',
+          'Lonely',
+          'Gloomy',
+          'Pensive',
+          'Regretful',
+          'Sorrowful',
+          'Heartbroken'
+        ]
+      },
+      {
+        text: 'Mysterious',
+        alias: 'mysterious',
+        secondaryTags: [
+          'Enigmatic',
+          'Suspenseful',
+          'Cryptic',
+          'Eerie',
+          'Obscure',
+          'Puzzling',
+          'Secretive',
+          'Uncanny'
+        ]
+      },
+      {
+        text: 'Energetic',
+        alias: 'energetic',
+        secondaryTags: [
+          'Vibrant',
+          'Dynamic',
+          'Lively',
+          'Spirited',
+          'Exuberant',
+          'Intense',
+          'Animated',
+          'Zestful'
+        ]
+      },
+      {
+        text: 'Calm',
+        alias: 'calm',
+        secondaryTags: [
+          'Peaceful',
+          'Serene',
+          'Tranquil',
+          'Relaxed',
+          'Soothing',
+          'Gentle',
+          'Harmonious',
+          'Quiet'
+        ]
+      },
+      {
+        text: 'Fearful',
+        alias: 'fearful',
+        secondaryTags: [
+          'Terrifying',
+          'Horrific',
+          'Anxious',
+          'Dreadful',
+          'Frightening',
+          'Alarming',
+          'Creepy',
+          'Paranoid'
+        ]
+      },
+      {
+        text: 'Romantic',
+        alias: 'romantic',
+        secondaryTags: [
+          'Passionate',
+          'Loving',
+          'Affectionate',
+          'Tender',
+          'Intimate',
+          'Heartwarming',
+          'Sweet',
+          'Dreamy'
+        ]
+      },
+      {
+        text: 'Inspirational',
+        alias: 'inspirational',
+        secondaryTags: [
+          'Uplifting',
+          'Motivational',
+          'Empowering',
+          'Encouraging',
+          'Enlightening',
+          'Awe-Inspiring',
+          'Noble',
+          'Visionary'
+        ]
+      }
+    ],
+  
+    SettingEnvironment: [
+      {
+        text: 'Urban',
+        alias: 'urban',
+        secondaryTags: [
+          'City Streets',
+          'Skyscrapers',
+          'Suburbs',
+          'Markets',
+          'Industrial Areas',
+          'Rooftops',
+          'Underground',
+          'Alleys'
+        ]
+      },
+      {
+        text: 'Nature',
+        alias: 'nature',
+        secondaryTags: [
+          'Forest',
+          'Ocean',
+          'Desert',
+          'Mountains',
+          'Jungle',
+          'Arctic',
+          'Savanna',
+          'Wetlands'
+        ]
+      },
+      {
+        text: 'Space',
+        alias: 'space',
+        secondaryTags: [
+          'Planets',
+          'Stars',
+          'Galaxies',
+          'Nebulae',
+          'Space Stations',
+          'Asteroid Fields',
+          'Black Holes',
+          'Spaceships'
+        ]
+      },
+      {
+        text: 'Underwater',
+        alias: 'underwater',
+        secondaryTags: [
+          'Coral Reefs',
+          'Deep Sea',
+          'Shipwrecks',
+          'Underwater Caves',
+          'Kelp Forests',
+          'Ocean Floor',
+          'Submarines',
+          'Marine Life'
+        ]
+      },
+      {
+        text: 'Fantasy World',
+        alias: 'fantasy world',
+        secondaryTags: [
+          'Enchanted Forest',
+          'Floating Islands',
+          'Magical Cities',
+          'Dark Dungeons',
+          'Crystal Caves',
+          'Ancient Temples',
+          'Mystical Mountains',
+          'Hidden Realms'
+        ]
+      },
+      {
+        text: 'Historical Period',
+        alias: 'historical period',
+        secondaryTags: [
+          'Medieval',
+          'Ancient Egypt',
+          'Victorian Era',
+          'Renaissance',
+          'Ancient Greece',
+          'Wild West',
+          'Roaring Twenties',
+          'Industrial Revolution'
+        ]
+      },
+      {
+        text: 'Futuristic',
+        alias: 'futuristic',
+        secondaryTags: [
+          'Cyberpunk City',
+          'Utopian Society',
+          'Dystopian Wasteland',
+          'Advanced Technology',
+          'Virtual Reality',
+          'Alien Worlds',
+          'Post-Apocalyptic',
+          'Space Colonies'
+        ]
+      },
+      {
+        text: 'Domestic',
+        alias: 'domestic',
+        secondaryTags: [
+          'Living Room',
+          'Kitchen',
+          'Bedroom',
+          'Office',
+          'Garden',
+          'Classroom',
+          'Library',
+          'Studio'
+        ]
+      }
+    ],
+  
+    CompositionLayout: [
+      {
+        text: 'Symmetry',
+        alias: 'symmetry',
+        secondaryTags: [
+          'Mirror Reflection',
+          'Radial Symmetry',
+          'Bilateral Symmetry',
+          'Kaleidoscopic',
+          'Mandala',
+          'Central Focus',
+          'Reflective Surfaces',
+          'Balanced Shapes'
+        ]
+      },
+      {
+        text: 'Rule of Thirds',
+        alias: 'rule of thirds',
+        secondaryTags: [
+          'Off-Center Subject',
+          'Grid Alignment',
+          'Asymmetrical Balance',
+          'Dynamic Tension',
+          'Negative Space',
+          'Diagonal Placement',
+          'Horizon Alignment',
+          'Focal Points'
+        ]
+      },
+      {
+        text: 'Leading Lines',
+        alias: 'leading lines',
+        secondaryTags: [
+          'Roads',
+          'Rivers',
+          'Bridges',
+          'Paths',
+          'Railway Tracks',
+          'Corridors',
+          'Architectural Lines',
+          'Natural Lines'
+        ]
+      },
+      {
+        text: 'Framing',
+        alias: 'framing',
+        secondaryTags: [
+          'Natural Frames',
+          'Doorways',
+          'Windows',
+          'Archways',
+          'Overhanging Branches',
+          'Shadows',
+          'Foreground Elements',
+          'Silhouettes'
+        ]
+      },
+      {
+        text: 'Depth of Field',
+        alias: 'depth of field',
+        secondaryTags: [
+          'Shallow Focus',
+          'Deep Focus',
+          'Bokeh Effect',
+          'Foreground Blur',
+          'Background Blur',
+          'Tilt-Shift',
+          'Layered Depth',
+          'Focus Stacking'
+        ]
+      },
+      {
+        text: 'Close-Up',
+        alias: 'close-up',
+        secondaryTags: [
+          'Macro',
+          'Detail Shot',
+          'Texture Emphasis',
+          'Facial Expressions',
+          'Eyes',
+          'Hands',
+          'Intricate Details',
+          'Extreme Close-Up'
+        ]
+      },
+      {
+        text: 'Bird’s Eye View',
+        alias: 'bird’s eye view',
+        secondaryTags: [
+          'Aerial Landscape',
+          'Top-Down Cityscape',
+          'Maps',
+          'Patterns from Above',
+          'Overhead Shot',
+          'Drone Perspective',
+          'Looking Down',
+          'Vastness'
+        ]
+      },
+      {
+        text: 'Worm’s Eye View',
+        alias: 'worm’s eye view',
+        secondaryTags: [
+          'Looking Up',
+          'Tall Structures',
+          'Sky Emphasis',
+          'Underside View',
+          'Giant Perspective',
+          'Dramatic Angles',
+          'Vertical Lines',
+          'Monumental Feeling'
+        ]
+      }
+    ],
+  
+  };
+
+================
+File: store/tagStore.ts
+================
+import { defineStore } from 'pinia'
+import * as d3 from 'd3';
+import { shallowRef } from 'vue';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { useRuntimeConfig } from '#app';
+
+
+import { mockTags } from './mockTags';
+
+interface Tag {
+  id: string
+  text: string
+  zone: string
+  size: number
+  selected: boolean
+  x: number
+  y: number
+  fx: number | null
+  fy: number | null
+  alias: string
+  secondaryTags?: Tag[]
+  isDynamic?: boolean
+  isLoading?: boolean
+  isPreconfigured?: boolean
+  isHybrid?: boolean
+  isHybridChild?: boolean
+  childTags?: Tag[]
+  isHidden?: boolean
+  sourceTags?: Tag[]
+  parentId?: string
+  vx?: number
+  vy?: number
+}
+
+interface ZoneGraph {
+  nodes: Tag[];
+  links: any[];
+  simulation: d3.Simulation<any, undefined> | null;
+  svg: d3.Selection<SVGSVGElement, unknown, null, undefined> | null;
+  lastClickedTagId: string | null;
+  lastClickedNode: Tag | null;
+  hybridTags?: Tag[];
+}
+
+// Add new interface for hybrid tags
+interface HybridTag extends Tag {
+  childTags: Tag[];
+  isHybrid: boolean;
+}
+
+// Add these constants at the top of the file, after imports
+const DEFAULT_WIDTH = 600;  // Default width matching ForceGraph default
+const DEFAULT_HEIGHT = 728; // Default height matching ForceGraph default
+const HYBRID_DISTANCE = 300; // Reduced from ~400 (30% less)
+const CHILD_RADIUS = 120;   // Reduced from 150 (much closer to parent)
+const CHILD_TAG_RADIUS = 130; // Adjust as needed for spacing
+
+// Add these constants at the top with other constants
+const HYBRID_DIRECTIONS = [
+  { angle: 0, label: 'right' },    // Right
+  { angle: Math.PI / 2, label: 'bottom' },  // Bottom
+  { angle: Math.PI, label: 'left' },     // Left
+  { angle: -Math.PI / 2, label: 'top' }   // Top
+];
+
+const HYBRID_SPACING = {
+  initialDistance: HYBRID_DISTANCE,
+  incrementDistance: 290, // Additional distance for each subsequent hybrid in same direction
+};
+
+export const useTagStore = defineStore('tags', {
+  state: () => ({
+    tags: [] as Tag[],
+    zones: Object.keys(mockTags),
+    zoneGraphs: Object.fromEntries(
+      Object.keys(mockTags).map(zone => [zone, {
+        nodes: shallowRef([]),
+        links: shallowRef([]),
+        simulation: null,
+        svg: null,
+        lastClickedTagId: null,
+        lastClickedNode: null,
+        hybridTags: []
+      } as ZoneGraph])
+    ),
+    focusedZone: 'Subject' as string,
+    dynamicTags: new Map<string, Tag[]>(), // Store dynamic tags by parent ID
+    hybridPositions: new Map<string, { direction: number, count: number }>(), // Track hybrid positions by zone
+  }),
+  actions: {
+    async fetchTags() {
+      // Simulating API call
+      this.tags = Object.entries(mockTags).flatMap(([zone, zoneTags]) =>
+        zoneTags.map((tagData, index) => ({
+          id: `${zone}-${index}`,
+          text: tagData.text,
+          zone,
+          size: 40,
+          selected: false,
+          x: 0,
+          y: 0,
+          fx: null,
+          fy: null,
+          alias: tagData.alias,
+          secondaryTags: tagData.secondaryTags.map((secondaryText, secIndex) => ({
+            id: `${zone}-${index}-${secIndex}`,
+            text: secondaryText,
+            zone: `${zone}-secondary`,
+            size: 30,
+            selected: false,
+            x: 0,
+            y: 0,
+            fx: null,
+            fy: null,
+            alias: secondaryText.toLowerCase().replace(/\s+/g, '-'),
+            isPreconfigured: true
+          }))
+        }))
+      );
+    },
+    toggleTag(id: string, zone: string) {
+      const tag = this.tags.find(t => t.id === id)
+      if (tag) {
+        if (!tag.selected) {
+          const currentSelected = this.tags.find(t => t.zone === zone && t.selected && t.id !== id)
+          if (currentSelected) {
+            currentSelected.selected = false
+            this.removeSecondaryTagsByParent(currentSelected.id)
+          }
+        }
+        
+        tag.selected = !tag.selected
+        
+        if (tag.selected) {
+          // Center the selected tag
+          tag.x = DEFAULT_WIDTH / 2;
+          tag.y = DEFAULT_HEIGHT / 2;
+          tag.fx = tag.x;  // Fix the position
+          tag.fy = tag.y;
+          
+          // Distribute child tags immediately after selection
+          this.distributeChildTagsCircularly(tag);
+        } else {
+          // Unfix the position when unselected
+          tag.fx = null;
+          tag.fy = null;
+          
+          this.removeSecondaryTagsByParent(id)
+          
+          const hybridsToRemove = this.zoneGraphs[zone].hybridTags || [];
+          hybridsToRemove.forEach(hybridTag => {
+            this.removeSelectedHybridTag(hybridTag.id, zone);
+          });
+        }
+
+        // Update the graph
+        const zoneGraph = this.zoneGraphs[zone];
+        if (zoneGraph && zoneGraph.simulation) {
+          zoneGraph.simulation.alpha(0.3).restart();
+        }
+      }
+    },
+    unselectAllSecondaryTagsFromZone(zone: string, alias: string) {
+      const primaryTags = this.tags.filter(tag => tag.zone === zone);
+      primaryTags.forEach(primaryTag => {
+        if (primaryTag.alias !== alias) {
+          primaryTag.secondaryTags?.forEach(secTag => {
+            secTag.selected = false;
+          });
+        }
+      });
+    },
+    toggleSecondaryTag(primaryId: string, secondaryId: string) {
+      const primaryTag = this.tags.find(t => t.id === primaryId)
+      if (primaryTag && primaryTag.secondaryTags) {
+        const secondaryTag = primaryTag.secondaryTags.find(t => t.id === secondaryId)
+        if (secondaryTag) {
+          secondaryTag.selected = !secondaryTag.selected;
+          secondaryTag.size = 30;
+        }
+      }
+    },
+    updateTagPosition(id: string, x: number, y: number) {
+      const tag = this.tags.find(t => t.id === id) || 
+                  this.tags.flatMap(t => t.secondaryTags || []).find(t => t.id === id)
+      if (tag) {
+        tag.x = x
+        tag.y = y
+      }
+    },
+    fixTagPosition(id: string, x: number, y: number) {
+      const tag = this.tags.find(t => t.id === id) || 
+                  this.tags.flatMap(t => t.secondaryTags || []).find(t => t.id === id)
+      if (tag) {
+        tag.fx = x
+        tag.fy = y
+      }
+    },
+    unfixTagPosition(id: string) {
+      const tag = this.tags.find(t => t.id === id) || 
+                  this.tags.flatMap(t => t.secondaryTags || []).find(t => t.id === id)
+      if (tag) {
+        tag.fx = null
+        tag.fy = null
+      }
+    },
+    getSecondaryTagsByZoneAndAlias(zone: string, alias: string) {
+      const primaryTag = this.tags.find(t => t.zone === zone && t.alias === alias);
+      return primaryTag ? primaryTag.secondaryTags || [] : [];
+    },
+    setLastClickedTag(zone: string, tagId: string | null, x?: number, y?: number) {
+      const zoneGraph = this.zoneGraphs[zone];
+      zoneGraph.lastClickedTagId = tagId;
+      zoneGraph.lastClickedNode = this.tags.find(t => t.id === tagId) || null;
+      if (zoneGraph.lastClickedNode && x !== undefined && y !== undefined) {
+        zoneGraph.lastClickedNode.x = x;
+        zoneGraph.lastClickedNode.y = y;
+      }
+    },
+
+    updateZoneGraph(zone: string, nodes: Tag[], links: any[]) {
+      this.zoneGraphs[zone].nodes = nodes;
+      this.zoneGraphs[zone].links = links;
+    },
+
+    getSecondaryTagsForZone(zone: string): Tag[] {
+      const primaryTag = this.tags.find(t => t.zone === zone && t.selected);
+      return (primaryTag && !primaryTag.isLoading) ? primaryTag.secondaryTags || [] : [];
+    },
+
+    createLinksBySourceId(zone: string): any[] {
+      const sourceId = this.zoneGraphs[zone].lastClickedTagId;
+      const links = [];
+
+      if (sourceId) {
+        // Get all nodes that should have links
+        const allLinkedTags = [
+          ...this.getSecondaryTagsForZone(zone),
+          ...(this.zoneGraphs[zone].hybridTags || [])
+        ];
+
+        // Create links for all nodes at once, but skip hybrid tags that were created from other hybrid's children
+        links.push(...allLinkedTags
+          .filter(tag => {
+            if (!tag.isHybrid) return true;
+            // Check if this hybrid was created from another hybrid's children
+            const isChildHybrid = tag.sourceTags?.every(sourceTag => 
+              this.zoneGraphs[zone].hybridTags?.some(hybrid => 
+                hybrid.childTags?.some(child => child.id === sourceTag.id)
+              )
+            );
+            return !isChildHybrid;
+          })
+          .map(tag => ({
+            source: sourceId,
+            target: tag.id,
+            value: 1,
+          }))
+        );
+
+        // Add links between hybrid tags and their child tags
+        const hybridTags = this.zoneGraphs[zone].hybridTags || [];
+        hybridTags.forEach(hybridTag => {
+          if (hybridTag.childTags) {
+            // Create links between hybrid tag and its child tags
+            links.push(...hybridTag.childTags.map(childTag => ({
+              source: hybridTag.id,
+              target: childTag.id,
+              value: 1,
+              isHybridLink: true
+            })));
+
+            // Find any child hybrid tags that were created from this hybrid's children
+            const childHybrids = hybridTags.filter(otherHybrid => 
+              otherHybrid.sourceTags?.every(sourceTag => 
+                hybridTag.childTags?.some(childTag => childTag.id === sourceTag.id)
+              )
+            );
+
+            // Create chain links between hybrid and child hybrids
+            childHybrids.forEach(childHybrid => {
+              links.push({
+                source: hybridTag.id,
+                target: childHybrid.id,
+                value: 1,
+                isHybridLink: true,
+                isHybridChainLink: true
+              });
+            });
+          }
+        });
+      }
+
+      return links;
+    },
+    setFocusedZone(zone: string) {
+      this.focusedZone = zone;
+    },
+    async addSecondaryTag(parentId: string, tag: Tag) {
+      const parent = this.tags.find(t => t.id === parentId)
+      if (parent) {
+        if (!parent.secondaryTags) {
+          parent.secondaryTags = []
+        }
+        
+        // Add parentId to dynamic tags
+        tag.parentId = parentId;
+        tag.isDynamic = true;
+        tag.isPreconfigured = tag.isPreconfigured || false;
+        
+        parent.secondaryTags.push(tag)
+        
+        // If parent is selected, immediately distribute all child tags
+        if (parent.selected) {
+          this.distributeChildTagsCircularly(parent);
+        }
+      }
+    },
+
+    removeSecondaryTagsByParent(parentId: string) {
+      const parent = this.tags.find(t => t.id === parentId)
+      if (parent && parent.secondaryTags) {
+        // Keep preconfigured tags, remove only dynamic ones
+        parent.secondaryTags = parent.secondaryTags.filter(tag => tag.isPreconfigured);
+        // Deselect all remaining tags
+        parent.secondaryTags.forEach(tag => {
+          tag.selected = false;
+        });
+      }
+    },
+    setTagLoading(tagId: string, loading: boolean) {
+      const tag = this.tags.find(t => t.id === tagId)
+      if (tag) {
+        tag.isLoading = loading
+      }
+    },
+
+    async createHybridTag(zone: string, tags: Tag[]) {
+      // Initialize Gemini
+      const config = useRuntimeConfig();
+      const apiKey = config.public.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error('GEMINI_API_KEY is not defined');
+      }
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-8b' });
+
+      // Improved prompt for more specific and meaningful combinations
+      const prompt = `Create a concise but descriptive tag that combines these specific concepts: ${
+        tags.map(t => t.text).join(', ')
+      }. 
+      Requirements:
+      - The result should be 2-4 words
+      - Must directly reference the key elements from the input tags
+      - Avoid generic or overly abstract terms
+      - Focus on the unique combination of these specific elements
+      - Keep it concrete and imagery-focused
+      - Don't use metaphors or poetic language
+      
+      Return only the tag phrase, no explanation or additional text.
+      
+      Example inputs and good outputs:
+      "Fire, Water" → "Steaming Elements"
+      "Forest, Night, Magic" → "Enchanted Dark Woods"
+      "Desert, Ocean" → "Coastal Sand Wilderness"`;
+
+      try {
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const hybridText = await response.text();
+
+        // Check if this is a child hybrid (created from another hybrid's child tags)
+        const parentHybrid = this.zoneGraphs[zone].hybridTags?.find(hybrid => 
+          tags.every(tag => hybrid.childTags?.some(child => child.id === tag.id))
+        );
+
+        let hybridX, hybridY, direction;
+
+        if (parentHybrid) {
+          // This is a child hybrid - use parent's direction but increase distance
+          const parentDirection = HYBRID_DIRECTIONS.find(d => 
+            Math.abs(Math.atan2(parentHybrid.y - DEFAULT_HEIGHT/2, parentHybrid.x - DEFAULT_WIDTH/2) - d.angle) < 0.1
+          );
+          direction = parentDirection || HYBRID_DIRECTIONS[0];
+          const distance = Math.sqrt(
+            Math.pow(parentHybrid.x - DEFAULT_WIDTH/2, 2) + 
+            Math.pow(parentHybrid.y - DEFAULT_HEIGHT/2, 2)
+          ) + HYBRID_SPACING.incrementDistance;
+
+          hybridX = DEFAULT_WIDTH/2 + Math.cos(direction.angle) * distance;
+          hybridY = DEFAULT_HEIGHT/2 + Math.sin(direction.angle) * distance;
+        } else {
+          // This is a new primary hybrid - get next available direction
+          if (!this.hybridPositions.has(zone)) {
+            this.hybridPositions.set(zone, { direction: 0, count: 0 });
+          }
+          const positionInfo = this.hybridPositions.get(zone)!;
+
+          direction = HYBRID_DIRECTIONS[positionInfo.direction];
+          const distance = HYBRID_SPACING.initialDistance + 
+            (HYBRID_SPACING.incrementDistance * Math.floor(positionInfo.count / HYBRID_DIRECTIONS.length));
+
+          hybridX = DEFAULT_WIDTH/2 + Math.cos(direction.angle) * distance;
+          hybridY = DEFAULT_HEIGHT/2 + Math.sin(direction.angle) * distance;
+
+          // Update position tracking for next primary hybrid
+          positionInfo.count++;
+          if (positionInfo.count % HYBRID_DIRECTIONS.length === 0) {
+            positionInfo.direction = 0;
+          } else {
+            positionInfo.direction = (positionInfo.direction + 1) % HYBRID_DIRECTIONS.length;
+          }
+        }
+
+        const hybridTag: Tag = {
+          id: `hybrid-${Date.now()}`,
+          text: hybridText.trim(),
+          zone: zone,
+          size: 50,
+          selected: true,
+          isHybrid: true,
+          sourceTags: tags,
+          childTags: [],
+          x: hybridX,
+          y: hybridY,
+          fx: hybridX,
+          fy: hybridY,
+          alias: hybridText.toLowerCase().replace(/\s+/g, '-')
+        };
+
+        // Generate meaningful child tags using Gemini
+        const childTagsPrompt = `You are helping users find relevant tags for their image generation. 
+        When user combines concepts into "${hybridText.trim()}", suggest 8 additional more specific level descriptive tags that continue story of "${hybridText.trim()}", all maintaining general ${zone} subgroup.
+
+        Requirements:
+        - Each tag should be 1-2 words
+        - Always start with a capital letter
+        - Think about what visual elements would extend and expand on "${hybridText.trim()}"
+        - Include both common and creative but relevant associations
+        - Focus on visual and artistic aspects
+        - Suggest tags that would help create interesting image variations
+        - Keep tags concrete and imagery-focused
+
+        Return only a JSON array of strings, no explanation.
+        Example format: ["Mountain Peak", "Dense Forest", "Morning Mist"]`;
+
+        const childTagsResult = await model.generateContent({
+          contents: [{ role: 'user', parts: [{ text: childTagsPrompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 200,
+          },
+        });
+
+        const childTagsText = await childTagsResult.response.text();
+        let childTags: string[] = [];
+        try {
+          const cleanedText = childTagsText.replace(/```json\n?|\n?```/g, '').trim();
+          childTags = JSON.parse(cleanedText);
+        } catch (error) {
+          console.error('Failed to parse generated child tags:', error);
+          childTags = ['Variation 1', 'Variation 2', 'Variation 3', 'Variation 4', 'Variation 5'];
+        }
+
+        // When creating child tags, align them with the hybrid's direction
+        const generatedTags = childTags.map((text, index) => {
+          const childAngle = (index / childTags.length) * Math.PI * 2 + direction.angle;
+          const childX = hybridX + Math.cos(childAngle) * CHILD_RADIUS;
+          const childY = hybridY + Math.sin(childAngle) * CHILD_RADIUS;
+          return {
+            id: `${hybridTag.id}-child-${index}`,
+            text,
+            zone: `${zone}-secondary`,
+            size: 30,
+            selected: false,
+            x: childX,
+            y: childY,
+            fx: childX,
+            fy: childY,
+            alias: text.toLowerCase().replace(/\s+/g, '-'),
+            isHybridChild: true
+          };
+        });
+
+        hybridTag.childTags = generatedTags;
+
+        // Add to zone's hybrid tags
+        const zoneGraph = this.zoneGraphs[zone];
+        if (zoneGraph && zoneGraph.simulation) {
+          zoneGraph.hybridTags = [...(zoneGraph.hybridTags || []), hybridTag];
+          
+          // Just a gentle simulation restart
+          zoneGraph.simulation
+            ?.alpha(0.1)
+            .alphaTarget(0)
+            .restart();
+        }
+
+        // Hide source tags
+        tags.forEach(sourceTag => {
+          // Update in the store's tags array
+          const storeTag = this.tags.find(t => t.id === sourceTag.id);
+          if (storeTag) {
+            storeTag.isHidden = true;
+            storeTag.selected = false;
+          }
+
+          // Update in secondary tags if it's a secondary tag
+          const primaryTag = this.tags.find(t => t.secondaryTags?.some(st => st.id === sourceTag.id));
+          if (primaryTag) {
+            const secondaryTag = primaryTag.secondaryTags?.find(st => st.id === sourceTag.id);
+            if (secondaryTag) {
+              secondaryTag.isHidden = true;
+              secondaryTag.selected = false;
+            }
+          }
+
+          // Update in hybrid child tags if it's a hybrid child
+          Object.values(this.zoneGraphs).forEach(zoneGraph => {
+            zoneGraph.hybridTags?.forEach(hybrid => {
+              const childTag = hybrid.childTags?.find(child => child.id === sourceTag.id);
+              if (childTag) {
+                childTag.isHidden = true;
+                childTag.selected = false;
+              }
+            });
+          });
+        });
+
+        return hybridTag;
+      } catch (error) {
+        console.error('Error generating hybrid tag:', error);
+        // Fallback to simple concatenation if LLM fails
+        const fallbackTag = {
+          id: `hybrid-${Date.now()}`,
+          text: tags.map(t => t.text).join(' + '),
+          zone: zone,
+          size: 30,
+          selected: true,
+          isHybrid: true,
+          childTags: tags,
+          x: 0,
+          y: 0,
+          fx: null,
+          fy: null,
+          alias: `hybrid-${Date.now()}`
+        };
+        
+        // Add the fallback hybrid tag directly to the zone's hybrid tags
+        const zoneGraph = this.zoneGraphs[zone];
+        if (zoneGraph) {
+          zoneGraph.hybridTags = [...(zoneGraph.hybridTags || []), fallbackTag];
+        }
+        
+        return fallbackTag;
+      }
+    },
+
+    addSelectedHybridTag(hybridTag: Tag) {
+      const zoneGraph = this.zoneGraphs[hybridTag.zone];
+      if (zoneGraph) {
+        // Check if this hybrid tag already exists
+        const existingTag = zoneGraph.hybridTags?.find(t => 
+          t.childTags?.every(child => 
+            hybridTag.childTags?.some(newChild => newChild.id === child.id)
+          )
+        );
+
+        if (!existingTag) {
+          // Only add if it doesn't exist
+          zoneGraph.hybridTags = [...(zoneGraph.hybridTags || []), hybridTag];
+          
+          // Hide child tags
+          if (hybridTag.childTags) {
+            hybridTag.childTags.forEach(childTag => {
+              const tag = this.allTags.find(t => t.id === childTag.id);
+              if (tag) {
+                tag.isHidden = true;
+                tag.selected = false;
+              }
+            });
+          }
+        }
+      }
+    },
+
+    removeSelectedHybridTag(hybridTagId: string, zone: string) {
+      const zoneGraph = this.zoneGraphs[zone];
+      const hybridTag = zoneGraph.hybridTags?.find(t => t.id === hybridTagId);
+      
+      if (hybridTag) {
+        // Find all child hybrids that were created from this hybrid's children
+        const childHybrids = zoneGraph.hybridTags?.filter(otherHybrid => 
+          otherHybrid.sourceTags?.some(sourceTag => 
+            hybridTag.childTags?.some(childTag => childTag.id === sourceTag.id)
+          )
+        ) || [];
+
+        // Recursively remove child hybrids
+        childHybrids.forEach(childHybrid => {
+          this.removeSelectedHybridTag(childHybrid.id, zone);
+        });
+
+        // Unselect all child tags
+        hybridTag.childTags?.forEach(childTag => {
+          childTag.selected = false;
+          childTag.isHidden = false;
+        });
+
+        // Remove the hybrid tag itself
+        zoneGraph.hybridTags = zoneGraph.hybridTags?.filter(t => t.id !== hybridTagId) || [];
+        
+        // Unhide source tags
+        hybridTag.sourceTags?.forEach(sourceTag => {
+          const tag = this.allTags.find(t => t.id === sourceTag.id);
+          if (tag) {
+            tag.isHidden = false;
+          }
+        });
+      }
+    },
+
+    removeHybridTag(hybridId: string) {
+      const hybridEntries = Array.from(this.hybridTags.entries());
+      const entry = hybridEntries.find(([_, tag]) => tag.id === hybridId);
+      if (entry) {
+        this.hybridTags.delete(entry[0]);
+      }
+    },
+
+    getHybridTagsForZone(zone: string): Tag[] {
+      return this.zoneGraphs[zone].hybridTags || [];
+    },
+
+    distributeChildTagsCircularly(parentTag: Tag) {
+      // Get all child tags (both preconfigured and dynamic)
+      const allChildTags = [
+        ...(parentTag.secondaryTags || []),
+        ...Array.from(this.dynamicTags.get(parentTag.id) || [])
+      ];
+      
+      const angleStep = (2 * Math.PI) / allChildTags.length;
+      const centerX = parentTag.x || DEFAULT_WIDTH / 2;
+      const centerY = parentTag.y || DEFAULT_HEIGHT / 2;
+
+      allChildTags.forEach((childTag, index) => {
+        const angle = index * angleStep;
+        childTag.x = centerX + Math.cos(angle) * CHILD_TAG_RADIUS;
+        childTag.y = centerY + Math.sin(angle) * CHILD_TAG_RADIUS;
+        childTag.fx = childTag.x; // Fix position
+        childTag.fy = childTag.y; // Fix position
+        
+        // Reset any existing velocities
+        childTag.vx = 0;
+        childTag.vy = 0;
+      });
+
+      // Update the zone graph if it exists
+      const zoneGraph = this.zoneGraphs[parentTag.zone];
+      if (zoneGraph && zoneGraph.simulation) {
+        zoneGraph.simulation
+          .alpha(0.1)
+          .alphaDecay(0.05)
+          .velocityDecay(0.6)
+          .restart();
+      }
+    },
+
+    // Add this helper method to reset hybrid positions when needed
+    resetHybridPositions(zone: string) {
+      this.hybridPositions.set(zone, { direction: 0, count: 0 });
+    }
+  },
+  getters: {
+    tagsByZone: (state) => {
+      return (zone: string) => {
+        const tags = state.tags.filter(tag => tag.zone === zone);
+        const selectedTag = tags.find(tag => tag.selected);
+        
+        // If there's a selected tag, only return it; otherwise return all tags
+        return selectedTag ? [selectedTag] : tags;
+      }
+    },
+    selectedTags: (state) => {
+      return state.tags.filter(tag => tag.selected)
+    },
+    selectedSecondaryTags: (state) => {
+      return state.tags.flatMap(tag => 
+        tag.secondaryTags ? tag.secondaryTags.filter(secTag => secTag.selected) : []
+      )
+    },
+    allTags: (state) => {
+      return [
+        ...state.tags,
+        ...state.tags.flatMap(tag => tag.secondaryTags || [])
+      ]
+    },
+    getZoneGraph: (state) => {
+      return (zone: string) => state.zoneGraphs[zone];
+    },
+    getDynamicTags: (state) => {
+      return (parentId: string) => state.dynamicTags.get(parentId) || []
+    },
+    nonSelectedPrimaryTags: (state) => {
+      return (zone: string) => state.tags.filter(tag => 
+        tag.zone === zone && !tag.selected
+      );
+    },
+    getAllSecondaryTagsForZone: (state) => {
+      return (zone: string) => {
+        const primaryTag = state.tags.find(t => t.zone === zone && t.selected);
+        if (!primaryTag || primaryTag.isLoading) return [];
+        
+        const secondaryTags = primaryTag.secondaryTags || [];
+        const hybridTags = state.zoneGraphs[zone].hybridTags || [];
+        
+        return [...secondaryTags, ...hybridTags];
+      }
+    },
+    selectedTags(): Tag[] {
+      return this.allTags.filter(tag => tag.selected && !tag.isHidden);
+    },
+    selectedSecondaryTags(): Tag[] {
+      return this.allTags.filter(tag => 
+        tag.zone.includes('-secondary') && 
+        tag.selected && 
+        !tag.isHidden
+      );
+    },
+    allSelectedTags(): Tag[] {
+      // Get visible regular tags
+      const visibleTags = this.allTags.filter(tag => tag.selected && !tag.isHidden);
+      
+      // Get hybrid tags from all zones
+      const allZoneHybrids = Object.values(this.zoneGraphs)
+        .flatMap(zoneGraph => zoneGraph.hybridTags || []);
+
+      console.log('allZoneHybrids:', allZoneHybrids);
+      const allZoneHybridChildren = allZoneHybrids.flatMap(hybrid => {
+        console.log('hybrid:', hybrid);
+        const childTags = hybrid.childTags?.filter(child => {
+          console.log('child:', child);
+          return child.selected && !child.isHidden;
+        }) || [];
+        console.log('filtered childTags:', childTags);
+        return childTags;
+      });
+      console.log('allZoneHybridChildren:', allZoneHybridChildren);
+      
+      return [...visibleTags, ...allZoneHybrids, ...allZoneHybridChildren];
+    }
+  }
+})
+
+================
+File: .eslintrc.js
+================
+module.exports = {
+  root: true,
+  env: {
+    browser: true,
+    node: true,
+  },
+  extends: [
+    'eslint:recommended',
+    'plugin:@typescript-eslint/recommended',
+    'plugin:vue/vue3-recommended',
+    'prettier',
+  ],
+  plugins: ['@typescript-eslint', 'prettier'],
+  parser: 'vue-eslint-parser',
+  parserOptions: {
+    parser: '@typescript-eslint/parser',
+    sourceType: 'module',
+    ecmaVersion: 2020,
+  },
+  rules: {
+    'prettier/prettier': 'error',
+    // Add any other custom rules here
+  },
+}
+
+================
+File: .gitignore
+================
+# Nuxt dev/build outputs
+.output
+.data
+.nuxt
+.nitro
+.cache
+dist
+
+# Node dependencies
+node_modules
+
+# Logs
+logs
+*.log
+
+# Misc
+.DS_Store
+.fleet
+.idea
+
+# Local env files
+.env
+.env.*
+!.env.example
+
+================
+File: .prettierrc
+================
+{
+  "semi": false,
+  "singleQuote": true,
+  "tabWidth": 2,
+  "trailingComma": "es5",
+  "printWidth": 100
+}
+
+================
+File: app.vue
+================
+<template>
+  <div>
+    
+    <NuxtPage />
+  </div>
+</template>
+
+================
+File: nuxt.config.ts
+================
+export default defineNuxtConfig({
+  modules: [
+    '@nuxtjs/tailwindcss',
+    '@pinia/nuxt',
+    // 'flowbite/plugin' // Already removed in Step 1
+  ],
+
+  css: [
+    '~/assets/scss/main.scss',         // Your main SCSS file
+    'flowbite/dist/flowbite.css'       // Flowbite's CSS
+  ],
+
+  runtimeConfig: {
+    public: {
+      GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+      FLUX_API_KEY: process.env.FLUX_API_KEY
+    }
+  },
+
+  vite: {
+    css: {
+      preprocessorOptions: {
+        scss: {
+          additionalData: '@use "~/assets/scss/variables.scss";',
+          // Remove 'api: modern-compiler' as it's invalid
+        },
+      },
+    },
+  },
+
+  typescript: {
+    strict: true
+  },
+
+  compatibilityDate: '2024-10-07',
+
+  tailwindcss: {
+    configPath: './tailwind.config.js', // Reference to the separate config file
+    // quiet: false, // Optionally set to true to suppress warnings
+  },
+
+  postcss: {
+    plugins: {
+      tailwindcss: {},
+      autoprefixer: {},
+    },
+  },
+
+})
+
+================
+File: package.json
+================
+{
+  "name": "nuxt-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "lint": "eslint --ext .js,.ts,.vue --ignore-path .gitignore .",
+    "lint:fix": "eslint --fix --ext .js,.ts,.vue --ignore-path .gitignore .",
+    "format": "prettier --write \"**/*.{js,ts,vue,scss,html,md,json}\" --ignore-path .gitignore"
+  },
+  "dependencies": {
+    "@google/generative-ai": "0.8.0",
+    "@heroicons/vue": "^2.1.5",
+    "@nuxtjs/tailwindcss": "^6.12.2",
+    "@pinia/nuxt": "^0.5.5",
+    "d3": "^7.9.0",
+    "d3-force": "^3.0.0",
+    "flowbite": "^2.5.2",
+    "flowbite-vue": "^0.1.6",
+    "gsap": "^3.12.5",
+    "nuxt": "^3.13.0",
+    "pinia": "^2.2.4",
+    "sass": "^1.79.4",
+    "typescript": "^5.6.3",
+    "vue": "latest",
+    "vue-router": "latest"
+  },
+  "packageManager": "pnpm@9.12.3+sha512.cce0f9de9c5a7c95bef944169cc5dfe8741abfb145078c0d508b868056848a87c81e626246cb60967cbd7fd29a6c062ef73ff840d96b3c86c40ac92cf4a813ee",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^5.0.0",
+    "@typescript-eslint/parser": "^5.0.0",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^6.7.2",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-prettier": "^4.0.0",
+    "postcss": "^8.4.48",
+    "prettier": "^2.5.1",
+    "prettier-eslint": "^13.0.0",
+    "tailwindcss": "^3.4.14"
+  }
+}
+
+================
+File: postcss.config.js
+================
+module.exports = {
+    plugins: {
+      tailwindcss: {},
+      autoprefixer: {},
+    },
+  }
+
+================
+File: README.md
+================
+# Nuxt 3 Minimal Starter
+
+Look at the [Nuxt 3 documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+
+## Setup
+
+Make sure to install the dependencies:
+
+```bash
+# npm
+npm install
+
+# pnpm
+pnpm install
+
+# yarn
+yarn install
+
+# bun
+bun install
+```
+
+## Development Server
+
+Start the development server on `http://localhost:3000`:
+
+```bash
+# npm
+npm run dev
+
+# pnpm
+pnpm run dev
+
+# yarn
+yarn dev
+
+# bun
+bun run dev
+```
+
+## Production
+
+Build the application for production:
+
+```bash
+# npm
+npm run build
+
+# pnpm
+pnpm run build
+
+# yarn
+yarn build
+
+# bun
+bun run build
+```
+
+Locally preview production build:
+
+```bash
+# npm
+npm run preview
+
+# pnpm
+pnpm run preview
+
+# yarn
+yarn preview
+
+# bun
+bun run preview
+```
+
+Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+
+================
+File: tailwind.config.js
+================
+module.exports = {
+    content: [
+      // Specify the paths to all of your template files
+      "./components/**/*.{vue,js,ts}",
+      "./layouts/**/*.vue",
+      "./pages/**/*.vue",
+      "./plugins/**/*.{js,ts}",
+      "./nuxt.config.{js,ts}",
+      "./node_modules/flowbite/**/*.js" // Include Flowbite's JavaScript files
+    ],
+    theme: {
+      extend: {
+        // Extend your theme here if needed
+      },
+    },
+    plugins: [
+      require('flowbite/plugin') // Integrate Flowbite as a Tailwind CSS plugin
+    ],
+  }
+
+================
+File: tsconfig.json
+================
+{
+  // https://nuxt.com/docs/guide/concepts/typescript
+  "extends": "./.nuxt/tsconfig.json"
+}
+
+
+
+================================================================
+End of Codebase
+================================================================
