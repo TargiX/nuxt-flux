@@ -27,6 +27,7 @@
 import { ref, onMounted, watch, nextTick, onBeforeUnmount } from 'vue';
 import * as d3 from 'd3';
 import { useZoom } from '~/composables/useZoom';
+import type { SimulationNodeDatum } from 'd3';
 
 interface GraphNode extends d3.SimulationNodeDatum {
   id: string;
@@ -102,10 +103,31 @@ function initializeGraph() {
   initializeZoom(svg, g);
 
   simulation = d3.forceSimulation<GraphNode>(props.nodes)
-    .force('link', d3.forceLink<GraphNode, GraphLink>(props.links).id(d => d.id).distance(50).strength(0.15))
-    .force('charge', d3.forceManyBody().strength(-20))
-    .force('center', d3.forceCenter(props.width / 2, props.height / 2).strength(0.00))
-    .force('collision', d3.forceCollide().radius(d => d.size / 2 + 20))
+    .force('link', d3.forceLink<GraphNode, GraphLink>(props.links)
+      .id(d => d.id)
+      .distance(link => {
+        const target = link.target as GraphNode;
+        const source = link.source as GraphNode;
+        // Increase distance when target is selected
+        if (target.selected) return 150;
+        // Keep parent-child relationships closer
+        if (target.parentId === source.id) return 50;
+        return 140;
+      })
+      .strength(link => {
+        const target = link.target as GraphNode;
+        const source = link.source as GraphNode;
+        // Weaken link when target is selected
+        if (target.selected) return 0.05;
+        // Stronger force for parent-child relationships
+        if (target.parentId === source.id) return 0.1;
+        return 0.15;
+      }))
+    .force('charge', d3.forceManyBody()
+      .strength((d) => ((d as GraphNode).selected ? -100 : -20))) // Stronger repulsion for selected nodes
+    .force('center', d3.forceCenter(props.width / 2, props.height / 2).strength(0.05))
+    .force('collision', d3.forceCollide()
+      .radius((d) => ((d as GraphNode).selected ? (d as GraphNode).size : (d as GraphNode).size / 2) + 20)) // Larger collision radius for selected nodes
     .velocityDecay(0.8);
 
   simulation.nodes().forEach(node => {
@@ -178,6 +200,36 @@ function updateGraph() {
 
   simulation.nodes(props.nodes);
   simulation.force('link')?.links(props.links);
+
+  const linkForce = simulation.force('link') as d3.ForceLink<GraphNode, GraphLink>;
+  if (linkForce) {
+    linkForce
+      .distance(link => {
+        const target = link.target as GraphNode;
+        const source = link.source as GraphNode;
+        if (target.selected) return 150;
+        if (target.parentId === source.id) return 50;
+        return 100;
+      })
+      .strength(link => {
+        const target = link.target as GraphNode;
+        const source = link.source as GraphNode;
+        if (target.selected) return 0.05;
+        if (target.parentId === source.id) return 0.3;
+        return 0.15;
+      });
+  }
+
+  const chargeForce = simulation.force('charge') as d3.ForceManyBody<GraphNode>;
+  if (chargeForce) {
+    chargeForce.strength((d: SimulationNodeDatum) => ((d as GraphNode).selected ? -100 : -20));
+  }
+
+  const collisionForce = simulation.force('collision') as d3.ForceCollide<GraphNode>;
+  if (collisionForce) {
+    collisionForce.radius((d: SimulationNodeDatum) => ((d as GraphNode).selected ? (d as GraphNode).size : (d as GraphNode).size / 2) + 20);
+  }
+
   simulation.alpha(0.3).restart();
 
   updateLinks();

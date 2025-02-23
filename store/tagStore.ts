@@ -36,7 +36,7 @@ export const useTagStore = defineStore('tags', () => {
       const tag: Tag = {
         id,
         text,
-        size: 40 - level * 10,
+        size: 40,
         selected: false,
         zone,
         alias: (isString ? text.toLowerCase().replace(/\s+/g, '-') : tagData.alias) || '',
@@ -78,6 +78,22 @@ export const useTagStore = defineStore('tags', () => {
     return undefined;
   }
 
+  function removeDynamicChildren(parent: Tag) {
+    if (parent.children) {
+      // Identify dynamic children by checking their id
+      const dynamicIds = parent.children
+        .filter(child => child.id.includes('-dyn-'))
+        .map(child => child.id);
+  
+      // Remove them from the parent's children array
+      parent.children = parent.children.filter(child => !child.id.includes('-dyn-'));
+  
+      // Also remove these dynamic tags from the global store
+      tags.value = tags.value.filter(tag => !dynamicIds.includes(tag.id));
+    }
+  }
+  
+
   function unselectChildren(tag: Tag) {
     if (tag.children) {
       tag.children.forEach(child => {
@@ -93,11 +109,15 @@ export const useTagStore = defineStore('tags', () => {
       tags.value
         .filter(t => t.zone === focusedZone.value && !t.parentId && t.id !== tag.id)
         .forEach(t => {
+          if (t.selected) {
+            removeDynamicChildren(t);
+          }
           t.selected = false;
           unselectChildren(t);
         });
     }
   }
+  
 
   // Manually distribute children in a circle around their parent.
   function distributeChildNodes(parentTag: Tag, radius: number) {
@@ -178,11 +198,11 @@ Example format: ["Mountain Peak", "Dense Forest", "Morning Mist"]`;
       console.log('Raw Gemini response:', rawText);
       const cleanedText = rawText.replace(/```json\n|\n```/g, '').trim();
       const newTagsText = JSON.parse(cleanedText);
-      const level = parentTag.size === undefined ? 0 : (40 - parentTag.size) / 10;
+      const level = parentTag.size === undefined ? 0 : (50 - parentTag.size) / 10;
       const newTags = newTagsText.map((text: string, index: number) => ({
         id: `${parentTag.id}-dyn-${index}`,
         text,
-        size: 40 - (level + 1) * 10,
+        size: 40,
         selected: false,
         zone: parentTag.zone,
         alias: text.toLowerCase().replace(/\s+/g, '-'),
@@ -234,11 +254,14 @@ Example format: ["Mountain Peak", "Dense Forest", "Morning Mist"]`;
       expandChildAwayFromParent(tag);
       generateRelatedTags(tag);
     } else {
+      // Remove any dynamic children before unselecting.
+      removeDynamicChildren(tag);
       unselectChildren(tag);
       tag.selected = false;
     }
     console.log(`Toggled tag ${id} to selected: ${tag.selected}`);
   }
+  
   
   // Compute the active branch for display.
   const activeBranch = computed(() => {
