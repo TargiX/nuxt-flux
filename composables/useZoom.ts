@@ -19,6 +19,33 @@ export function useZoom() {
       .call(zoomBehavior.value.transform as any, d3.zoomIdentity);
   }
 
+  function centerOnNode(
+    svg: d3.Selection<SVGSVGElement, unknown, null, undefined>,
+    node: { x?: number; y?: number },
+    width: number,
+    height: number
+  ) {
+    if (!zoomBehavior.value || !svg.node() || !node.x || !node.y) return;
+
+    // Get current transform state
+    const currentTransform = d3.zoomTransform(svg.node()!);
+    const scale = currentTransform.k;
+
+    // Calculate center point
+    const centerX = width / 2;
+    const centerY = height / 2;
+
+    // Calculate the new transform
+    const newTransform = d3.zoomIdentity
+      .translate(centerX - node.x * scale, centerY - node.y * scale)
+      .scale(scale);
+
+    // Apply smooth transition
+    svg.transition()
+      .duration(750)
+      .call(zoomBehavior.value.transform as any, newTransform);
+  }
+
   function zoomIn(svg: d3.Selection<SVGSVGElement, unknown, null, undefined>) {
     if (!zoomBehavior.value) return;
     svg.transition()
@@ -44,6 +71,7 @@ export function useZoom() {
     zoomBehavior,
     currentTransform,
     initializeZoom,
+    centerOnNode,
     zoomIn,
     zoomOut,
     resetZoom

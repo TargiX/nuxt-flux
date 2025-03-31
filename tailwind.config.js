@@ -1,3 +1,4 @@
+import PrimeUI from 'tailwindcss-primeui';
 module.exports = {
     content: [
       // Specify the paths to all of your template files
@@ -13,7 +14,5 @@ module.exports = {
         // Extend your theme here if needed
       },
     },
-    plugins: [
-      require('flowbite/plugin') // Integrate Flowbite as a Tailwind CSS plugin
-    ],
+    plugins: [PrimeUI],
   }

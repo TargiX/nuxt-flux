@@ -1,24 +1,45 @@
 <template>
-  <div ref="container" :style="{ width: `${width}px`, height: `${height}px` }">
-    <div class="zoom-controls absolute bottom-4 right-4 flex gap-2">
-      <button 
-        @click="() => svg && zoomInFn(svg)"
-        class="bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 rounded-md"
-      >
-        +
-      </button>
-      <button 
-        @click="() => svg && zoomOutFn(svg)"
-        class="bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 rounded-md"
-      >
-        -
-      </button>
-      <button 
-        @click="() => svg && resetZoomFn(svg)"
-        class="bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 rounded-md text-sm"
-      >
-        Reset
-      </button>
+  <div class="force-graph-component relative" ref="container" :style="{ width: `${width}px`, height: `${height}px` }">
+    <!-- D3 SVG will be appended here -->
+    
+    <!-- Controls container -->
+    <div class="controls-overlay absolute bottom-4 left-4 right-4 justify-between items-center">
+      <!-- Slot for additional controls like zone selector -->
+          <!-- Existing Zoom controls -->
+      <div class="zoom-controls flex justify-end flex-col gap-2 w-7 ml-auto mb-5">
+        <Button 
+          @click="() => svg && zoomInFn(svg)"
+          severity="secondary"
+          size="small"
+          class="w-7 h-7"
+          aria-label="Zoom In"
+        >
+          +
+        </Button>
+        <Button 
+          @click="() => svg && zoomOutFn(svg)"
+          severity="secondary"
+          size="small"
+          class="w-7 h-7"
+          aria-label="Zoom Out"
+        >
+          -
+        </Button>
+        <Button 
+          @click="() => svg && resetZoomFn(svg)"
+          severity="secondary"
+          size="small"
+          class="!w-7 !h-7"
+          aria-label="Reset Zoom"
+          icon="pi pi-sync"
+        />
+      </div>
+      <div >
+      <div class="additional-controls flex-grow">
+        <slot name="controls"></slot>
+      </div>
+     </div>
+   
     </div>
   </div>
 </template>
@@ -62,7 +83,7 @@ let nodeGroup: d3.Selection<SVGGElement, unknown, null, undefined> | null = null
 let simulation: d3.Simulation<GraphNode, GraphLink> | null = null;
 
 // Use the zoom composable
-const { initializeZoom, zoomIn: zoomInFn, zoomOut: zoomOutFn, resetZoom: resetZoomFn } = useZoom();
+const { initializeZoom, zoomIn: zoomInFn, zoomOut: zoomOutFn, resetZoom: resetZoomFn, centerOnNode } = useZoom();
 
 onMounted(() => {
   initializeGraph();
@@ -73,7 +94,14 @@ onBeforeUnmount(() => {
 });
 
 watch(
-  () => [props.nodes.map(n => ({ id: n.id, text: n.text, size: n.size, children: n.children?.map(c => c.id) || [] })), props.links.map(l => ({ source: l.source.id, target: l.target.id, value: l.value }))],
+  () => [
+    props.nodes.map(n => ({ id: n.id, text: n.text, size: n.size, children: n.children?.map(c => c.id) || [] })),
+    props.links.map(l => ({ 
+      source: (l.source as GraphNode).id,
+      target: (l.target as GraphNode).id,
+      value: l.value 
+    }))
+  ],
   (newVal, oldVal) => {
     if (JSON.stringify(newVal) !== JSON.stringify(oldVal)) {
       console.log('Graph updating due to structural change');
@@ -90,7 +118,6 @@ function initializeGraph() {
     .append('svg')
     .attr('width', props.width)
     .attr('height', props.height)
-    .attr('style', 'border: 1px solid #ccc');
 
   // Create a root group for zoom
   const g = svg.append('g')
@@ -125,49 +152,56 @@ function initializeGraph() {
       }))
     .force('charge', d3.forceManyBody()
       .strength((d) => ((d as GraphNode).selected ? -100 : -20))) // Stronger repulsion for selected nodes
-    .force('center', d3.forceCenter(props.width / 2, props.height / 2).strength(0.05))
+    .force('center', d3.forceCenter(props.width / 2, props.height / 2).strength(0.00))
     .force('collision', d3.forceCollide()
       .radius((d) => ((d as GraphNode).selected ? (d as GraphNode).size : (d as GraphNode).size / 2) + 20)) // Larger collision radius for selected nodes
     .velocityDecay(0.8);
 
-  simulation.nodes().forEach(node => {
-    node.x = node.x || props.width / 2;
-    node.y = node.y || props.height / 2;
-    node.vx = 0;
-    node.vy = 0;
-    if (!node.parentId) {
-      node.fx = node.x;
-      node.fy = node.y;
-    }
-  });
-
-  setupSimulation();
-  updateLinks();
-  updateNodes();
-
-  simulation.alpha(0.1).restart();
-  setTimeout(() => {
+  if (simulation) {
     simulation.nodes().forEach(node => {
+      node.x = node.x || props.width / 2;
+      node.y = node.y || props.height / 2;
+      node.vx = 0;
+      node.vy = 0;
       if (!node.parentId) {
-        node.fx = null;
-        node.fy = null;
+        node.fx = node.x;
+        node.fy = node.y;
       }
     });
-  }, 500);
+
+    setupSimulation();
+    updateLinks();
+    updateNodes();
+
+    simulation.alpha(0.1).restart();
+    setTimeout(() => {
+      if (simulation) {
+        simulation.nodes().forEach(node => {
+          if (!node.parentId) {
+            node.fx = null;
+            node.fy = null;
+          }
+        });
+      }
+    }, 500);
+  }
 }
 
 function setupSimulation() {
   if (!simulation || !linkGroup || !nodeGroup) return;
 
   simulation.on('tick', () => {
-    linkGroup.selectAll<SVGLineElement, GraphLink>('line')
-      .attr('x1', d => (d.source as GraphNode).x || 0)
-      .attr('y1', d => (d.source as GraphNode).y || 0)
-      .attr('x2', d => (d.target as GraphNode).x || 0)
-      .attr('y2', d => (d.target as GraphNode).y || 0);
-
-    nodeGroup.selectAll<SVGGElement, GraphNode>('g')
-      .attr('transform', d => `translate(${d.x || 0},${d.y || 0})`);
+    if (linkGroup) {
+      linkGroup.selectAll<SVGLineElement, GraphLink>('line')
+        .attr('x1', d => (d.source as GraphNode).x || 0)
+        .attr('y1', d => (d.source as GraphNode).y || 0)
+        .attr('x2', d => (d.target as GraphNode).x || 0)
+        .attr('y2', d => (d.target as GraphNode).y || 0);
+    }
+    if (nodeGroup) {
+      nodeGroup.selectAll<SVGGElement, GraphNode>('g')
+        .attr('transform', d => `translate(${d.x || 0},${d.y || 0})`);
+    }
   });
 }
 
@@ -199,11 +233,10 @@ function updateGraph() {
   });
 
   simulation.nodes(props.nodes);
-  simulation.force('link')?.links(props.links);
-
-  const linkForce = simulation.force('link') as d3.ForceLink<GraphNode, GraphLink>;
-  if (linkForce) {
-    linkForce
+  const linkForceTyped = simulation.force<d3.ForceLink<GraphNode, GraphLink>>('link');
+  if (linkForceTyped) {
+    linkForceTyped.links(props.links);
+    linkForceTyped
       .distance(link => {
         const target = link.target as GraphNode;
         const source = link.source as GraphNode;
@@ -247,7 +280,11 @@ function updateLinks() {
   if (!linkGroup) return;
 
   const link = linkGroup.selectAll<SVGLineElement, GraphLink>('line')
-    .data(props.links, d => `${d.source.id}-${d.target.id}`);
+    .data(props.links, d => {
+      const sourceId = typeof d.source === 'object' ? (d.source as GraphNode).id : d.source;
+      const targetId = typeof d.target === 'object' ? (d.target as GraphNode).id : d.target;
+      return `${sourceId}-${targetId}`;
+    });
 
   link.enter()
     .append('line')
@@ -273,11 +310,15 @@ function updateNodes() {
       console.log('Node clicked:', d.id);
       emit('nodeClick', d.id);
       updateNodeSelection(d.id);
+      // Center on the clicked node with smooth transition
+      if (svg) {
+        centerOnNode(svg, d, props.width, props.height);
+      }
     });
 
   nodeEnter.append('circle')
     .attr('r', d => d.size / 2)
-    .attr('fill', d => d.selected ? '#4CAF50' : '#ccc')
+    .attr('fill', d => d.selected ? '#6366f1' : '#ccc')
     .attr('stroke', '#fff')
     .attr('stroke-width', 1.5);
 
@@ -299,7 +340,7 @@ function updateNodeSelection(id: string) {
   node.select('circle')
     .attr('fill', d => {
       console.log(`Updating ${d.id} fill: ${d.selected ? '#4CAF50' : '#ccc'}`);
-      return d.selected ? '#4CAF50' : '#ccc';
+      return d.selected ? '#6366f1' : '#ccc';
     });
 }
 
@@ -333,44 +374,61 @@ function drag(sim: d3.Simulation<GraphNode, GraphLink>) {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+.force-graph-component {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: none !important;
+  }
+}
+
 .node {
   cursor: pointer;
 }
 
-.absolute {
-  position: absolute;
+.absolute { position: absolute; }
+.bottom-4 { bottom: 1rem; }
+.left-4 { left: 1rem; }
+.right-4 { right: 1rem; }
+.flex { display: flex; }
+.justify-between { justify-content: space-between; }
+.items-center { align-items: center; }
+.gap-1 { gap: 0.25rem; }
+
+.controls-overlay {
+  z-index: 10;
+  pointer-events: none;
+  padding: 0 0.5rem;
 }
 
-.bottom-4 {
-  bottom: 1rem;
+.additional-controls,
+.zoom-controls {
+  pointer-events: auto;
 }
 
-.right-4 {
-  right: 1rem;
+.additional-controls {
+  flex-grow: 1;
+  overflow: hidden;
 }
 
-.flex {
-  display: flex;
+.additional-controls :deep(.zone-selector) {
+  margin-top: 0;
 }
 
-.gap-2 {
-  gap: 0.5rem;
+.additional-controls :deep(.p-selectbutton .p-button) {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.75rem;
+  min-width: auto;
 }
 
 .zoom-controls button {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.zoom-controls button:last-child {
-  width: auto;
-  padding: 0 12px;
+  padding: 0.4rem 0.6rem;
+  min-width: auto;
+  line-height: 1;
 }
 </style>

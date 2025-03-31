@@ -1,0 +1,140 @@
+.tag-cloud {
+  display: flex;
+  flex-direction: column;
+  padding: 0px 20px 0 20px;
+  width: 100%;
+}
+
+.main-zone {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* Let top row dominate height, bottom row adjusts */
+  grid-template-rows: minmax(0, 1fr) auto; 
+  gap: 0.5rem; /* Reduced gap */
+  padding: 0.5rem; /* Reduced padding */
+  padding-top: 2px;
+
+  width: 100%;
+  height: calc(100vh - 70px); /* Minimal vertical padding */
+  max-height: calc(100vh - 65px);
+  box-sizing: border-box;
+}
+
+/* General styles for all containers within the grid */
+.graph-container,
+.image-preview-container,
+.settings-container,
+.prompt-area-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start; 
+  min-height: 0; /* Allow shrinking */
+  /* Remove overflow from top row, add to bottom row */
+  
+  h2 {
+    text-align: center;
+    margin-bottom: 0.75rem; /* Slightly reduced margin */
+    color: #6d80a4;
+    flex-shrink: 0; 
+  }
+}
+
+/* Specific adjustments */
+.graph-container {
+   padding-bottom: 0rem !important;
+  grid-row: 1 / 2; 
+  grid-column: 1 / 2;
+  overflow: hidden; /* Graph container itself should not scroll */
+  .force-graph-component {
+    width: 100%;
+    flex-grow: 1; 
+    min-height: 0; 
+  }
+  .zone-selector {
+     /* This will be styled within ForceGraph.vue's styles now */
+  }
+}
+
+.image-preview-container {
+  grid-row: 1 / 2; 
+  grid-column: 2 / 3; 
+  overflow: hidden; /* Image preview container should not scroll */
+  .image-container {
+    width: 100%;
+    max-width: 100%;
+    aspect-ratio: 4 / 3; 
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    flex-shrink: 0; 
+  }
+}
+
+.settings-container {
+  grid-row: 2 / 3; 
+  grid-column: 1 / 2; 
+  overflow-y: auto; /* Allow settings to scroll if needed */
+  p {
+    color: #ccc;
+  }
+}
+
+.prompt-area-container {
+  grid-row: 2 / 3; 
+  grid-column: 2 / 3; 
+  justify-content: flex-start; 
+  overflow-y: auto; /* Allow prompt area to scroll if needed */
+  
+  .prompt-box {
+     /* Styles seem okay, ensure flex-grow: 1 allows it to expand/shrink */
+     flex-grow: 1; 
+     min-height: 100px; /* Give it some base height */
+  }
+
+  .selected-tags-display {
+     /* Styles seem okay */
+  }
+}
+
+.preview-zones {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.preview-zone {
+  width: calc(20% - 10px);
+  padding-top: 5px;
+  border: 1px solid #cfcfcf;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.2s;
+  background: #fff;
+  
+  &:hover {
+    transform: scale(1.05);
+  }
+
+  h3 {
+    text-align: center;
+    margin-bottom: 5px;
+  }
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  font-size: 1.5rem;
+}
+
+.progress-spinner {
+  .p-progressspinner-circle {
+    stroke: white !important;
+  }
+} 

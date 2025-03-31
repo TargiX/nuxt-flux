@@ -228,7 +228,7 @@ export const mockTags = {
           ]
         }
       ],
-    ActivityEvent: [
+    Activity: [
       {
         text: 'Action',
         alias: 'action',
@@ -343,7 +343,7 @@ export const mockTags = {
       }
     ],
   
-    StyleAesthetic: [
+    Aesthetic: [
       {
         text: 'Realism',
         alias: 'realism',
@@ -458,7 +458,7 @@ export const mockTags = {
       }
     ],
   
-    MoodAtmosphere: [
+    Mood: [
       {
         text: 'Joyful',
         alias: 'joyful',
@@ -573,7 +573,7 @@ export const mockTags = {
       }
     ],
   
-    SettingEnvironment: [
+    Setting: [
       {
         text: 'Urban',
         alias: 'urban',
@@ -688,7 +688,7 @@ export const mockTags = {
       }
     ],
   
-    CompositionLayout: [
+    Composition: [
       {
         text: 'Symmetry',
         alias: 'symmetry',

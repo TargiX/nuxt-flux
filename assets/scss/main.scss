@@ -1,22 +1,36 @@
 @use 'variables' as v;
+@import 'components/tag-cloud';
 
 body {
   font-family: v.$font-family;
   color: v.$text-color;
   background-color: v.$background-color;
-  background-image: 
-      linear-gradient(0deg, transparent 24%, 
-          rgba(65, 105, 225, 0.05) 25%,
-          rgba(65, 105, 225, 0.05) 26%, 
-          transparent 27%, transparent 74%,
-          rgba(65, 105, 225, 0.05) 75%,
-          rgba(65, 105, 225, 0.05) 76%, transparent 77%),
-      linear-gradient(90deg, transparent 24%, 
-          rgba(65, 105, 225, 0.05) 25%,
-          rgba(65, 105, 225, 0.05) 26%, 
-          transparent 27%, transparent 74%,
-          rgba(65, 105, 225, 0.05) 75%,
-          rgba(65, 105, 225, 0.05) 76%, transparent 77%);
-  background-size: 50px 50px;
+  background-color: #8EC5FC;
+  background-image: linear-gradient(62deg, #8EC5FC 0%, #E0C3FC 100%);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-size: 100% 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
 }
 
+
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.3); /* semi-transparent white */
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px); /* for Safari */
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  padding: 1.5rem;
+  color: white;
+  transition: all 0.3s ease;
+}
+
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.35);
+}
