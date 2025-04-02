@@ -47,6 +47,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, onBeforeUnmount } from 'vue';
 import * as d3 from 'd3';
+import 'd3-transition'; // Ensure transition support is available
 import { useZoom } from '~/composables/useZoom';
 import { useNodeStyling } from '~/composables/useNodeStyling';
 import { useLinkStyling } from '~/composables/useLinkStyling';
@@ -77,7 +78,7 @@ const {
   zoomBehavior 
 } = useZoom();
 
-const { applyNodeStyle, getSubjectImagePath } = useNodeStyling();
+const { applyNodeStyle, getSubjectImagePath, createNodeGradients } = useNodeStyling();
 const { createLinkGradient, createUniqueGradient, updateGradientPositions, applyLinkStyle } = useLinkStyling();
 const { createSimulation, updateSimulation, createDragBehavior } = useForceSimulation();
 
@@ -141,6 +142,20 @@ function initializeGraph() {
   linkGroup = g.append('g').attr('class', 'links');
   nodeGroup = g.append('g').attr('class', 'nodes');
 
+  // Initialize SVG defs and gradients
+  if (svg) {
+    // Prepare defs section for gradients
+    if (svg.select('defs').empty()) {
+      svg.append('defs');
+    }
+    
+    // Set up node gradients
+    createNodeGradients(svg);
+    
+    // Set up default link gradient
+    createLinkGradient(svg);
+  }
+
   // Helper function to center camera view
   function centerView() {
     if (svg && zoomBehavior.value) {
@@ -186,14 +201,15 @@ function initializeGraph() {
         .attr('x2', d => (d.target as GraphNode).x || 0)
         .attr('y2', d => (d.target as GraphNode).y || 0);
 
-      // Update link gradients
-      if (svg) {
+      // Update link gradients using a non-null svg reference
+      const svgEl = svg; // Capture in local variable to help TypeScript
+      if (svgEl) {
         linkGroup.selectAll<SVGLineElement, GraphLink>('line').each(function(d) {
           const source = d.source as GraphNode;
           const target = d.target as GraphNode;
           
           // Update gradient positions using our composable
-          updateGradientPositions(svg, source, target);
+          updateGradientPositions(svgEl, source, target);
         });
       }
     });
@@ -243,14 +259,6 @@ function updateGraph() {
 function updateLinks() {
   if (!linkGroup || !svg) return;
 
-  // Ensure we have defs for our gradients
-  if (svg.select('defs').empty()) {
-    svg.append('defs');
-    
-    // Create default gradient
-    createLinkGradient(svg);
-  }
-
   const link = linkGroup.selectAll<SVGLineElement, GraphLink>('line')
     .data(props.links, d => {
       const sourceId = typeof d.source === 'object' ? (d.source as GraphNode).id : d.source;
@@ -267,14 +275,15 @@ function updateLinks() {
   applyLinkStyle(linkEnter.merge(link));
 
   // Create unique gradients for each link
-  if (svg) {
+  const svgEl = svg; // Capture in local variable to help TypeScript
+  if (svgEl) {
     linkGroup.selectAll<SVGLineElement, GraphLink>('line').each(function(d) {
       const line = d3.select(this);
       const source = d.source as GraphNode;
       const target = d.target as GraphNode;
       
       // Create unique gradient and update link to use it
-      const gradientId = createUniqueGradient(svg, source, target);
+      const gradientId = createUniqueGradient(svgEl, source, target);
       line.attr('stroke', `url(#${gradientId})`);
     });
   }
@@ -284,7 +293,10 @@ function updateLinks() {
 }
 
 function updateNodes() {
-  if (!nodeGroup || !simulation) return;
+  if (!nodeGroup || !simulation || !svg) return;
+
+  // Create node gradients
+  createNodeGradients(svg);
 
   const node = nodeGroup.selectAll<SVGGElement, GraphNode>('g')
     .data(props.nodes, d => d.id);
@@ -305,11 +317,11 @@ function updateNodes() {
     })
     .on('mouseenter', function() {
       // Apply hover styling
-      applyNodeStyle(d3.select(this), true);
+      applyNodeStyle(d3.select(this), true, svg);
     })
     .on('mouseleave', function() {
       // Restore normal styling
-      applyNodeStyle(d3.select(this), false);
+      applyNodeStyle(d3.select(this), false, svg);
     });
 
   // Add circle background
@@ -317,6 +329,8 @@ function updateNodes() {
     .attr('r', d => d.size / 2)
     .attr('class', 'node-circle');
   
+  // We no longer add text directly here - our applyNodeStyle function handles text creation
+
   // Add images for Subject nodes (main parent nodes only)
   nodeEnter.filter(d => d.zone === 'Subject' && !d.parentId)
     .append('image')
@@ -331,33 +345,46 @@ function updateNodes() {
       d3.select(this).style('display', 'none');
     });
 
-  // Add text labels
-  nodeEnter.append('text')
-    .text(d => d.text)
-    .attr('text-anchor', 'middle')
-    .attr('dy', d => d.size / 2 + 10)
-    .attr('font-size', '10px')
-    .attr('fill', 'rgba(0, 0, 0, 0.8)')
-    .attr('class', 'node-text');
-
   // Remove old nodes
   node.exit().remove();
 
   // Apply styling to all nodes (new and existing)
   nodeGroup.selectAll<SVGGElement, GraphNode>('g')
     .each(function(d) {
-      applyNodeStyle(d3.select(this), false);
+      applyNodeStyle(d3.select(this), false, svg);
     });
 }
 
 function updateNodeSelection(id: string) {
-  if (!nodeGroup) return;
+  if (!nodeGroup || !svg) return;
 
+  // Update all nodes to reset their styles first
+  nodeGroup.selectAll<SVGGElement, GraphNode>('g')
+    .each(function(d) {
+      applyNodeStyle(d3.select(this), false, svg);
+    });
+
+  // Then specially handle the selected node
   const node = nodeGroup.selectAll<SVGGElement, GraphNode>('g')
     .filter(d => d.id === id);
     
-  // Apply styling using our composable
-  applyNodeStyle(node, false);
+  // Apply styling with a slight delay to create a sequential animation
+  setTimeout(() => {
+    // Apply styling using our composable with hover effect for additional emphasis
+    applyNodeStyle(node, true, svg);
+    
+    // Add a subtle animation to draw attention to the circle only
+    node.select('.node-circle')
+      .transition()
+      .duration(300)
+      .attr('r', d => d.size / 2 * 1.05)
+      .transition()
+      .duration(300)
+      .attr('r', d => d.size / 2);
+      
+    // Raise to front
+    node.raise();
+  }, 50);
 }
 
 function saveNodePositions() {
@@ -392,6 +419,12 @@ function saveNodePositions() {
   &:hover circle.node-circle {
     stroke: rgba(255, 255, 255, 0.8);
     fill: rgba(255, 255, 255, 0.3);
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.4));
+  }
+  
+  .node-circle {
+    transition: all 0.3s ease;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.2));
   }
   
   .subject-node-image {
@@ -404,6 +437,7 @@ function saveNodePositions() {
     font-weight: 500;
     text-shadow: 0 0 4px rgba(255, 255, 255, 0.9);
     pointer-events: none; // Prevent text from interfering with clicks
+    transition: all 0.2s ease;
   }
 }
 
