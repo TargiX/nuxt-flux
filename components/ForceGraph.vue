@@ -75,6 +75,25 @@ const props = defineProps<{
   links: GraphLink[];
 }>();
 
+// Function to get image path for subject nodes
+function getSubjectImagePath(text: string): string {
+  // Map the node text to the correct filename
+  const nodeTextToFilename: Record<string, string> = {
+    'Humans': 'humans',
+    'Animals': 'animals',
+    'Mythical Creatures': 'mythical-creatures',
+    'Plants': 'plants',
+    'Objects': 'objects',
+    'Abstract Concepts': 'abstract-concepts',
+    'Structures': 'structures',
+    'Landscapes': 'landscapes'
+  };
+  
+  const filename = nodeTextToFilename[text] || text.toLowerCase().replace(/\s+/g, '-');
+  // Use dynamic imports of assets instead of hard-coded paths
+  return new URL(`/assets/pics/subject/${filename}.png`, import.meta.url).href;
+}
+
 const emit = defineEmits(['nodeClick', 'nodePositionsUpdated']);
 const container = ref<HTMLElement | null>(null);
 let svg: d3.Selection<SVGSVGElement, unknown, null, undefined> | null = null;
@@ -316,19 +335,42 @@ function updateNodes() {
       }
     });
 
+  // Add background circles for all nodes
   nodeEnter.append('circle')
     .attr('r', d => d.size / 2)
     .attr('fill', d => d.selected ? '#6366f1' : '#ccc')
     .attr('stroke', '#fff')
-    .attr('stroke-width', 1.5);
+    .attr('stroke-width', 1.5)
+    .attr('class', 'node-circle');
+  
+  // Add images for Subject nodes (main parent nodes only)
+  nodeEnter.filter(d => d.zone === 'Subject' && !d.parentId)
+    .append('image')
+    .attr('xlink:href', d => getSubjectImagePath(d.text))
+    .attr('x', d => -d.size / 2)
+    .attr('y', d => -d.size / 2)
+    .attr('width', d => d.size)
+    .attr('height', d => d.size)
+    .attr('class', 'subject-node-image')
+    .on('error', function() {
+      // If image fails to load, just keep the circle visible as fallback
+      d3.select(this).style('display', 'none');
+    });
 
   nodeEnter.append('text')
     .text(d => d.text)
     .attr('text-anchor', 'middle')
     .attr('dy', d => d.size / 2 + 10)
-    .attr('font-size', '10px');
+    .attr('font-size', '10px')
+    .attr('class', 'node-text');
 
   node.exit().remove();
+
+  // Update existing nodes
+  nodeGroup.selectAll<SVGGElement, GraphNode>('g')
+    .selectAll('circle.node-circle')
+    .attr('fill', d => d.selected ? '#6366f1' : '#ccc')
+    .attr('r', d => d.size / 2);
 }
 
 function updateNodeSelection(id: string) {
@@ -337,9 +379,9 @@ function updateNodeSelection(id: string) {
   const node = nodeGroup.selectAll<SVGGElement, GraphNode>('g')
     .filter(d => d.id === id);
 
-  node.select('circle')
+  node.select('circle.node-circle')
     .attr('fill', d => {
-      console.log(`Updating ${d.id} fill: ${d.selected ? '#4CAF50' : '#ccc'}`);
+      console.log(`Updating ${d.id} fill: ${d.selected ? '#6366f1' : '#ccc'}`);
       return d.selected ? '#6366f1' : '#ccc';
     });
 }
@@ -389,6 +431,18 @@ function drag(sim: d3.Simulation<GraphNode, GraphLink>) {
 
 .node {
   cursor: pointer;
+  
+  .subject-node-image {
+    clip-path: circle(50%);
+    object-fit: cover;
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.3));
+  }
+  
+  .node-text {
+    fill: #333;
+    font-weight: 500;
+    text-shadow: 0 0 3px rgba(255, 255, 255, 0.8);
+  }
 }
 
 .absolute { position: absolute; }

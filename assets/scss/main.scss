@@ -1,6 +1,13 @@
 @use 'variables' as v;
 @import 'components/tag-cloud';
 
+:root {
+  --font-family: #{v.$font-family};
+  --text-color: #{v.$text-color};
+  --background-color: #{v.$background-color};
+  --secondary-color: #{v.$secondary-color};
+}
+
 body {
   font-family: v.$font-family;
   color: v.$text-color;
@@ -24,7 +31,7 @@ body {
   -webkit-backdrop-filter: blur(12px); /* for Safari */
   border: 1px solid rgba(255, 255, 255, 0.3);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-  padding: 1.5rem;
+  padding: 1rem 1.5rem;
   color: white;
   transition: all 0.3s ease;
 }

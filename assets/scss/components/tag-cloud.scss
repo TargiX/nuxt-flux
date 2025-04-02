@@ -29,12 +29,11 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-start; 
-  min-height: 0; /* Allow shrinking */
-  /* Remove overflow from top row, add to bottom row */
+  min-height: 220px; 
   
   h2 {
     text-align: center;
-    margin-bottom: 0.75rem; /* Slightly reduced margin */
+    margin-bottom: 0.75rem; 
     color: #6d80a4;
     flex-shrink: 0; 
   }

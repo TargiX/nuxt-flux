@@ -44,21 +44,26 @@
 
     <!-- Bottom Right: Prompt Area -->
     <div class="prompt-area-container glass-card">
-      <div class="prompt-box">
-        <div class="prompt-header flex justify-between items-start">
+      <div class="prompt-header flex justify-between items-start w-full">
           <h2>Generated Prompt:</h2>
-          <ToggleSwitch
-            aria-label="Manual Mode"
+          <ToggleButton 
+            onLabel="Auto"
+            class="px-1 py-1 h-8"
+            offLabel="Manual"
+            onIcon="pi pi-lock" 
+            offIcon="pi pi-lock-open"
             v-model="isManualMode" 
           />
         </div>
+      <div class="prompt-box w-full">
+    
         
-        <textarea
+        <Textarea
           v-if="isManualMode"
           v-model="manualPrompt"
-          class="manual-prompt-input text-[var(--text-color)]"
+          class="manual-prompt-input text-[var(--text-color)] h-[calc(100%-10px)] w-full p-2"
           placeholder="Enter your prompt..."
-        ></textarea>
+        ></Textarea>
         <p class="text-[#474565]" v-else>{{ generatedPromptResult }}</p>
         
      
@@ -292,6 +297,7 @@ function handleNodePositionsUpdated(positions: { id: string; x: number; y: numbe
 </script>
 
 <style scoped>
+@import '@/assets/scss/components/tag-cloud.scss';
 /* Component-specific styles are now in assets/scss/components/tag-cloud.scss */
 /* We keep this block for scoped styles as needed but don't add any until explicitly asked */
 </style>
