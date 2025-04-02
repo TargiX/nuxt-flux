@@ -45,28 +45,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, nextTick, onBeforeUnmount } from 'vue';
+import { ref, onMounted, watch, onBeforeUnmount } from 'vue';
 import * as d3 from 'd3';
 import { useZoom } from '~/composables/useZoom';
-import type { SimulationNodeDatum } from 'd3';
-
-interface GraphNode extends d3.SimulationNodeDatum {
-  id: string;
-  text: string;
-  size: number;
-  selected: boolean;
-  zone: string;
-  alias: string;
-  children?: GraphNode[];
-  parentId?: string;
-  x?: number;
-  y?: number;
-  isLoading?: boolean;
-}
-
-interface GraphLink extends d3.SimulationLinkDatum<GraphNode> {
-  value: number;
-}
+import { useNodeStyling } from '~/composables/useNodeStyling';
+import { useLinkStyling } from '~/composables/useLinkStyling';
+import { useForceSimulation } from '~/composables/useForceSimulation';
+import type { GraphNode, GraphLink } from '~/types/graph';
 
 const props = defineProps<{
   width: number;
@@ -75,25 +60,6 @@ const props = defineProps<{
   links: GraphLink[];
 }>();
 
-// Function to get image path for subject nodes
-function getSubjectImagePath(text: string): string {
-  // Map the node text to the correct filename
-  const nodeTextToFilename: Record<string, string> = {
-    'Humans': 'humans',
-    'Animals': 'animals',
-    'Mythical Creatures': 'mythical-creatures',
-    'Plants': 'plants',
-    'Objects': 'objects',
-    'Abstract Concepts': 'abstract-concepts',
-    'Structures': 'structures',
-    'Landscapes': 'landscapes'
-  };
-  
-  const filename = nodeTextToFilename[text] || text.toLowerCase().replace(/\s+/g, '-');
-  // Use dynamic imports of assets instead of hard-coded paths
-  return new URL(`/assets/pics/subject/${filename}.png`, import.meta.url).href;
-}
-
 const emit = defineEmits(['nodeClick', 'nodePositionsUpdated']);
 const container = ref<HTMLElement | null>(null);
 let svg: d3.Selection<SVGSVGElement, unknown, null, undefined> | null = null;
@@ -101,8 +67,19 @@ let linkGroup: d3.Selection<SVGGElement, unknown, null, undefined> | null = null
 let nodeGroup: d3.Selection<SVGGElement, unknown, null, undefined> | null = null;
 let simulation: d3.Simulation<GraphNode, GraphLink> | null = null;
 
-// Use the zoom composable
-const { initializeZoom, zoomIn: zoomInFn, zoomOut: zoomOutFn, resetZoom: resetZoomFn, centerOnNode, zoomBehavior } = useZoom();
+// Use our composables
+const { 
+  initializeZoom, 
+  zoomIn: zoomInFn, 
+  zoomOut: zoomOutFn, 
+  resetZoom: resetZoomFn, 
+  centerOnNode, 
+  zoomBehavior 
+} = useZoom();
+
+const { applyNodeStyle, getSubjectImagePath } = useNodeStyling();
+const { createLinkGradient, createUniqueGradient, updateGradientPositions, applyLinkStyle } = useLinkStyling();
+const { createSimulation, updateSimulation, createDragBehavior } = useForceSimulation();
 
 onMounted(() => {
   initializeGraph();
@@ -190,38 +167,36 @@ function initializeGraph() {
   // Apply center view immediately before any simulation
   centerView();
 
-  // Create and configure the simulation
-  simulation = d3.forceSimulation<GraphNode>(props.nodes)
-    .force('link', d3.forceLink<GraphNode, GraphLink>(props.links)
-      .id(d => d.id)
-      .distance(link => {
-        const target = link.target as GraphNode;
-        const source = link.source as GraphNode;
-        // Increase distance when target is selected
-        if (target.selected) return 150;
-        // Keep parent-child relationships closer
-        if (target.parentId === source.id) return 50;
-        return 140;
-      })
-      .strength(link => {
-        const target = link.target as GraphNode;
-        const source = link.source as GraphNode;
-        // Weaken link when target is selected
-        if (target.selected) return 0.05;
-        // Stronger force for parent-child relationships
-        if (target.parentId === source.id) return 0.1;
-        return 0.15;
-      }))
-    .force('charge', d3.forceManyBody()
-      .strength((d) => ((d as GraphNode).selected ? -100 : -20))) // Stronger repulsion for selected nodes
-    .force('center', d3.forceCenter(props.width / 2, props.height / 2).strength(0.00))
-    .force('collision', d3.forceCollide()
-      .radius((d) => ((d as GraphNode).selected ? (d as GraphNode).size : (d as GraphNode).size / 2) + 20)) // Larger collision radius for selected nodes
-    .velocityDecay(0.8);
+  // Create and configure the simulation using our composable
+  simulation = createSimulation(props.nodes, props.links, props.width, props.height);
 
   if (simulation) {
-    // Set up rendering
-    setupSimulation();
+    // Set up the tick function for animation
+    simulation.on('tick', () => {
+      if (!svg || !nodeGroup || !linkGroup) return;
+
+      // Update node positions
+      nodeGroup.selectAll<SVGGElement, GraphNode>('g')
+        .attr('transform', d => `translate(${d.x || 0},${d.y || 0})`);
+
+      // Update link positions
+      linkGroup.selectAll<SVGLineElement, GraphLink>('line')
+        .attr('x1', d => (d.source as GraphNode).x || 0)
+        .attr('y1', d => (d.source as GraphNode).y || 0)
+        .attr('x2', d => (d.target as GraphNode).x || 0)
+        .attr('y2', d => (d.target as GraphNode).y || 0);
+
+      // Update link gradients
+      if (svg) {
+        linkGroup.selectAll<SVGLineElement, GraphLink>('line').each(function(d) {
+          const source = d.source as GraphNode;
+          const target = d.target as GraphNode;
+          
+          // Update gradient positions using our composable
+          updateGradientPositions(svg, source, target);
+        });
+      }
+    });
     
     // First render nodes and links *before* starting animation
     updateLinks();
@@ -245,87 +220,18 @@ function initializeGraph() {
   }
 }
 
-function setupSimulation() {
-  if (!simulation || !linkGroup || !nodeGroup) return;
-
-  simulation.on('tick', () => {
-    if (linkGroup) {
-      linkGroup.selectAll<SVGLineElement, GraphLink>('line')
-        .attr('x1', d => (d.source as GraphNode).x || 0)
-        .attr('y1', d => (d.source as GraphNode).y || 0)
-        .attr('x2', d => (d.target as GraphNode).x || 0)
-        .attr('y2', d => (d.target as GraphNode).y || 0);
-    }
-    if (nodeGroup) {
-      nodeGroup.selectAll<SVGGElement, GraphNode>('g')
-        .attr('transform', d => `translate(${d.x || 0},${d.y || 0})`);
-    }
-  });
-}
-
 function updateGraph() {
   if (!svg || !simulation) return;
+  
+  // Update simulation using our composable
+  simulation = updateSimulation(simulation, props.nodes, props.links, props.width, props.height);
 
-  simulation.stop();
-
-  const selectedParent = props.nodes.find(n => n.selected && !n.parentId);
-  const parentX = selectedParent ? (selectedParent.x || props.width / 2) : props.width / 2;
-  const parentY = selectedParent ? (selectedParent.y || props.height / 2) : props.height / 2;
-
-  props.nodes.forEach(node => {
-    if (node.selected && !node.parentId) {
-      node.fx = node.x || parentX;
-      node.fy = node.y || parentY;
-    } else if (node.parentId) {
-      const parent = props.nodes.find(n => n.id === node.parentId);
-      if (parent && (!node.x || !node.y)) {
-        node.x = parent.x || parentX;
-        node.y = parent.y || parentY;
-        node.vx = 0;
-        node.vy = 0;
-      }
-    } else {
-      node.fx = null;
-      node.fy = null;
-    }
-  });
-
-  simulation.nodes(props.nodes);
-  const linkForceTyped = simulation.force<d3.ForceLink<GraphNode, GraphLink>>('link');
-  if (linkForceTyped) {
-    linkForceTyped.links(props.links);
-    linkForceTyped
-      .distance(link => {
-        const target = link.target as GraphNode;
-        const source = link.source as GraphNode;
-        if (target.selected) return 150;
-        if (target.parentId === source.id) return 50;
-        return 100;
-      })
-      .strength(link => {
-        const target = link.target as GraphNode;
-        const source = link.source as GraphNode;
-        if (target.selected) return 0.05;
-        if (target.parentId === source.id) return 0.3;
-        return 0.15;
-      });
-  }
-
-  const chargeForce = simulation.force('charge') as d3.ForceManyBody<GraphNode>;
-  if (chargeForce) {
-    chargeForce.strength((d: SimulationNodeDatum) => ((d as GraphNode).selected ? -100 : -20));
-  }
-
-  const collisionForce = simulation.force('collision') as d3.ForceCollide<GraphNode>;
-  if (collisionForce) {
-    collisionForce.radius((d: SimulationNodeDatum) => ((d as GraphNode).selected ? (d as GraphNode).size : (d as GraphNode).size / 2) + 20);
-  }
-
-  simulation.alpha(0.3).restart();
-
+  // Update visual elements
   updateLinks();
   updateNodes();
 
+  // Release fixed positions after a short delay
+  const selectedParent = props.nodes.find(n => n.selected && !n.parentId);
   setTimeout(() => {
     if (selectedParent) {
       selectedParent.fx = null;
@@ -335,7 +241,15 @@ function updateGraph() {
 }
 
 function updateLinks() {
-  if (!linkGroup) return;
+  if (!linkGroup || !svg) return;
+
+  // Ensure we have defs for our gradients
+  if (svg.select('defs').empty()) {
+    svg.append('defs');
+    
+    // Create default gradient
+    createLinkGradient(svg);
+  }
 
   const link = linkGroup.selectAll<SVGLineElement, GraphLink>('line')
     .data(props.links, d => {
@@ -344,13 +258,28 @@ function updateLinks() {
       return `${sourceId}-${targetId}`;
     });
 
-  link.enter()
+  // Enter new links
+  const linkEnter = link.enter()
     .append('line')
-    .attr('stroke', '#999')
-    .attr('stroke-opacity', 0.6)
-    .attr('stroke-width', d => Math.sqrt(d.value))
-    .merge(link);
+    .attr('stroke', 'url(#link-gradient)');
+    
+  // Apply styling to all links
+  applyLinkStyle(linkEnter.merge(link));
 
+  // Create unique gradients for each link
+  if (svg) {
+    linkGroup.selectAll<SVGLineElement, GraphLink>('line').each(function(d) {
+      const line = d3.select(this);
+      const source = d.source as GraphNode;
+      const target = d.target as GraphNode;
+      
+      // Create unique gradient and update link to use it
+      const gradientId = createUniqueGradient(svg, source, target);
+      line.attr('stroke', `url(#${gradientId})`);
+    });
+  }
+
+  // Remove old links
   link.exit().remove();
 }
 
@@ -360,10 +289,11 @@ function updateNodes() {
   const node = nodeGroup.selectAll<SVGGElement, GraphNode>('g')
     .data(props.nodes, d => d.id);
 
+  // Enter new nodes
   const nodeEnter = node.enter()
     .append('g')
     .attr('class', 'node')
-    .call(drag(simulation))
+    .call(createDragBehavior(simulation))
     .on('click', (event, d) => {
       console.log('Node clicked:', d.id);
       emit('nodeClick', d.id);
@@ -372,14 +302,19 @@ function updateNodes() {
       if (svg) {
         centerOnNode(svg, d, props.width, props.height);
       }
+    })
+    .on('mouseenter', function() {
+      // Apply hover styling
+      applyNodeStyle(d3.select(this), true);
+    })
+    .on('mouseleave', function() {
+      // Restore normal styling
+      applyNodeStyle(d3.select(this), false);
     });
 
-  // Add background circles for all nodes
+  // Add circle background
   nodeEnter.append('circle')
     .attr('r', d => d.size / 2)
-    .attr('fill', d => d.selected ? '#6366f1' : '#ccc')
-    .attr('stroke', '#fff')
-    .attr('stroke-width', 1.5)
     .attr('class', 'node-circle');
   
   // Add images for Subject nodes (main parent nodes only)
@@ -396,20 +331,23 @@ function updateNodes() {
       d3.select(this).style('display', 'none');
     });
 
+  // Add text labels
   nodeEnter.append('text')
     .text(d => d.text)
     .attr('text-anchor', 'middle')
     .attr('dy', d => d.size / 2 + 10)
     .attr('font-size', '10px')
+    .attr('fill', 'rgba(0, 0, 0, 0.8)')
     .attr('class', 'node-text');
 
+  // Remove old nodes
   node.exit().remove();
 
-  // Update existing nodes - fix TypeScript error with explicit type casting
+  // Apply styling to all nodes (new and existing)
   nodeGroup.selectAll<SVGGElement, GraphNode>('g')
-    .selectAll<SVGCircleElement, GraphNode>('circle.node-circle')
-    .attr('fill', d => d.selected ? '#6366f1' : '#ccc')
-    .attr('r', d => d.size / 2);
+    .each(function(d) {
+      applyNodeStyle(d3.select(this), false);
+    });
 }
 
 function updateNodeSelection(id: string) {
@@ -417,12 +355,9 @@ function updateNodeSelection(id: string) {
 
   const node = nodeGroup.selectAll<SVGGElement, GraphNode>('g')
     .filter(d => d.id === id);
-
-  node.select('circle.node-circle')
-    .attr('fill', d => {
-      console.log(`Updating ${d.id} fill: ${d.selected ? '#6366f1' : '#ccc'}`);
-      return d.selected ? '#6366f1' : '#ccc';
-    });
+    
+  // Apply styling using our composable
+  applyNodeStyle(node, false);
 }
 
 function saveNodePositions() {
@@ -434,24 +369,6 @@ function saveNodePositions() {
   }));
   console.log('Emitting updated positions:', updatedPositions);
   emit('nodePositionsUpdated', updatedPositions);
-}
-
-function drag(sim: d3.Simulation<GraphNode, GraphLink>) {
-  return d3.drag<SVGGElement, GraphNode>()
-    .on('start', (event) => {
-      if (!event.active) sim.alphaTarget(0.3).restart();
-      event.subject.fx = event.subject.x;
-      event.subject.fy = event.subject.y;
-    })
-    .on('drag', (event) => {
-      event.subject.fx = event.x;
-      event.subject.fy = event.y;
-    })
-    .on('end', (event) => {
-      if (!event.active) sim.alphaTarget(0);
-      event.subject.fx = null;
-      event.subject.fy = null;
-    });
 }
 </script>
 
@@ -470,6 +387,12 @@ function drag(sim: d3.Simulation<GraphNode, GraphLink>) {
 
 .node {
   cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover circle.node-circle {
+    stroke: rgba(255, 255, 255, 0.8);
+    fill: rgba(255, 255, 255, 0.3);
+  }
   
   .subject-node-image {
     clip-path: circle(50%);
@@ -478,9 +401,9 @@ function drag(sim: d3.Simulation<GraphNode, GraphLink>) {
   }
   
   .node-text {
-    fill: #333;
     font-weight: 500;
-    text-shadow: 0 0 3px rgba(255, 255, 255, 0.8);
+    text-shadow: 0 0 4px rgba(255, 255, 255, 0.9);
+    pointer-events: none; // Prevent text from interfering with clicks
   }
 }
 
