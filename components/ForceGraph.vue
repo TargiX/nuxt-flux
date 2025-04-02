@@ -48,6 +48,7 @@
 import { ref, onMounted, watch, nextTick, onBeforeUnmount } from 'vue';
 import * as d3 from 'd3';
 import { useZoom } from '~/composables/useZoom';
+import { getSubjectIconFilename } from '~/services/iconService';
 import type { SimulationNodeDatum } from 'd3';
 
 interface GraphNode extends d3.SimulationNodeDatum {
@@ -77,21 +78,13 @@ const props = defineProps<{
 
 // Function to get image path for subject nodes
 function getSubjectImagePath(text: string): string {
-  // Map the node text to the correct filename
-  const nodeTextToFilename: Record<string, string> = {
-    'Humans': 'humans',
-    'Animals': 'animals',
-    'Mythical Creatures': 'mythical-creatures',
-    'Plants': 'plants',
-    'Objects': 'objects',
-    'Abstract Concepts': 'abstract-concepts',
-    'Structures': 'structures',
-    'Landscapes': 'landscapes'
-  };
-  
-  const filename = nodeTextToFilename[text] || text.toLowerCase().replace(/\s+/g, '-');
-  // Use dynamic imports of assets instead of hard-coded paths
-  return new URL(`/assets/pics/subject/${filename}.png`, import.meta.url).href;
+  const filename = getSubjectIconFilename(text);
+  try {
+    return new URL(`/assets/pics/subject/${filename}.png`, import.meta.url).href;
+  } catch (error) {
+    console.error('Error resolving icon path:', error);
+    return `/assets/pics/subject/${filename}.png`;
+  }
 }
 
 const emit = defineEmits(['nodeClick', 'nodePositionsUpdated']);
@@ -366,9 +359,9 @@ function updateNodes() {
 
   node.exit().remove();
 
-  // Update existing nodes
+  // Update existing nodes - fix TypeScript error with explicit typing
   nodeGroup.selectAll<SVGGElement, GraphNode>('g')
-    .selectAll('circle.node-circle')
+    .selectAll<SVGCircleElement, GraphNode>('circle.node-circle')
     .attr('fill', d => d.selected ? '#6366f1' : '#ccc')
     .attr('r', d => d.size / 2);
 }
