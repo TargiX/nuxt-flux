@@ -48,7 +48,6 @@
 import { ref, onMounted, watch, nextTick, onBeforeUnmount } from 'vue';
 import * as d3 from 'd3';
 import { useZoom } from '~/composables/useZoom';
-import { getSubjectIconFilename } from '~/services/iconService';
 import type { SimulationNodeDatum } from 'd3';
 
 interface GraphNode extends d3.SimulationNodeDatum {
@@ -78,13 +77,21 @@ const props = defineProps<{
 
 // Function to get image path for subject nodes
 function getSubjectImagePath(text: string): string {
-  const filename = getSubjectIconFilename(text);
-  try {
-    return new URL(`/assets/pics/subject/${filename}.png`, import.meta.url).href;
-  } catch (error) {
-    console.error('Error resolving icon path:', error);
-    return `/assets/pics/subject/${filename}.png`;
-  }
+  // Map the node text to the correct filename
+  const nodeTextToFilename: Record<string, string> = {
+    'Humans': 'humans',
+    'Animals': 'animals',
+    'Mythical Creatures': 'mythical-creatures',
+    'Plants': 'plants',
+    'Objects': 'objects',
+    'Abstract Concepts': 'abstract-concepts',
+    'Structures': 'structures',
+    'Landscapes': 'landscapes'
+  };
+  
+  const filename = nodeTextToFilename[text] || text.toLowerCase().replace(/\s+/g, '-');
+  // Use dynamic imports of assets instead of hard-coded paths
+  return new URL(`/assets/pics/subject/${filename}.png`, import.meta.url).href;
 }
 
 const emit = defineEmits(['nodeClick', 'nodePositionsUpdated']);
@@ -95,7 +102,7 @@ let nodeGroup: d3.Selection<SVGGElement, unknown, null, undefined> | null = null
 let simulation: d3.Simulation<GraphNode, GraphLink> | null = null;
 
 // Use the zoom composable
-const { initializeZoom, zoomIn: zoomInFn, zoomOut: zoomOutFn, resetZoom: resetZoomFn, centerOnNode } = useZoom();
+const { initializeZoom, zoomIn: zoomInFn, zoomOut: zoomOutFn, resetZoom: resetZoomFn, centerOnNode, zoomBehavior } = useZoom();
 
 onMounted(() => {
   initializeGraph();
@@ -126,6 +133,25 @@ watch(
 function initializeGraph() {
   if (!container.value) return;
 
+  // Get center coordinates
+  const centerX = props.width / 2;
+  const centerY = props.height / 2;
+
+  // Pre-position all nodes at the center before creating the SVG
+  props.nodes.forEach(node => {
+    // Force all nodes to start exactly at center
+    node.x = centerX;
+    node.y = centerY;
+    node.vx = 0;
+    node.vy = 0;
+    
+    // Fix parent nodes at center
+    if (!node.parentId) {
+      node.fx = centerX;
+      node.fy = centerY;
+    }
+  });
+
   svg = d3.select(container.value)
     .append('svg')
     .attr('width', props.width)
@@ -138,9 +164,33 @@ function initializeGraph() {
   linkGroup = g.append('g').attr('class', 'links');
   nodeGroup = g.append('g').attr('class', 'nodes');
 
-  // Initialize zoom using the composable
-  initializeZoom(svg, g);
+  // Helper function to center camera view
+  function centerView() {
+    if (svg && zoomBehavior.value) {
+      // Create a transform that centers the view
+      // In D3, the transform origin is at (0,0), so we need to
+      // translate to center of the viewport
+      const scale = 1.4;
+      const tx = props.width / 2;
+      const ty = props.height / 2;
+      
+      const transform = d3.zoomIdentity
+        .translate(tx, ty)
+        .scale(scale)
+        .translate(-centerX, -centerY);
+      
+      // Apply the transform without transition the first time
+      svg.call(zoomBehavior.value.transform as any, transform);
+    }
+  }
 
+  // Initialize zoom using the composable with proper initial transform
+  initializeZoom(svg, g, 1.4);
+  
+  // Apply center view immediately before any simulation
+  centerView();
+
+  // Create and configure the simulation
   simulation = d3.forceSimulation<GraphNode>(props.nodes)
     .force('link', d3.forceLink<GraphNode, GraphLink>(props.links)
       .id(d => d.id)
@@ -170,22 +220,18 @@ function initializeGraph() {
     .velocityDecay(0.8);
 
   if (simulation) {
-    simulation.nodes().forEach(node => {
-      node.x = node.x || props.width / 2;
-      node.y = node.y || props.height / 2;
-      node.vx = 0;
-      node.vy = 0;
-      if (!node.parentId) {
-        node.fx = node.x;
-        node.fy = node.y;
-      }
-    });
-
+    // Set up rendering
     setupSimulation();
+    
+    // First render nodes and links *before* starting animation
     updateLinks();
     updateNodes();
-
-    simulation.alpha(0.1).restart();
+    
+    // Now start the simulation with zero initial velocity for smooth appearance
+    simulation.tick(5); // Apply a few ticks immediately to stabilize
+    simulation.alpha(0.3).restart();
+    
+    // Release fixed positions after initial layout settles
     setTimeout(() => {
       if (simulation) {
         simulation.nodes().forEach(node => {
@@ -195,7 +241,7 @@ function initializeGraph() {
           }
         });
       }
-    }, 500);
+    }, 100); // Longer delay to ensure nodes have settled before releasing
   }
 }
 
@@ -359,7 +405,7 @@ function updateNodes() {
 
   node.exit().remove();
 
-  // Update existing nodes - fix TypeScript error with explicit typing
+  // Update existing nodes - fix TypeScript error with explicit type casting
   nodeGroup.selectAll<SVGGElement, GraphNode>('g')
     .selectAll<SVGCircleElement, GraphNode>('circle.node-circle')
     .attr('fill', d => d.selected ? '#6366f1' : '#ccc')

@@ -5,7 +5,11 @@ export function useZoom() {
   const zoomBehavior = ref<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const currentTransform = ref<d3.ZoomTransform>(d3.zoomIdentity);
 
-  function initializeZoom(svg: d3.Selection<SVGSVGElement, unknown, null, undefined>, g: d3.Selection<SVGGElement, unknown, null, undefined>) {
+  function initializeZoom(
+    svg: d3.Selection<SVGSVGElement, unknown, null, undefined>, 
+    g: d3.Selection<SVGGElement, unknown, null, undefined>,
+    initialScale: number = 1.0
+  ) {
     // Initialize zoom behavior
     zoomBehavior.value = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.2, 4]) // Set min/max zoom scale
@@ -14,9 +18,12 @@ export function useZoom() {
         g.attr('transform', event.transform.toString());
       });
 
-    // Apply zoom behavior to SVG
-    svg.call(zoomBehavior.value as any)
-      .call(zoomBehavior.value.transform as any, d3.zoomIdentity);
+    // Apply zoom behavior to SVG with initial scale
+    svg.call(zoomBehavior.value as any);
+    
+    // Set initial zoom level
+    const initialTransform = d3.zoomIdentity.scale(initialScale);
+    svg.call(zoomBehavior.value.transform as any, initialTransform);
   }
 
   function centerOnNode(

@@ -297,7 +297,6 @@ function handleNodePositionsUpdated(positions: { id: string; x: number; y: numbe
 </script>
 
 <style scoped>
-@import '@/assets/scss/components/tag-cloud.scss';
 /* Component-specific styles are now in assets/scss/components/tag-cloud.scss */
 /* We keep this block for scoped styles as needed but don't add any until explicitly asked */
 </style>
