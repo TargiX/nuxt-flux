@@ -3,7 +3,7 @@
     
     <!-- Top Left: Graph -->
     <div class="graph-container glass-card">
-      <h2>{{ focusedZone }}</h2>
+      <h2 class="zone-title">{{ focusedZone }}</h2>
       <ForceGraph
         :width="800"
         :height="600"
@@ -14,8 +14,11 @@
       >
         <!-- Zone selector will be moved here via slot later -->
         <template #controls>
-          <div class="zone-selector mt-4">
-            <SelectButton v-model="selectedZone" :options="zoneOptions" class="flex flex-wrap justify-center" />
+          <div class="zone-selector-container mt-4">
+            <ZoneSelector
+              v-model:modelValue="selectedZone"
+              :options="zoneOptions"
+            />
           </div>
         </template>
       </ForceGraph>
@@ -96,6 +99,7 @@ import { useTagStore } from '~/store/tagStore';
 import ForceGraph from './ForceGraph.vue';
 import { useRuntimeConfig } from '#app';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import ZoneSelector from './ZoneSelector.vue';
 
 const config = useRuntimeConfig();
 const genAI = new GoogleGenerativeAI(config.public.GEMINI_API_KEY as string);

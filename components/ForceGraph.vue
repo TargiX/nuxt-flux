@@ -1,5 +1,5 @@
 <template>
-  <div class="force-graph-component relative" ref="container" :style="{ width: `${width}px`, height: `${height}px` }">
+  <div class="force-graph-component relative" ref="container" :style="containerStyle">
     <!-- D3 SVG will be appended here -->
     
     <!-- Controls container -->
@@ -45,7 +45,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, onBeforeUnmount } from 'vue';
+import { ref, onMounted, watch, computed, onBeforeUnmount } from 'vue';
 import * as d3 from 'd3';
 import 'd3-transition'; // Ensure transition support is available
 import { useZoom } from '~/composables/useZoom';
@@ -68,6 +68,16 @@ let linkGroup: d3.Selection<SVGGElement, unknown, null, undefined> | null = null
 let nodeGroup: d3.Selection<SVGGElement, unknown, null, undefined> | null = null;
 let simulation: d3.Simulation<GraphNode, GraphLink> | null = null;
 
+// Compute responsive container style
+const containerStyle = computed(() => {
+  return {
+    width: '100%',
+    height: '100%',
+    maxWidth: '100%',
+    maxHeight: '100%',
+  };
+});
+
 // Use our composables
 const { 
   initializeZoom, 
@@ -84,11 +94,29 @@ const { createSimulation, updateSimulation, createDragBehavior } = useForceSimul
 
 onMounted(() => {
   initializeGraph();
+  
+  // Add resize event listener
+  window.addEventListener('resize', handleResize);
 });
 
 onBeforeUnmount(() => {
   saveNodePositions();
+  
+  // Remove resize event listener
+  window.removeEventListener('resize', handleResize);
 });
+
+// Debounced resize handler
+let resizeTimeout: number | null = null;
+function handleResize() {
+  if (resizeTimeout) {
+    window.clearTimeout(resizeTimeout);
+  }
+  
+  resizeTimeout = window.setTimeout(() => {
+    updateGraph();
+  }, 250);
+}
 
 watch(
   () => [
@@ -111,9 +139,14 @@ watch(
 function initializeGraph() {
   if (!container.value) return;
 
+  // Get container dimensions
+  const containerRect = container.value.getBoundingClientRect();
+  const width = containerRect.width;
+  const height = containerRect.height;
+
   // Get center coordinates
-  const centerX = props.width / 2;
-  const centerY = props.height / 2;
+  const centerX = width / 2;
+  const centerY = height / 2;
 
   // Pre-position all nodes at the center before creating the SVG
   props.nodes.forEach(node => {
@@ -132,8 +165,10 @@ function initializeGraph() {
 
   svg = d3.select(container.value)
     .append('svg')
-    .attr('width', props.width)
-    .attr('height', props.height)
+    .attr('width', '100%')
+    .attr('height', '100%')
+    .attr('viewBox', `0 0 ${width} ${height}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet');
 
   // Create a root group for zoom
   const g = svg.append('g')
@@ -163,8 +198,8 @@ function initializeGraph() {
       // In D3, the transform origin is at (0,0), so we need to
       // translate to center of the viewport
       const scale = 1.4;
-      const tx = props.width / 2;
-      const ty = props.height / 2;
+      const tx = width / 2;
+      const ty = height / 2;
       
       const transform = d3.zoomIdentity
         .translate(tx, ty)
@@ -183,7 +218,7 @@ function initializeGraph() {
   centerView();
 
   // Create and configure the simulation using our composable
-  simulation = createSimulation(props.nodes, props.links, props.width, props.height);
+  simulation = createSimulation(props.nodes, props.links, width, height);
 
   if (simulation) {
     // Set up the tick function for animation
@@ -237,10 +272,18 @@ function initializeGraph() {
 }
 
 function updateGraph() {
-  if (!svg || !simulation) return;
+  if (!svg || !simulation || !container.value) return;
+  
+  // Get current container dimensions
+  const containerRect = container.value.getBoundingClientRect();
+  const width = containerRect.width;
+  const height = containerRect.height;
+  
+  // Update the viewBox to match new dimensions
+  svg.attr('viewBox', `0 0 ${width} ${height}`);
   
   // Update simulation using our composable
-  simulation = updateSimulation(simulation, props.nodes, props.links, props.width, props.height);
+  simulation = updateSimulation(simulation, props.nodes, props.links, width, height);
 
   // Update visual elements
   updateLinks();
@@ -399,6 +442,7 @@ function saveNodePositions() {
 }
 </script>
 
+
 <style lang="scss" scoped>
 .force-graph-component {
   position: relative;
@@ -468,11 +512,34 @@ function saveNodePositions() {
 
 .additional-controls :deep(.zone-selector) {
   margin-top: 0;
+  margin-bottom: 0.5rem;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  
+  .p-selectbutton {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 100%;
+    
+    .p-button {
+      margin: 2px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      padding: 0.4rem 0.8rem;
+      transition: all 0.3s ease;
+      
+      &:hover {
+        transform: translateY(-2px);
+      }
+    }
+  }
 }
 
-.additional-controls :deep(.p-selectbutton .p-button) {
-  padding: 0.3rem 0.6rem;
-  font-size: 0.75rem;
+.additional-controls :deep(.p-togglebutton) {
+  font-size: 0.90rem !important;
   min-width: auto;
 }
 

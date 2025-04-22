@@ -1,4 +1,3 @@
-
 import Aura from '@primeuix/themes/aura';
 import { definePreset } from '@primeuix/themes';
 
@@ -28,6 +27,7 @@ export default defineNuxtConfig({
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt',
     '@nuxtjs/google-fonts', // Add the google fonts module
+    '@sidebase/nuxt-auth', // Add the auth module
   ],
   googleFonts: { // Add google fonts configuration
     families: {
@@ -51,6 +51,13 @@ export default defineNuxtConfig({
   ],
 
   runtimeConfig: {
+    auth: {
+      secret: process.env.NUXT_AUTH_SECRET
+    },
+    google: {
+      clientId: process.env.NUXT_GOOGLE_CLIENT_ID,
+      clientSecret: process.env.NUXT_GOOGLE_CLIENT_SECRET
+    },
     public: {
       GEMINI_API_KEY: process.env.GEMINI_API_KEY,
       FLUX_API_KEY: process.env.FLUX_API_KEY
@@ -62,6 +69,7 @@ export default defineNuxtConfig({
       preprocessorOptions: {
         scss: {
           additionalData: '@use "~/assets/scss/variables.scss";',
+          api: 'modern-compiler'
         },
       },
     },
@@ -82,6 +90,19 @@ export default defineNuxtConfig({
       tailwindcss: {},
       autoprefixer: {},
     },
+  },
+
+  auth: {
+    isEnabled: true,
+    origin: 'http://localhost:3000',
+    basePath: '/api/auth',
+    enableSessionRefreshPeriodically: false,
+    enableSessionRefreshOnWindowFocus: true,
+    globalAppMiddleware: {
+        isEnabled: true,
+    },
+    defaultProvider: undefined,
+    addDefaultCallbackUrl: true,
   },
 
 })

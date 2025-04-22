@@ -10,13 +10,10 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   /* Let top row dominate height, bottom row adjusts */
   grid-template-rows: minmax(0, 1fr) auto; 
-  gap: 0.5rem; /* Reduced gap */
-  padding: 0.5rem; /* Reduced padding */
-  padding-top: 2px;
-
+  gap: 1rem; /* Increased gap for better spacing */
   width: 100%;
-  height: calc(100vh - 70px); /* Minimal vertical padding */
-  max-height: calc(100vh - 65px);
+  height: calc(100vh - 40px); /* Account for padding */
+  max-height: calc(100vh - 40px);
   box-sizing: border-box;
 }
 
@@ -32,16 +29,25 @@
   min-height: 220px; 
   
   h2 {
-    text-align: center;
+    text-align: left;
+    width: 100%;
     margin-bottom: 0.75rem; 
     color: #6d80a4;
-    flex-shrink: 0; 
+    flex-shrink: 0;
+    font-size: 1.2rem;
+    font-weight: 500;
+  }
+  
+  .zone-title {
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
   }
 }
 
 /* Specific adjustments */
 .graph-container {
-   padding-bottom: 0rem !important;
+  padding-bottom: 0rem !important;
   grid-row: 1 / 2; 
   grid-column: 1 / 2;
   overflow: hidden; /* Graph container itself should not scroll */
@@ -51,7 +57,8 @@
     min-height: 0; 
   }
   .zone-selector {
-     /* This will be styled within ForceGraph.vue's styles now */
+    /* Styles for zone selector */
+    margin-top: 0.5rem;
   }
 }
 
@@ -70,6 +77,29 @@
     background-color: rgba(255, 255, 255, 0.1);
     border-radius: 8px;
     flex-shrink: 0; 
+  }
+  
+  .generated-image {
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 8px;
+    object-fit: contain;
+  }
+  
+  .placeholder-container {
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    &::after {
+      content: 'Generate an image';
+      color: rgba(255, 255, 255, 0.5);
+      font-style: italic;
+    }
   }
 }
 
@@ -136,4 +166,11 @@
   .p-progressspinner-circle {
     stroke: white !important;
   }
-} 
+}
+
+/* Zone-specific button styles for SelectButton */
+.zone-selector {
+  margin-top: 0.5rem;
+}
+
+/* Delete everything below this point related to zone button styles */ 

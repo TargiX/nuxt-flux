@@ -1,5 +1,5 @@
 @use 'variables' as v;
-@import 'components/tag-cloud';
+@use 'components/tag-cloud';
 
 :root {
   --font-family: #{v.$font-family};

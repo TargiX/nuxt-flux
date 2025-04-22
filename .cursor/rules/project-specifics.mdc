@@ -1,0 +1,15 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Your rule content
+
+- You can @ files here
+- You can use markdown but dont have to
+
+we use pnpm manager, so always use it for installing packages,
+local server always running so don't need to relaucnh it after packages installing
+
+Use PrimeVue components where possible for buttons and others

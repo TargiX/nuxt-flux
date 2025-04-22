@@ -75,28 +75,43 @@ Directory Structure
   README.md
 assets/
   scss/
+    components/
+      tag-cloud.scss
     main.scss
     variables.scss
 components/
   ForceGraph.vue
   Tag.vue
   TagCloud.vue
+  ZoneSelector.vue
+composables/
+  useForceSimulation.ts
+  useLinkStyling.ts
+  useNodeStyling.ts
+  useZoom.ts
 pages/
   index.vue
 public/
   robots.txt
 server/
   tsconfig.json
+services/
+  graphLayoutService.ts
+  tagGenerationService.ts
+  tagProcessingService.ts
+  tagSelectionService.ts
 store/
   mockTags.ts
   tagStore.ts
+types/
+  graph.ts
+  tag.ts
 .eslintrc.js
 .gitignore
 .prettierrc
 app.vue
 nuxt.config.ts
 package.json
-postcss.config.js
 README.md
 tailwind.config.js
 tsconfig.json
@@ -1330,937 +1345,792 @@ This is an open-source template. Contributions are welcome! Please add a changel
 This system is designed for AI consumption. Entries should prioritize precision and relevance over human readability
 
 ================
+File: assets/scss/components/tag-cloud.scss
+================
+.tag-cloud {
+  display: flex;
+  flex-direction: column;
+  padding: 0px 20px 0 20px;
+  width: 100%;
+}
+
+.main-zone {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* Let top row dominate height, bottom row adjusts */
+  grid-template-rows: minmax(0, 1fr) auto; 
+  gap: 1rem; /* Increased gap for better spacing */
+  width: 100%;
+  height: calc(100vh - 40px); /* Account for padding */
+  max-height: calc(100vh - 40px);
+  box-sizing: border-box;
+}
+
+/* General styles for all containers within the grid */
+.graph-container,
+.image-preview-container,
+.settings-container,
+.prompt-area-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start; 
+  min-height: 220px; 
+  
+  h2 {
+    text-align: left;
+    width: 100%;
+    margin-bottom: 0.75rem; 
+    color: #6d80a4;
+    flex-shrink: 0;
+    font-size: 1.2rem;
+    font-weight: 500;
+  }
+  
+  .zone-title {
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  }
+}
+
+/* Specific adjustments */
+.graph-container {
+  padding-bottom: 0rem !important;
+  grid-row: 1 / 2; 
+  grid-column: 1 / 2;
+  overflow: hidden; /* Graph container itself should not scroll */
+  .force-graph-component {
+    width: 100%;
+    flex-grow: 1; 
+    min-height: 0; 
+  }
+  .zone-selector {
+    /* Styles for zone selector */
+    margin-top: 0.5rem;
+  }
+}
+
+.image-preview-container {
+  grid-row: 1 / 2; 
+  grid-column: 2 / 3; 
+  overflow: hidden; /* Image preview container should not scroll */
+  .image-container {
+    width: 100%;
+    max-width: 100%;
+    aspect-ratio: 4 / 3; 
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    flex-shrink: 0; 
+  }
+  
+  .generated-image {
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 8px;
+    object-fit: contain;
+  }
+  
+  .placeholder-container {
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    &::after {
+      content: 'Generate an image';
+      color: rgba(255, 255, 255, 0.5);
+      font-style: italic;
+    }
+  }
+}
+
+.settings-container {
+  grid-row: 2 / 3; 
+  grid-column: 1 / 2; 
+  overflow-y: auto; /* Allow settings to scroll if needed */
+  p {
+    color: #ccc;
+  }
+}
+
+.prompt-area-container {
+  grid-row: 2 / 3; 
+  grid-column: 2 / 3; 
+  justify-content: flex-start; 
+  overflow-y: auto; /* Allow prompt area to scroll if needed */
+  
+  .prompt-box {
+     /* Styles seem okay, ensure flex-grow: 1 allows it to expand/shrink */
+     flex-grow: 1; 
+     min-height: 100px; /* Give it some base height */
+  }
+
+  .selected-tags-display {
+     /* Styles seem okay */
+  }
+}
+
+.preview-zones {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.preview-zone {
+  width: calc(20% - 10px);
+  padding-top: 5px;
+  border: 1px solid #cfcfcf;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.2s;
+  background: #fff;
+  
+  &:hover {
+    transform: scale(1.05);
+  }
+
+  h3 {
+    text-align: center;
+    margin-bottom: 5px;
+  }
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  font-size: 1.5rem;
+}
+
+.progress-spinner {
+  .p-progressspinner-circle {
+    stroke: white !important;
+  }
+}
+
+/* Zone-specific button styles for SelectButton */
+.zone-selector {
+  margin-top: 0.5rem;
+}
+
+/* Delete everything below this point related to zone button styles */
+
+================
 File: assets/scss/main.scss
 ================
 @use 'variables' as v;
+@import 'components/tag-cloud';
+
+:root {
+  --font-family: #{v.$font-family};
+  --text-color: #{v.$text-color};
+  --background-color: #{v.$background-color};
+  --secondary-color: #{v.$secondary-color};
+}
 
 body {
   font-family: v.$font-family;
   color: v.$text-color;
   background-color: v.$background-color;
-  background-image: 
-      linear-gradient(0deg, transparent 24%, 
-          rgba(65, 105, 225, 0.05) 25%,
-          rgba(65, 105, 225, 0.05) 26%, 
-          transparent 27%, transparent 74%,
-          rgba(65, 105, 225, 0.05) 75%,
-          rgba(65, 105, 225, 0.05) 76%, transparent 77%),
-      linear-gradient(90deg, transparent 24%, 
-          rgba(65, 105, 225, 0.05) 25%,
-          rgba(65, 105, 225, 0.05) 26%, 
-          transparent 27%, transparent 74%,
-          rgba(65, 105, 225, 0.05) 75%,
-          rgba(65, 105, 225, 0.05) 76%, transparent 77%);
-  background-size: 50px 50px;
+  background-color: #8EC5FC;
+  background-image: linear-gradient(62deg, #8EC5FC 0%, #E0C3FC 100%);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-size: 100% 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
 }
+
+
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.3); /* semi-transparent white */
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px); /* for Safari */
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  padding: 1rem 1.5rem;
+  color: white;
+  transition: all 0.3s ease;
+}
+
+
+// .glass-card:hover {
+//   background: rgba(255, 255, 255, 0.15);
+//   box-shadow: 0 12px 48px rgba(0, 0, 0, 0.35);
+// }
 
 ================
 File: assets/scss/variables.scss
 ================
-$font-family: 'Arial', sans-serif;
-$text-color: #333;
+$font-family: 'Roboto', sans-serif;
+$text-color: #474565;
 $background-color: #dcdaf0;
+$secondary-color: #6d80a4;
 
 ================
 File: components/ForceGraph.vue
 ================
 <template>
-  <div class="relative" ref="chartContainer" :style="{ width: `${width}px`, height: `${height}px` }">
-    <div v-if="!preview" class="absolute bottom-4 right-4 flex gap-2">
-      <button 
-        @click="handlePrevZone"
-        class="bg-green-500 hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md flex items-center gap-2 transition-colors duration-200"
-        :disabled="isFirstZone"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 rotate-180" viewBox="0 0 20 20" fill="currentColor">
-          <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-        </svg>
-        Prev
-      </button>
-      
-      <button 
-        @click="handleNextZone"
-        class="bg-green-500 hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md flex items-center gap-2 transition-colors duration-200"
-        :disabled="isLastZone"
-      >
-        Next
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-          <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-        </svg>
-      </button>
+  <div class="force-graph-component relative" ref="container" :style="containerStyle">
+    <!-- D3 SVG will be appended here -->
+    
+    <!-- Controls container -->
+    <div class="controls-overlay absolute bottom-4 left-4 right-4 justify-between items-center">
+      <!-- Slot for additional controls like zone selector -->
+          <!-- Existing Zoom controls -->
+      <div class="zoom-controls flex justify-end flex-col gap-2 w-7 ml-auto mb-5">
+        <Button 
+          @click="() => svg && zoomInFn(svg)"
+          severity="secondary"
+          size="small"
+          class="w-7 h-7"
+          aria-label="Zoom In"
+        >
+          +
+        </Button>
+        <Button 
+          @click="() => svg && zoomOutFn(svg)"
+          severity="secondary"
+          size="small"
+          class="w-7 h-7"
+          aria-label="Zoom Out"
+        >
+          -
+        </Button>
+        <Button 
+          @click="() => svg && resetZoomFn(svg)"
+          severity="secondary"
+          size="small"
+          class="!w-7 !h-7"
+          aria-label="Reset Zoom"
+          icon="pi pi-sync"
+        />
+      </div>
+      <div >
+      <div class="additional-controls flex-grow">
+        <slot name="controls"></slot>
+      </div>
+     </div>
+   
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from 'vue';
+import { ref, onMounted, watch, computed, onBeforeUnmount } from 'vue';
 import * as d3 from 'd3';
-import { useTagStore } from '~/store/tagStore';
-import { ArrowPathIcon } from '@heroicons/vue/24/solid';
-import type { Tag } from '~/store/tagStore'; // Import Tag type
-import { gsap } from 'gsap';
+import 'd3-transition'; // Ensure transition support is available
+import { useZoom } from '~/composables/useZoom';
+import { useNodeStyling } from '~/composables/useNodeStyling';
+import { useLinkStyling } from '~/composables/useLinkStyling';
+import { useForceSimulation } from '~/composables/useForceSimulation';
+import type { GraphNode, GraphLink } from '~/types/graph';
 
 const props = defineProps<{
   width: number;
   height: number;
-  zone: string;
-  preview?: boolean;
-  zoomConfig?: {
-    scale: number;
-    translateX: number;
-    translateY: number;
-  };
+  nodes: GraphNode[];
+  links: GraphLink[];
 }>();
 
-// Initialize refs at the top level
-const chartContainer = ref<HTMLElement | null>(null);
-const selectedSecondaryTags = ref<Tag[]>([]);
-const hybridCreationTimeout = ref<NodeJS.Timeout | null>(null);
-const tagStore = useTagStore();
+const emit = defineEmits(['nodeClick', 'nodePositionsUpdated']);
+const container = ref<HTMLElement | null>(null);
+let svg: d3.Selection<SVGSVGElement, unknown, null, undefined> | null = null;
+let linkGroup: d3.Selection<SVGGElement, unknown, null, undefined> | null = null;
+let nodeGroup: d3.Selection<SVGGElement, unknown, null, undefined> | null = null;
+let simulation: d3.Simulation<GraphNode, GraphLink> | null = null;
 
-const RADIUS = 150; // Distance from parent for secondary nodes
-const CHILD_RADIUS = 120; // Distance from hybrid parent to its children
-const SECONDARY_NODE_SIZE = 30;
-const PRIMARY_NODE_SIZE = 40;
-const SECONDARY_NODE_ANGLE_STEP = (2 * Math.PI) / 10;
-
-const emit = defineEmits(['tagSelected', 'secondaryTagSelected', 'zoneChange']);
-
-const zoneGraph = computed(() => tagStore.getZoneGraph(props.zone));
-
-const loadingColors = ['#4CAF50', '#2196F3', '#4CAF50', '#2196F3', '#4CAF50']
-
-onMounted(() => {
-  createForceGraph(); 
+// Compute responsive container style
+const containerStyle = computed(() => {
+  return {
+    width: '100%',
+    height: '100%',
+    maxWidth: '100%',
+    maxHeight: '100%',
+  };
 });
 
-watch(() => tagStore.tagsByZone(props.zone), updateGraph, { deep: true });
+// Use our composables
+const { 
+  initializeZoom, 
+  zoomIn: zoomInFn, 
+  zoomOut: zoomOutFn, 
+  resetZoom: resetZoomFn, 
+  centerOnNode, 
+  zoomBehavior 
+} = useZoom();
 
-function createForceGraph() {
-  if (!chartContainer.value) return;
+const { applyNodeStyle, getSubjectImagePath, createNodeGradients } = useNodeStyling();
+const { createLinkGradient, createUniqueGradient, updateGradientPositions, applyLinkStyle } = useLinkStyling();
+const { createSimulation, updateSimulation, createDragBehavior } = useForceSimulation();
 
-  const { width, height } = props;
+onMounted(() => {
+  initializeGraph();
   
-  setupSvgAndSimulation(width, height);
-  updateNodesAndLinks();
-  if (!props.preview) {
-    addZoomBehavior();
-    preventCollapseOnEmptyClick();
+  // Add resize event listener
+  window.addEventListener('resize', handleResize);
+});
+
+onBeforeUnmount(() => {
+  saveNodePositions();
+  
+  // Remove resize event listener
+  window.removeEventListener('resize', handleResize);
+});
+
+// Debounced resize handler
+let resizeTimeout: number | null = null;
+function handleResize() {
+  if (resizeTimeout) {
+    window.clearTimeout(resizeTimeout);
+  }
+  
+  resizeTimeout = window.setTimeout(() => {
+    updateGraph();
+  }, 250);
+}
+
+watch(
+  () => [
+    props.nodes.map(n => ({ id: n.id, text: n.text, size: n.size, children: n.children?.map(c => c.id) || [] })),
+    props.links.map(l => ({ 
+      source: (l.source as GraphNode).id,
+      target: (l.target as GraphNode).id,
+      value: l.value 
+    }))
+  ],
+  (newVal, oldVal) => {
+    if (JSON.stringify(newVal) !== JSON.stringify(oldVal)) {
+      console.log('Graph updating due to structural change');
+      updateGraph();
+    }
+  },
+  { deep: true }
+);
+
+function initializeGraph() {
+  if (!container.value) return;
+
+  // Get container dimensions
+  const containerRect = container.value.getBoundingClientRect();
+  const width = containerRect.width;
+  const height = containerRect.height;
+
+  // Get center coordinates
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  // Pre-position all nodes at the center before creating the SVG
+  props.nodes.forEach(node => {
+    // Force all nodes to start exactly at center
+    node.x = centerX;
+    node.y = centerY;
+    node.vx = 0;
+    node.vy = 0;
+    
+    // Fix parent nodes at center
+    if (!node.parentId) {
+      node.fx = centerX;
+      node.fy = centerY;
+    }
+  });
+
+  svg = d3.select(container.value)
+    .append('svg')
+    .attr('width', '100%')
+    .attr('height', '100%')
+    .attr('viewBox', `0 0 ${width} ${height}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet');
+
+  // Create a root group for zoom
+  const g = svg.append('g')
+    .attr('class', 'zoom-group');
+
+  linkGroup = g.append('g').attr('class', 'links');
+  nodeGroup = g.append('g').attr('class', 'nodes');
+
+  // Initialize SVG defs and gradients
+  if (svg) {
+    // Prepare defs section for gradients
+    if (svg.select('defs').empty()) {
+      svg.append('defs');
+    }
+    
+    // Set up node gradients
+    createNodeGradients(svg);
+    
+    // Set up default link gradient
+    createLinkGradient(svg);
+  }
+
+  // Helper function to center camera view
+  function centerView() {
+    if (svg && zoomBehavior.value) {
+      // Create a transform that centers the view
+      // In D3, the transform origin is at (0,0), so we need to
+      // translate to center of the viewport
+      const scale = 1.4;
+      const tx = width / 2;
+      const ty = height / 2;
+      
+      const transform = d3.zoomIdentity
+        .translate(tx, ty)
+        .scale(scale)
+        .translate(-centerX, -centerY);
+      
+      // Apply the transform without transition the first time
+      svg.call(zoomBehavior.value.transform as any, transform);
+    }
+  }
+
+  // Initialize zoom using the composable with proper initial transform
+  initializeZoom(svg, g, 1.4);
+  
+  // Apply center view immediately before any simulation
+  centerView();
+
+  // Create and configure the simulation using our composable
+  simulation = createSimulation(props.nodes, props.links, width, height);
+
+  if (simulation) {
+    // Set up the tick function for animation
+    simulation.on('tick', () => {
+      if (!svg || !nodeGroup || !linkGroup) return;
+
+      // Update node positions
+      nodeGroup.selectAll<SVGGElement, GraphNode>('g')
+        .attr('transform', d => `translate(${d.x || 0},${d.y || 0})`);
+
+      // Update link positions
+      linkGroup.selectAll<SVGLineElement, GraphLink>('line')
+        .attr('x1', d => (d.source as GraphNode).x || 0)
+        .attr('y1', d => (d.source as GraphNode).y || 0)
+        .attr('x2', d => (d.target as GraphNode).x || 0)
+        .attr('y2', d => (d.target as GraphNode).y || 0);
+
+      // Update link gradients using a non-null svg reference
+      const svgEl = svg; // Capture in local variable to help TypeScript
+      if (svgEl) {
+        linkGroup.selectAll<SVGLineElement, GraphLink>('line').each(function(d) {
+          const source = d.source as GraphNode;
+          const target = d.target as GraphNode;
+          
+          // Update gradient positions using our composable
+          updateGradientPositions(svgEl, source, target);
+        });
+      }
+    });
+    
+    // First render nodes and links *before* starting animation
+    updateLinks();
+    updateNodes();
+    
+    // Now start the simulation with zero initial velocity for smooth appearance
+    simulation.tick(5); // Apply a few ticks immediately to stabilize
+    simulation.alpha(0.3).restart();
+    
+    // Release fixed positions after initial layout settles
+    setTimeout(() => {
+      if (simulation) {
+        simulation.nodes().forEach(node => {
+          if (!node.parentId) {
+            node.fx = null;
+            node.fy = null;
+          }
+        });
+      }
+    }, 100); // Longer delay to ensure nodes have settled before releasing
   }
 }
 
 function updateGraph() {
-  if (!zoneGraph.value.simulation || !zoneGraph.value.svg) return;
+  if (!svg || !simulation || !container.value) return;
+  
+  // Get current container dimensions
+  const containerRect = container.value.getBoundingClientRect();
+  const width = containerRect.width;
+  const height = containerRect.height;
+  
+  // Update the viewBox to match new dimensions
+  svg.attr('viewBox', `0 0 ${width} ${height}`);
+  
+  // Update simulation using our composable
+  simulation = updateSimulation(simulation, props.nodes, props.links, width, height);
 
-  zoneGraph.value.simulation.stop();
-
-  // Store current nodes before updating
-  const oldNodesMap = new Map(
-    zoneGraph.value.nodes.map(d => [d.id, { ...d }])
-  );
-
-  // Update nodes and links, passing oldNodesMap
-  updateNodesAndLinks(oldNodesMap);
-
-  // Adjust node positions based on old positions
-  zoneGraph.value.nodes.forEach(node => {
-    const oldNode = oldNodesMap.get(node.id);
-    if (oldNode) {
-      // Preserve old position and velocities
-      node.x = oldNode.x;
-      node.y = oldNode.y;
-      node.vx = oldNode.vx;
-      node.vy = oldNode.vy;
-    } else if (node.isDynamic && node.parentId) {
-      // Position new dynamic nodes near their parent
-      const parent = zoneGraph.value.nodes.find(n => n.id === node.parentId);
-      if (parent) {
-        const angle = Math.random() * 2 * Math.PI;
-        const distance = 100;
-        node.x = parent.x + Math.cos(angle) * distance;
-        node.y = parent.y + Math.sin(angle) * distance;
-        node.vx = 0;
-        node.vy = 0;
-      } else {
-        // Parent not found, position at center
-        node.x = props.width / 2;
-        node.y = props.height / 2;
-        node.vx = 0;
-        node.vy = 0;
-      }
-    } else {
-      // Node without old position and not dynamic, keep current position or set to center
-      node.x = node.x || props.width / 2;
-      node.y = node.y || props.height / 2;
-      node.vx = 0;
-      node.vy = 0;
-    }
-  });
-
-  // Restart simulation gently
-  zoneGraph.value.simulation
-    .alpha(0.1)
-    .alphaDecay(0.05)
-    .velocityDecay(0.6)
-    .restart();
-}
-function updateNodeAndLinkPositions() {
-  zoneGraph.value.svg.selectAll(".nodes g")
-    .attr("transform", d => `translate(${d.x},${d.y})`);
-
-  zoneGraph.value.svg.selectAll(".links line")
-    .attr("x1", d => d.source.x)
-    .attr("y1", d => d.source.y)
-    .attr("x2", d => d.target.x)
-    .attr("y2", d => d.target.y);
-}
-
-function updateNodesAndLinks() {
-  const color = d3.scaleOrdinal(d3.schemeCategory10);
-
-  const zoneTags = tagStore.tagsByZone(props.zone);
-  const secondaryTags = tagStore.getAllSecondaryTagsForZone(props.zone);
-
-  // Extract child tags from hybrid tags
-  const hybridTags = tagStore.getHybridTagsForZone(props.zone);
-  const hybridChildTags = hybridTags.flatMap(hybrid => hybrid.childTags || []);
-
-  const selectedTag = zoneTags.find(tag => tag.selected && tag.isLoading);
-
-  const oldNodes = new Map(zoneGraph.value.nodes.map(d => [d.id, d]));
-
-  // Combine all nodes, including child tags of hybrid tags
-  const nodes = [...zoneTags, ...secondaryTags, ...hybridChildTags].map((tag) => {
-    const oldNode = oldNodes.get(tag.id);
-    let x, y;
-
-    if (oldNode) {
-      x = oldNode.x;
-      y = oldNode.y;
-    } else if (tag.isHybrid && tag.childTags) {
-      // Position hybrid tag at the average position of its child tags
-      const childPositions = tag.childTags
-        .map(child => oldNodes.get(child.id))
-        .filter(Boolean);
-      
-      if (childPositions.length > 0) {
-        x = childPositions.reduce((sum, pos) => sum + pos.x, 0) / childPositions.length;
-        y = childPositions.reduce((sum, pos) => sum + pos.y, 0) / childPositions.length;
-      } else {
-        x = props.width / 2;
-        y = props.height / 2;
-      }
-    } else if (tag.zone.includes('-secondary')) {
-      // For secondary nodes, position them in a perfect circle around the parent
-      const parent = zoneTags[0];
-      if (parent) {
-        const parentX = parent.x || props.width / 2;
-        const parentY = parent.y || props.height / 2;
-        
-        // Calculate position in perfect circle
-        const secondaryIndex = secondaryTags.findIndex(t => t.id === tag.id);
-        const angle = SECONDARY_NODE_ANGLE_STEP * secondaryIndex - Math.PI / 2;
-        
-        x = parentX + Math.cos(angle) * RADIUS;
-        y = parentY + Math.sin(angle) * RADIUS;
-      } else {
-        x = props.width / 2;
-        y = props.height / 2;
-      }
-    } else {
-      // Primary node should be centered
-      x = props.width / 2;
-      y = props.height / 2;
-    }
-
-    return {
-      ...tag,
-      r: tag.size / 2, // Set size for hybrid tags
-      x,
-      y,
-      vx: 0, // Reset velocity for smoother initialization
-      vy: 0,
-      isLoading: tag.isLoading,
-    };
-  });
-
-  const links = tagStore.createLinksBySourceId(props.zone);
-
-  tagStore.updateZoneGraph(props.zone, nodes, links);
-
-  // Update simulation with separate forces for primary and secondary nodes
-  zoneGraph.value.simulation.nodes(nodes);
-  console.log('links', links)
-  // Adjust force parameters
-  zoneGraph.value.simulation
-    .force("link", d3.forceLink(links)
-      .id(d => d.id)
-      .distance(link => {
-        if (link.isHybridChainLink) {
-          return RADIUS * 4;
-        }
-        if (link.isHybridLink) {
-          return CHILD_RADIUS;
-        }
-        if (link.source.isHybrid || link.target.isHybrid) {
-          return RADIUS * 5;
-        }
-        return RADIUS;
-      })
-      .strength(link => {
-        // Only apply forces to non-hybrid links
-        if (link.source.isHybrid || link.target.isHybrid || 
-            link.isHybridChainLink || link.isHybridLink) {
-          return 0;
-        }
-        return 0.5;
-      })
-    )
-    .force("charge", d3.forceManyBody()
-      .strength(d => {
-        if (d.isHybrid || d.isHybridChild) {
-          return 0;
-        }
-        return d.zone.includes('-secondary') ? -50 : -40;
-      }))
-    .force("collision", d3.forceCollide()
-      .radius(d => {
-        if (d.isHybrid) return d.r + 20;
-        if (d.isHybridChild) return d.r + 10;
-        return d.r + (d.zone.includes('-secondary') ? 30 : 20);
-      })
-      .strength(1)) // Maximum strength to prevent overlaps
-    .force("centerPrimary", d3.forceRadial(0, props.width / 2, props.height / 2)
-      .strength(d => {
-        if (d.isHybrid || d.isHybridChild) {
-          return 0;
-        }
-        return d.zone.includes('-secondary') ? 0 : 0.1;
-      }))
-    .force("circularSecondary", d3.forceRadial(RADIUS, props.width / 2, props.height / 2)
-      .strength(d => {
-        if (d.isHybrid || d.isHybridChild) {
-          return 0;
-        }
-        return d.zone.includes('-secondary') ? 0.8 : 0;
-      }));
-
-  // Adjust simulation parameters for smoother movement
-  zoneGraph.value.simulation
-    .alpha(0.3)
-    .alphaDecay(0.02)
-    .velocityDecay(0.4);
-
-  // Important: Use the filtered nodes array here instead of zoneGraph.value.nodes
-  const node = zoneGraph.value.svg.select(".nodes").selectAll("g")
-    .data(nodes, d => d.id);
-
-  const nodeEnter = node.enter().append("g")
-    .call(drag(zoneGraph.value.simulation))
-    .on("click", handleNodeClick);
-
-  // Add circle to entering nodes
-  nodeEnter.append("circle")
-    .attr("r", d => d.r)
-    .attr("fill", d => d.selected ? "#4CAF50" : color(d.zone))
-    .attr("stroke", "#fff")
-    .attr("stroke-width", 1.5);
-
-  // Add text to entering nodes
-  nodeEnter.each(function(d: any) {
-    const node = d3.select(this);
-    const lines = formatNodeText(d.text);
-    
-    lines.forEach((line, i) => {
-      node.append("text")
-        .text(line)
-        .attr("x", 0)
-        .attr("y", d.r + 10 + (i * 12)) // 12px line height
-        .attr("text-anchor", "middle")
-        .attr("font-size", "10px")
-        .attr("class", "node-text");
-    });
-  });
-
-  // Update existing nodes and their classes
-  const allNodes = node.merge(nodeEnter);
-
-  // Update classes for all nodes
-  allNodes.each(function(d) {
-    const node = d3.select(this);
-    if (d.isLoading) {
-      node.classed("loading-node", true);
-    } else {
-      node.classed("loading-node", false);
-    }
-  });
-
-  allNodes.select("circle")
-    .attr("r", d => d.r)
-    .attr("fill", d => {
-      if (d.isLoading) return loadingColors[0];
-      return d.selected ? "#4CAF50" : color(d.zone);
-    });
-
-  // If there's a loading node, start its animation
-  if (selectedTag?.isLoading) {
-    const loadingNode = allNodes.filter(d => d.id === selectedTag.id);
-    updateNodeAppearance(selectedTag);
-  }
-
-  // Add title to entering nodes
-  nodeEnter.append("title")
-    .text(d => d.id);
-
-  // Remove exiting nodes
-  node.exit().remove();
-  zoneGraph.value.node = node.merge(nodeEnter);
-
-  // Update links
+  // Update visual elements
   updateLinks();
+  updateNodes();
 
-  zoneGraph.value.simulation.on("tick", () => {
-    // First ensure hybrid systems maintain their positions
-    nodes.forEach(node => {
-      if (node.fx !== null && node.fy !== null) {
-        node.x = node.fx;
-        node.y = node.fy;
-      }
-    });
-
-    const links = zoneGraph.value.simulation.force("link").links();
-
-    zoneGraph.value.link
-      .data(links)
-      .attr("x1", d => d.source.x || 0)
-      .attr("y1", d => d.source.y || 0)
-      .attr("x2", d => d.target.x || 0)
-      .attr("y2", d => d.target.y || 0);
-
-    zoneGraph.value.node
-      .attr("transform", d => `translate(${d.x || 0},${d.y || 0})`);
-  });
-
-  // After updating nodes and links, update node colors
-  updateNodeColors();
-}
-
-
-async function handleNodeClick(event: MouseEvent, d: Tag) {
-  if (props.preview) return;
-  event.stopPropagation();
-  console.log('d', d)
-  if (d.isHybrid) {
-    d.selected = !d.selected;
-    
-    if (d.selected) {
-      tagStore.addSelectedHybridTag(d);
-    } else {
-      tagStore.removeSelectedHybridTag(d.id, props.zone);
+  // Release fixed positions after a short delay
+  const selectedParent = props.nodes.find(n => n.selected && !n.parentId);
+  setTimeout(() => {
+    if (selectedParent) {
+      selectedParent.fx = null;
+      selectedParent.fy = null;
     }
-    
-    updateHybridRelatedNodes(d, !d.selected);
-    updateNodeAppearance(d, false);
-    updateGraph();
-    return;
-  }
-
-  // Handle both secondary tags and hybrid child tags the same way
-  if (d.zone.includes('-secondary') || d.isHybridChild) {
-    // Toggle selection
-    d.selected = !d.selected;
-    updateNodeAppearance(d, false);
-    
-    // If it's a hybrid child, update the selection in the parent's childTags array
-    if (d.isHybridChild) {
-      const parentHybrid = tagStore.getHybridTagsForZone(props.zone)
-        .find(hybrid => hybrid.childTags?.some(child => child.id === d.id));
-      if (parentHybrid && parentHybrid.childTags) {
-        const childTag = parentHybrid.childTags.find(child => child.id === d.id);
-        if (childTag) {
-          childTag.selected = d.selected;
-        }
-      }
-    }
-    
-    // Get all selected tags from the same parent/context
-    const selectedTags = zoneGraph.value.nodes.filter(node => {
-      if (!node.selected || node.isHidden) return false;
-
-      if (d.isHybridChild) {
-        // If current tag is a hybrid child, only select other children of the same hybrid parent
-        const parentHybrid = tagStore.getHybridTagsForZone(props.zone)
-          .find(hybrid => hybrid.childTags?.some(child => child.id === d.id));
-        return node.isHybridChild && parentHybrid?.childTags?.some(child => child.id === node.id);
-      } else {
-        // If current tag is a secondary tag, only select other secondary tags
-        return node.zone.includes('-secondary') && !node.isHybridChild;
-      }
-    });
-
-    if (d.selected) {
-      // If we have 2 or more selected tags, create hybrid
-      if (selectedTags.length >= 2) {
-        if (hybridCreationTimeout.value) {
-          clearTimeout(hybridCreationTimeout.value);
-        }
-        
-        hybridCreationTimeout.value = setTimeout(async () => {
-          const hybridTag = await tagStore.createHybridTag(props.zone, selectedTags);
-          if (hybridTag) {
-            // If we're combining hybrid child tags, attach the new hybrid to the parent hybrid
-            if (d.isHybridChild) {
-              const parentHybrid = tagStore.getHybridTagsForZone(props.zone)
-                .find(hybrid => hybrid.childTags?.some(child => child.id === d.id));
-              
-              if (parentHybrid) {
-                // Create link between parent hybrid and new hybrid
-                const link = {
-                  source: parentHybrid.id,
-                  target: hybridTag.id,
-                  value: 1,
-                  isHybridLink: true,
-                  isHybridChainLink: true // Special flag for hybrid-to-hybrid links
-                };
-                
-                // Add to links
-                zoneGraph.value.links.push(link);
-              }
-            }
-
-            updateHybridRelatedNodes(hybridTag, false);
-            selectedTags.forEach(tag => {
-              tag.selected = false;
-              updateNodeAppearance(tag, false);
-            });
-            updateGraph();
-          }
-        }, 1000);
-      }
-    } else {
-      if (hybridCreationTimeout.value) {
-        clearTimeout(hybridCreationTimeout.value);
-      }
-    }
-
-    emit('secondaryTagSelected', d.id);
-    return;
-  }
-
-  // Rest of the primary tag click handling...
-  if (!d.selected) {
-    d.isLoading = true;
-    const node = zoneGraph.value.svg.selectAll(`.nodes g`).filter(n => n.id === d.id);
-    node.classed("loading-node", true);
-  }
-  
-  d.selected = !d.selected;
-
-  if (d.selected) {
-    tagStore.unselectAllSecondaryTagsFromZone(props.zone, d.alias);
-    tagStore.setLastClickedTag(props.zone, d.id, d.x, d.y);
-  } else {
-    tagStore.setLastClickedTag(props.zone, null);
-  }
-  
-  updateGraph();
-  emit('tagSelected', d.id, props.zone);
+  }, 300);
 }
 
 function updateLinks() {
-  const linkSelection = zoneGraph.value.svg.select(".links").selectAll("line")
-    .data(zoneGraph.value.links, d => {
-      const sourceId = typeof d.source === 'object' ? d.source.id : d.source;
-      const targetId = typeof d.target === 'object' ? d.target.id : d.target;
+  if (!linkGroup || !svg) return;
+
+  const link = linkGroup.selectAll<SVGLineElement, GraphLink>('line')
+    .data(props.links, d => {
+      const sourceId = typeof d.source === 'object' ? (d.source as GraphNode).id : d.source;
+      const targetId = typeof d.target === 'object' ? (d.target as GraphNode).id : d.target;
       return `${sourceId}-${targetId}`;
     });
 
-  linkSelection.exit().remove();
+  // Enter new links
+  const linkEnter = link.enter()
+    .append('line')
+    .attr('stroke', 'url(#link-gradient)');
+    
+  // Apply styling to all links
+  applyLinkStyle(linkEnter.merge(link));
 
-  const linkEnter = linkSelection.enter()
-    .append("line")
-    .attr("stroke", "#999")
-    .attr("stroke-opacity", 0.6)
-    .attr("stroke-width", d => Math.sqrt(d.value));
+  // Create unique gradients for each link
+  const svgEl = svg; // Capture in local variable to help TypeScript
+  if (svgEl) {
+    linkGroup.selectAll<SVGLineElement, GraphLink>('line').each(function(d) {
+      const line = d3.select(this);
+      const source = d.source as GraphNode;
+      const target = d.target as GraphNode;
+      
+      // Create unique gradient and update link to use it
+      const gradientId = createUniqueGradient(svgEl, source, target);
+      line.attr('stroke', `url(#${gradientId})`);
+    });
+  }
 
-  zoneGraph.value.link = linkEnter.merge(linkSelection);
+  // Remove old links
+  link.exit().remove();
 }
 
-function setupSvgAndSimulation(width: number, height: number) {
-  const color = d3.scaleOrdinal(d3.schemeCategory10);
+function updateNodes() {
+  if (!nodeGroup || !simulation || !svg) return;
 
-  // Filter tags for the current zone
-  const zoneTags = tagStore.tagsByZone(props.zone);
-  const secondaryTags = tagStore.getAllSecondaryTagsForZone(props.zone);
-  const hybridTags = tagStore.getHybridTagsForZone(props.zone);
+  // Create node gradients
+  createNodeGradients(svg);
 
-  // Prepare nodes with all necessary properties
-  zoneGraph.value.nodes = [...zoneTags, ...secondaryTags, ...hybridTags].map(tag => ({
-    ...tag,
-    r: tag.isHybrid ? 15 : tag.size / 2,
-    x: props.width / 2,
-    y: props.height / 2,
-    vx: 0,
-    vy: 0
+  const node = nodeGroup.selectAll<SVGGElement, GraphNode>('g')
+    .data(props.nodes, d => d.id);
+
+  // Enter new nodes
+  const nodeEnter = node.enter()
+    .append('g')
+    .attr('class', 'node')
+    .call(createDragBehavior(simulation))
+    .on('click', (event, d) => {
+      console.log('Node clicked:', d.id);
+      emit('nodeClick', d.id);
+      updateNodeSelection(d.id);
+      // Center on the clicked node with smooth transition
+      if (svg) {
+        centerOnNode(svg, d, props.width, props.height);
+      }
+    })
+    .on('mouseenter', function() {
+      // Apply hover styling
+      applyNodeStyle(d3.select(this), true, svg);
+    })
+    .on('mouseleave', function() {
+      // Restore normal styling
+      applyNodeStyle(d3.select(this), false, svg);
+    });
+
+  // Add circle background
+  nodeEnter.append('circle')
+    .attr('r', d => d.size / 2)
+    .attr('class', 'node-circle');
+  
+  // We no longer add text directly here - our applyNodeStyle function handles text creation
+
+  // Add images for Subject nodes (main parent nodes only)
+  nodeEnter.filter(d => d.zone === 'Subject' && !d.parentId)
+    .append('image')
+    .attr('xlink:href', d => getSubjectImagePath(d.text))
+    .attr('x', d => -d.size / 2)
+    .attr('y', d => -d.size / 2)
+    .attr('width', d => d.size)
+    .attr('height', d => d.size)
+    .attr('class', 'subject-node-image')
+    .on('error', function() {
+      // If image fails to load, just keep the circle visible as fallback
+      d3.select(this).style('display', 'none');
+    });
+
+  // Remove old nodes
+  node.exit().remove();
+
+  // Apply styling to all nodes (new and existing)
+  nodeGroup.selectAll<SVGGElement, GraphNode>('g')
+    .each(function(d) {
+      applyNodeStyle(d3.select(this), false, svg);
+    });
+}
+
+function updateNodeSelection(id: string) {
+  if (!nodeGroup || !svg) return;
+
+  // Update all nodes to reset their styles first
+  nodeGroup.selectAll<SVGGElement, GraphNode>('g')
+    .each(function(d) {
+      applyNodeStyle(d3.select(this), false, svg);
+    });
+
+  // Then specially handle the selected node
+  const node = nodeGroup.selectAll<SVGGElement, GraphNode>('g')
+    .filter(d => d.id === id);
+    
+  // Apply styling with a slight delay to create a sequential animation
+  setTimeout(() => {
+    // Apply styling using our composable with hover effect for additional emphasis
+    applyNodeStyle(node, true, svg);
+    
+    // Add a subtle animation to draw attention to the circle only
+    node.select('.node-circle')
+      .transition()
+      .duration(300)
+      .attr('r', d => d.size / 2 * 1.05)
+      .transition()
+      .duration(300)
+      .attr('r', d => d.size / 2);
+      
+    // Raise to front
+    node.raise();
+  }, 50);
+}
+
+function saveNodePositions() {
+  if (!simulation) return;
+  const updatedPositions = simulation.nodes().map(node => ({
+    id: node.id,
+    x: node.x,
+    y: node.y
   }));
-
-  // Create links after nodes are prepared
-  zoneGraph.value.links = tagStore.createLinksBySourceId(props.zone);
-
-  // Initialize simulation with prepared nodes
-  const simulationForces = {
-    link: d3.forceLink(zoneGraph.value.links)
-      .id((d: any) => d.id)
-      .distance(props.preview ? 20 : RADIUS)
-      .strength(props.preview ? 0.8 : 0.3),
-    charge: d3.forceManyBody()
-      .strength(props.preview ? -20 : -30)
-      .distanceMax(200),
-    center: d3.forceCenter(width / 2, height / 2)
-      .strength(props.preview ? 0.8 : 0.3),
-    collision: d3.forceCollide()
-      .radius((d: any) => d.r + (props.preview ? 1 : 10))
-      .strength(props.preview ? 0.8 : 0.4),
-    x: d3.forceX(width / 2).strength(props.preview ? 0.2 : 0.05),
-    y: d3.forceY(height / 2).strength(props.preview ? 0.2 : 0.05)
-  };
-
-  // Create simulation with prepared nodes
-  zoneGraph.value.simulation = d3.forceSimulation(zoneGraph.value.nodes)
-    .force("link", simulationForces.link)
-    .force("charge", simulationForces.charge)
-    .force("center", simulationForces.center)
-    .force("collision", simulationForces.collision)
-    .force("x", simulationForces.x)
-    .force("y", simulationForces.y)
-    .alphaDecay(0.05);
-
-  zoneGraph.value.svg = d3.select(chartContainer.value)
-    .append("svg")
-    .attr("width", width)
-    .attr("height", height)
-    .attr("viewBox", [0, 0, width, height])
-    .attr("style", "width: 100%; height: 100%;");
-
-  // Add a background rect to catch mouse events
-  zoneGraph.value.svg.append("rect")
-    .attr("width", width)
-    .attr("height", height)
-    .attr("fill", "none")
-    .attr("pointer-events", "all");
-
-  const g = zoneGraph.value.svg.append("g");
-
-  // Apply zoom configuration if provided
-  if (props.zoomConfig) {
-    g.attr("transform", `translate(${props.zoomConfig.translateX}, ${props.zoomConfig.translateY}) scale(${props.zoomConfig.scale})`);
-  }
-
-  const link = g.append("g")
-    .attr("class", "links")
-    .selectAll("line")
-    .data(zoneGraph.value.links)
-    .join("line")
-    .attr("stroke", "#999")
-    .attr("stroke-opacity", 0.6)
-    .attr("stroke-width", d => Math.sqrt(d.value));
-
-  const node = g.append("g")
-    .attr("class", "nodes")
-    .selectAll("g")
-    .data(zoneGraph.value.nodes)
-    .join("g")
-    .call(drag(zoneGraph.value.simulation))
-    .on("click", handleNodeClick);
-
-  node.append("circle")
-    .attr("r", d => d.r)
-    .attr("fill", d => d.selected ? "#4CAF50" : color(d.zone))
-    .attr("stroke", "#fff")
-    .attr("stroke-width", 1.5);
-
-  node.each(function(d: any) {
-    const node = d3.select(this);
-    const lines = formatNodeText(d.text);
-    
-    lines.forEach((line, i) => {
-      node.append("text")
-        .text(line)
-        .attr("x", 0)
-        .attr("y", d.r + 10 + (i * 12)) // 12px line height
-        .attr("text-anchor", "middle")
-        .attr("font-size", "10px")
-        .attr("class", "node-text");
-    });
-  });
-
-  node.append("title")
-    .text(d => d.id);
-
-    zoneGraph.value.simulation.on("tick", () => {
-    zoneGraph.value.link
-      .attr("x1", d => d.source.x)
-      .attr("y1", d => d.source.y)
-      .attr("x2", d => d.target.x)
-      .attr("y2", d => d.target.y);
-
-    zoneGraph.value.node
-      .attr("transform", d => `translate(${d.x},${d.y})`);
-  });
-}
-
-function addZoomBehavior() {
-  // Add zoom behavior
-  const zoom = d3.zoom()
-    .scaleExtent([0.5, 2])
-    .on("zoom", (event) => {
-      zoneGraph.value.svg.select("g").attr("transform", event.transform);
-    });
-
-  zoneGraph.value.svg.call(zoom);
-}
-
-function preventCollapseOnEmptyClick() {
-  // Prevent collapsing when clicking on empty space
-  zoneGraph.value.svg.on("click", (event) => {
-    if (event.target.tagName === "svg" || event.target.tagName === "rect") {
-      event.stopPropagation();
-    }
-  });
-}
-
-function updateNodeAppearance(d, updateForces = true) {
-  const color = d3.scaleOrdinal(d3.schemeCategory10);
-  const nodes = zoneGraph.value.svg.selectAll(`.nodes g`).filter(n => n.id === d.id);
-
-  const baseSize = d.zone.includes('-secondary') ? SECONDARY_NODE_SIZE : PRIMARY_NODE_SIZE;
-  const nodeSize = d.isHybrid ? SECONDARY_NODE_SIZE : baseSize;
-
-  nodes.each(function() {
-    const node = d3.select(this);
-    const circle = node.select("circle");
-    circle.attr("r", nodeSize / 2);
-    
-    // Only update the color, no size changes
-    if (!d.isLoading) {
-      circle.attr("fill", d.selected ? "#4CAF50" : color(d.zone));
-    }
-  });
-
-  // Keep the node's radius constant
-  const index = zoneGraph.value.nodes.findIndex(n => n.id === d.id);
-  if (index !== -1) {
-    zoneGraph.value.nodes[index].r = baseSize / 2;
-    
-    // Only update forces for primary nodes
-    if (updateForces) {
-      zoneGraph.value.simulation.force("collision", d3.forceCollide()
-        .radius(n => n.r + 5)
-        .strength(0.1));
-      zoneGraph.value.simulation.alpha(0.1).restart();
-    }
-  }
-  console.log('updated node appearance', d)
-}
-
-
-function drag(simulation) {
-  function dragstarted(event) {
-    // Don't allow dragging of hybrid systems
-    if (event.subject.isHybrid || event.subject.isHybridChild) return;
-
-    if (!event.active) simulation.alphaTarget(0.3).restart();
-    event.subject.fx = event.subject.x;
-    event.subject.fy = event.subject.y;
-  }
-
-  function dragged(event) {
-    if (event.subject.isHybrid || event.subject.isHybridChild) return;
-    
-    event.subject.fx = event.x;
-    event.subject.fy = event.y;
-  }
-
-  function dragended(event) {
-    if (event.subject.isHybrid || event.subject.isHybridChild) return;
-    
-    if (!event.active) simulation.alphaTarget(0);
-    event.subject.fx = null;
-    event.subject.fy = null;
-  }
-
-  return d3.drag()
-    .on("start", dragstarted)
-    .on("drag", dragged)
-    .on("end", dragended);
-}
-
-// Add this new function to update node colors
-function updateNodeColors() {
-  const color = d3.scaleOrdinal(d3.schemeCategory10);
-  zoneGraph.value.svg.selectAll(".nodes circle")
-    .attr("fill", d => d.selected ? "#4CAF50" : color(d.zone));
-}
-
-// Add new function to handle hybrid-related visual updates
-function updateHybridRelatedNodes(hybridTag: Tag, visible: boolean) {
-  if (!hybridTag.sourceTags) return;
-
-  // Only hide/show source tags
-  const sourceIds = hybridTag.sourceTags.map(t => t.id);
-  
-  // Update visibility of source tags
-  zoneGraph.value.svg.selectAll(".nodes g")
-    .filter(d => sourceIds.includes(d.id))
-    .transition()
-    .duration(600)
-    .style("opacity", visible ? 1 : 0)
-    .style("pointer-events", visible ? "all" : "none");
-
-  // Update their links
-  zoneGraph.value.svg.selectAll(".links line")
-    .filter(d => sourceIds.includes(d.source.id) || sourceIds.includes(d.target.id))
-    .transition()
-    .duration(600)
-    .style("opacity", visible ? 0.6 : 0);
-
-  // Ensure child tags are always visible
-  if (hybridTag.childTags) {
-    const childIds = hybridTag.childTags.map(t => t.id);
-    zoneGraph.value.svg.selectAll(".nodes g")
-      .filter(d => childIds.includes(d.id))
-      .style("opacity", 1)
-      .style("pointer-events", "all");
-  }
-}
-
-// Add new function to handle next zone click
-function handleNextZone() {
-  const zones = tagStore.zones;
-  const currentIndex = zones.indexOf(props.zone);
-  const nextIndex = currentIndex < zones.length - 1 ? currentIndex + 1 : currentIndex;
-  emit('zoneChange', zones[nextIndex]);
-}
-
-// Add these computed properties
-const isFirstZone = computed(() => {
-  const zones = tagStore.zones;
-  return zones.indexOf(props.zone) === 0;
-});
-
-const isLastZone = computed(() => {
-  const zones = tagStore.zones;
-  return zones.indexOf(props.zone) === zones.length - 1;
-});
-
-// Add new function to handle previous zone click
-function handlePrevZone() {
-  const zones = tagStore.zones;
-  const currentIndex = zones.indexOf(props.zone);
-  const prevIndex = currentIndex > 0 ? currentIndex - 1 : 0;
-  emit('zoneChange', zones[prevIndex]);
-}
-
-// Add this function near the top of the script section
-function formatNodeText(text: string): string[] {
-  // Split by spaces but keep prepositions with their following word
-  const prepositions = ['of', 'in', 'on', 'at', 'by', 'for', 'with', 'to', '&', 'and'];
-  const words = text.split(' ');
-  const lines: string[] = [];
-  
-  for (let i = 0; i < words.length; i++) {
-    if (prepositions.includes(words[i].toLowerCase()) && i < words.length - 1) {
-      // Combine preposition with the next word
-      lines.push(`${words[i]} ${words[i + 1]}`);
-      i++; // Skip the next word since we've used it
-    } else {
-      lines.push(words[i]);
-    }
-  }
-  
-  return lines;
+  console.log('Emitting updated positions:', updatedPositions);
+  emit('nodePositionsUpdated', updatedPositions);
 }
 </script>
 
-<style scoped>
-div {
-  display: inline-block;
-}
 
-@keyframes loadingPulse {
-  0% { fill: #4CAF50; }
-  25% { fill: #2196F3; }
-  50% { fill: #4CAF50; }
-  75% { fill: #2196F3; }
-  100% { fill: #4CAF50; }
-}
-
-/* Use ::v-deep to target elements inside the SVG */
-::v-deep .loading-node circle {
-  animation: loadingPulse 1s infinite;
-}
-
-::v-deep .nodes g[data-is-hybrid="true"] circle {
-  stroke: #4CAF50;
-  stroke-width: 2;
-  stroke-dasharray: 4;
-  fill-opacity: 0.3;
-}
-
-/* Add to existing styles */
-::v-deep .nodes g {
-  transition: opacity 0.6s ease;
-}
-
-::v-deep .links line {
-  transition: opacity 0.6s ease;
-}
-
-/* Add to existing styles */
-.relative {
+<style lang="scss" scoped>
+.force-graph-component {
   position: relative;
+  width: 100%;
+  height: 100%;
+  svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: none !important;
+  }
 }
 
-.absolute {
-  position: absolute;
+.node {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover circle.node-circle {
+    stroke: rgba(255, 255, 255, 0.8);
+    fill: rgba(255, 255, 255, 0.3);
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.4));
+  }
+  
+  .node-circle {
+    transition: all 0.3s ease;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.2));
+  }
+  
+  .subject-node-image {
+    clip-path: circle(50%);
+    object-fit: cover;
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.3));
+  }
+  
+  .node-text {
+    font-weight: 500;
+    text-shadow: 0 0 4px rgba(255, 255, 255, 0.9);
+    pointer-events: none; // Prevent text from interfering with clicks
+    transition: all 0.2s ease;
+  }
 }
 
-.bottom-4 {
-  bottom: 1rem;
-}
+.absolute { position: absolute; }
+.bottom-4 { bottom: 1rem; }
+.left-4 { left: 1rem; }
+.right-4 { right: 1rem; }
+.flex { display: flex; }
+.justify-between { justify-content: space-between; }
+.items-center { align-items: center; }
+.gap-1 { gap: 0.25rem; }
 
-.right-4 {
-  right: 1rem;
-}
-
-button {
+.controls-overlay {
   z-index: 10;
+  pointer-events: none;
+  padding: 0 0.5rem;
 }
 
-.flex {
+.additional-controls,
+.zoom-controls {
+  pointer-events: auto;
+}
+
+.additional-controls {
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+.additional-controls :deep(.zone-selector) {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  width: 100%;
   display: flex;
+  justify-content: center;
+  
+  .p-selectbutton {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 100%;
+    
+    .p-button {
+      margin: 2px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      padding: 0.4rem 0.8rem;
+      transition: all 0.3s ease;
+      
+      &:hover {
+        transform: translateY(-2px);
+      }
+    }
+  }
 }
 
-.gap-2 {
-  gap: 0.5rem;
+.additional-controls :deep(.p-togglebutton) {
+  font-size: 0.90rem !important;
+  min-width: auto;
 }
 
-.rotate-180 {
-  transform: rotate(180deg);
-}
-
-button:disabled {
-  opacity: 0.7;
-}
-
-button:disabled:hover {
-  background-color: #9ca3af; /* Tailwind's gray-400 */
-}
-
-/* Add to existing styles */
-::v-deep .node-text {
-  pointer-events: none; /* Prevents text from interfering with click events */
-  user-select: none; /* Prevents text selection */
+.zoom-controls button {
+  padding: 0.4rem 0.6rem;
+  min-width: auto;
+  line-height: 1;
 }
 </style>
 
@@ -2323,344 +2193,239 @@ File: components/Tag.vue
 File: components/TagCloud.vue
 ================
 <template>
-  <div class="tag-cloud" v-if="!loading">
-    <div class="main-zone grid grid-cols-2 tw-gap-4">
-      <div class="graph-container">
-        <h2>{{ focusedZone }}</h2>
-        <ForceGraph
-          :key="focusedZone"
-          :width="600"
-          :height="728"
-          :zone="focusedZone"
-          class="main-graph"
-          @tagSelected="handleTagSelection"
-          @secondaryTagSelected="handleSecondaryTagSelection"
-          @zoneChange="handleZoneChange"
-          :zoomConfig="{ scale: 1.4, translateX: -90, translateY: -130 }"
-        />
-        <div class="preview-zones">
-          <div
-            v-for="zone in previewZones"
-            :key="zone"
-            class="preview-zone"
-            @click="setFocusedZone(zone)"
-          >
-            <h3>{{ zone }}</h3>
-            <ForceGraph
-              :width="100"
-              :height="150"
-              :zone="zone"
-              :preview="true"
-              :zoomConfig="{ scale: 0.3, translateX: 45, translateY: 50 }"
+   <div class="main-zone grid grid-cols-2 tw-gap-4">
+    
+    <!-- Top Left: Graph -->
+    <div class="graph-container glass-card">
+      <h2 class="zone-title">{{ focusedZone }}</h2>
+      <ForceGraph
+        :width="800"
+        :height="600"
+        :nodes="graphNodes"
+        :links="graphLinks"
+        @nodeClick="handleNodeClick"
+        @nodePositionsUpdated="handleNodePositionsUpdated"
+      >
+        <!-- Zone selector will be moved here via slot later -->
+        <template #controls>
+          <div class="zone-selector-container mt-4">
+            <ZoneSelector
+              v-model:modelValue="selectedZone"
+              :options="zoneOptions"
             />
           </div>
-        </div>
-      </div>
+        </template>
+      </ForceGraph>
+    </div>
 
-      <div class="prompt-container">
-        <h2>Image:</h2>
-        <div class="image-container">
-          <img v-if="imageUrl" :src="imageUrl" alt="Generated Image" class="generated-image" />
-          <div v-else-if="isGeneratingImage" class="loader-container">
-            <div class="loader">
-              <div class="particles">
-                <div class="particle"></div>
-                <div class="particle"></div>
-                <div class="particle"></div>
-                <div class="particle"></div>
-                <div class="particle"></div>
-                <div class="particle"></div>
-                <div class="particle"></div>
-                <div class="particle"></div>
-              </div>
-            </div>
-            <p class="loader-text">Generating your image...</p>
-          </div>
-          <div v-else class="placeholder-container"></div>
-        </div>
-
-        <div class="prompt-box">
-          <div class="prompt-header">
-            <h2>Generated Prompt:</h2>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" v-model="isManualMode" class="sr-only peer" />
-              <div
-                class="relative w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"
-              ></div>
-              <span class="ms-3 text-sm font-medium text-gray-900 dark:text-gray-300"
-                >Manual Mode</span
-              >
-            </label>
-          </div>
-
-          <textarea
-            v-if="isManualMode"
-
-            class="manual-prompt-input"
-            placeholder="Enter your prompt..."
-          ></textarea>
-          <p v-else>{{ generatedPromptResult }}</p>
-
-          <button
-            @click="generateImage"
-            :disabled="!(isManualMode ? manualPrompt :  generatedPrompt) || isGeneratingImage"
-            class="flex items-center gap-2"
-          >
-            <ArrowPathIcon v-if="isGeneratingImage" class="animate-spin h-5 w-5" />
-            {{ isGeneratingImage ? 'Generating...' : 'Generate Image' }}
-          </button>
-        </div>
-        <p class="w-full !text-left text-xs">
-          Selected Tags: <span class="font-bold">{{ generatedPrompt }}</span>
-        </p>
+    <!-- Top Right: Image Preview -->
+    <div class="image-preview-container glass-card">
+      <h2>Image:</h2>
+      <div class="image-container">
+        <img
+          v-if="imageUrl"
+          :src="imageUrl"
+          alt="Generated Image"
+          class="generated-image"
+        />
+        <div v-else class="placeholder-container"></div>
       </div>
     </div>
-  </div>
 
-  <div v-else class="loading">Loading...</div>
+    <!-- Bottom Left: Settings Placeholder -->
+    <div class="settings-container glass-card">
+      <h2>Settings</h2>
+      <!-- Settings content will go here -->
+      <p>Settings placeholder...</p>
+    </div>
+
+    <!-- Bottom Right: Prompt Area -->
+    <div class="prompt-area-container glass-card">
+      <div class="prompt-header flex justify-between items-start w-full">
+          <h2>Generated Prompt:</h2>
+          <ToggleButton 
+            onLabel="Auto"
+            class="px-1 py-1 h-8"
+            offLabel="Manual"
+            onIcon="pi pi-lock" 
+            offIcon="pi pi-lock-open"
+            v-model="isManualMode" 
+          />
+        </div>
+      <div class="prompt-box w-full">
+    
+        
+        <Textarea
+          v-if="isManualMode"
+          v-model="manualPrompt"
+          class="manual-prompt-input text-[var(--text-color)] h-[calc(100%-10px)] w-full p-2"
+          placeholder="Enter your prompt..."
+        ></Textarea>
+        <p class="text-[#474565]" v-else>{{ generatedPromptResult }}</p>
+        
+     
+      </div>
+      <div class="flex justify-between w-full">
+        <p class="w-full !text-left text-xs selected-tags-display text-[#6d80a4]">Selected Tags: <span class="font-bold">{{ generatedPrompt}}</span></p>
+        <Button 
+          @click="generateImage" 
+          severity="primary"
+          :disabled="!(isManualMode ? manualPrompt : generatedPromptResult) || isGeneratingImage"
+          class="flex items-center gap-2 flex-nowrap whitespace-nowrap px-8 py-1"
+        >
+          <ProgressSpinner
+            v-if="isGeneratingImage"
+            class="w-4 h-4 progress-spinner" 
+            strokeWidth="8" 
+            fill="transparent"
+          />
+          {{ isGeneratingImage ? 'Generating...' : 'Generate Image' }}
+        </Button>
+      </div>
+    </div>
+
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
-import { useTagStore } from '~/store/tagStore'
-import ForceGraph from './ForceGraph.vue'
-import { GoogleGenerativeAI } from '@google/generative-ai'
-import { ArrowPathIcon } from '@heroicons/vue/24/solid'
-import { HarmCategory, HarmBlockThreshold } from '@google/generative-ai'
-import { mockTags } from '~/store/mockTags'
-const config = useRuntimeConfig()
+import { computed, ref, watch, onMounted } from 'vue';
+import { useTagStore } from '~/store/tagStore';
+import ForceGraph from './ForceGraph.vue';
+import { useRuntimeConfig } from '#app';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import ZoneSelector from './ZoneSelector.vue';
 
-const apiKey = config.public.GEMINI_API_KEY
-const fluxApiKey = config.public.FLUX_API_KEY
-if (!apiKey) {
-  throw new Error('GEMINI_API_KEY is not defined')
-}
-if (!fluxApiKey) {
-  throw new Error('FLUX_API_KEY is not defined')
-}
-const genAI = new GoogleGenerativeAI(apiKey)
+const config = useRuntimeConfig();
+const genAI = new GoogleGenerativeAI(config.public.GEMINI_API_KEY as string);
+const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+const imageModel = genAI.getGenerativeModel({ 
+  model: 'gemini-2.0-flash-exp-image-generation'
+  // The responseModalities will be specified in the request
+});
 
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-8b' })
+const tagStore = useTagStore();
+const focusedZone = computed(() => tagStore.focusedZone);
+// Create a ref using the zones array directly from the store
+const zoneOptions = ref([...tagStore.zones]);
+const graphNodes = computed(() => tagStore.graphNodes);
+const graphLinks = computed(() => tagStore.graphLinks);
 
+// Use ref for the selected zone and sync with the store
+const selectedZone = ref(focusedZone.value);
+
+// Watch for changes to selectedZone and update the store
+watch(selectedZone, (newZone) => {
+  if (newZone) {
+    switchToZone(newZone);
+  }
+});
+
+// Add this ref near the top of the script section with other refs
+const isManualMode = ref(false)
+const manualPrompt = ref('')
 const imageUrl = ref('')
 const generatedPromptResult = ref('')
+const isGeneratingImage = ref(false)
+
 let promptRequestId = 0
 let imageRequestId = 0
 
-const tagStore = useTagStore()
-const { fetchTags } = tagStore
-
-const loading = ref(true)
-
-const focusedZone = computed(() => tagStore.focusedZone)
-
-const previewZones = computed(() => {
-  return tagStore.zones.filter((zone) => zone !== focusedZone.value)
-})
-
-onMounted(async () => {
-  await fetchTags()
-  loading.value = false
-})
-
-const setFocusedZone = (zone: string) => {
-  tagStore.setFocusedZone(zone)
-}
-
-const handleTagSelection = async (tagId: string, zone: string) => {
-  const tag = tagStore.tags.find((t) => t.id === tagId)
-  if (!tag) return
-
-  // Handle unselecting current tag if needed
-  const currentSelectedTag = tagStore.tags.find(
-    (t) => t.zone === zone && t.selected && t.id !== tagId
-  )
-  if (currentSelectedTag) {
-    tagStore.toggleTag(currentSelectedTag.id, zone)
-    currentSelectedTag.secondaryTags?.forEach((secTag) => {
-      if (secTag.selected) {
-        tagStore.toggleSecondaryTag(currentSelectedTag.id, secTag.id)
-      }
-    })
-    tagStore.removeSecondaryTagsByParent(currentSelectedTag.id)
-  }
-
-  if (!tag.selected) {
-    // Tag is being selected
-    tagStore.toggleTag(tagId, zone)
-
-    // Set loading state
-    tagStore.setTagLoading(tagId, true)
-
-    // Store preconfigured tags temporarily
-    const preconfiguredTags = tag.secondaryTags || []
-    // Clear secondary tags immediately so they don't show up
-    tag.secondaryTags = []
-
-    // Generate new dynamic secondary tags
-    const newTags = await generateRelatedTags(tag.text)
-
-    // Prepare all tags (both preconfigured and dynamic)
-    const allTags = [
-      ...preconfiguredTags.map((t) => ({
-        ...t,
-        parentId: tagId,
-        isDynamic: false,
-      })),
-      ...newTags.map((tagText, index) => ({
-        id: `${tagId}-dynamic-${index}`,
-        text: tagText,
-        parentId: tagId,
-        zone: `${zone}-secondary`,
-        size: tag.size * 0.8,
-        selected: false,
-        isDynamic: true,
-        x: tag.x || 0,
-        y: tag.y || 0,
-        fx: null,
-        fy: null,
-        alias: tagText.toLowerCase().replace(/\s+/g, '-'),
-      })),
-    ]
-
-    // Clear loading state
-    tagStore.setTagLoading(tagId, false)
-
-    // Add all tags at once
-    allTags.forEach((newTag) => {
-      tagStore.addSecondaryTag(tagId, newTag)
-    })
-  } else {
-    // Tag is being unselected
-    tagStore.toggleTag(tagId, zone)
-    // Remove all secondary tags when parent is unselected
-    tag.secondaryTags?.forEach((secTag) => {
-      if (secTag.selected) {
-        tagStore.toggleSecondaryTag(tagId, secTag.id)
-      }
-    })
-    // Remove dynamic tags
-    tagStore.removeSecondaryTagsByParent(tagId)
-  }
-}
-
-const handleSecondaryTagSelection = (tagId: string) => {
-  const primaryTag = tagStore.tags.find((tag) =>
-    tag.secondaryTags?.some((secTag) => secTag.id === tagId)
-  )
-  if (primaryTag) {
-    tagStore.toggleSecondaryTag(primaryTag.id, tagId)
-  }
-}
-
 const generatedPrompt = computed(() => {
-  return tagStore.allSelectedTags.map((tag) => tag.text).join(', ')
+  // Get primary selected tags
+  const selectedPrimaryTags = tagStore.tags
+    .filter(tag => tag.selected)
+    .map(tag => tag.text);
+  
+  return  selectedPrimaryTags.join(', ')
 })
 
-const debounce = (func: Function, delay: number) => {
-  let timeoutId: ReturnType<typeof setTimeout>
-  return (...args: any[]) => {
-    clearTimeout(timeoutId)
-    timeoutId = setTimeout(() => func(...args), delay)
+
+// Also watch for changes in the store's zones to update options
+watch(() => tagStore.zones, () => {
+  zoneOptions.value = [...tagStore.zones];
+}, { deep: true });
+
+// Also watch for changes in the store's focusedZone
+watch(focusedZone, (newZone) => {
+  selectedZone.value = newZone;
+});
+
+// Watch for changes in the generatedPrompt computed property to trigger prompt generation
+watch(generatedPrompt, () => {
+  generatePrompt();
+});
+
+// Generate the prompt when the component is mounted
+onMounted(() => {
+  if (generatedPrompt.value) {
+    generatePrompt();
   }
+});
+
+function handleNodeClick(id: string) {
+  console.log('TagCloud received nodeClick:', id);
+  tagStore.toggleTag(id);
 }
 
-const generatePrompt = () => {
-  return new Promise((resolve) => {
-    const debouncedGenerate = debounce(async () => {
-      if (isManualMode.value) {
-        resolve(null);
-        return;
-      }
-
-      const prompt = generatedPrompt.value;
-      if (prompt.length > 0) {
-        const currentRequestId = ++promptRequestId;
-
-        const response = await model.generateContent({
-          contents: [
-            {
-              role: 'user',
-              parts: [
-                {
-                  text: `You are creating an image prompt based on the following tags: ${prompt}. You should create prompt as much exactly matching the tags as possible, do not make up tags, the result is a prompt for an image generator, no words before, no words after, just the prompt.`,
-                },
-              ],
-            },
-          ],
-          safetySettings: [
-            {
-              category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-              threshold: HarmBlockThreshold.BLOCK_NONE,
-            },
-            {
-              category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-              threshold: HarmBlockThreshold.BLOCK_NONE,
-            },
-            {
-              category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-              threshold: HarmBlockThreshold.BLOCK_NONE,
-            },
-            {
-              category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-              threshold: HarmBlockThreshold.BLOCK_NONE,
-            },
-          ],
-          generationConfig: {
-            temperature: 0.5,
-            maxOutputTokens: 1000,
-          },
-        });
-
-        if (currentRequestId === promptRequestId) {
-          generatedPromptResult.value = await response.response.text();
-          console.log('generatedPromptResult', generatedPromptResult.value)
-          resolve(generatedPromptResult.value);
-        } else {
-          resolve(null);
-        }
-      } else {
-        resolve(null);
-      }
-    }, 300);
-
-    debouncedGenerate();
-  });
+function switchToZone(zone: string) {
+  console.log(`Switching to ${zone}`);
+  tagStore.setFocusedZone(zone);
 }
-
-const isGeneratingImage = ref(false)
 
 const generateImage = async () => {
-    await generatePrompt()
   isGeneratingImage.value = true
   const currentImageRequestId = ++imageRequestId
 
-  const url = 'https://api.segmind.com/v1/fast-flux-schnell'
-
-  const data = {
-    prompt: isManualMode.value ? manualPrompt.value : generatedPromptResult.value,
-    steps: 4,
-    seed: 1184522,
-    aspect_ratio: '1:1',
-    base64: true,
+  const promptText = isManualMode.value ? manualPrompt.value : generatedPromptResult.value
+  
+  if (!promptText) {
+    console.error('No prompt text available')
+    isGeneratingImage.value = false
+    return
   }
 
   try {
-    const response = await $fetch(url, {
-      method: 'POST',
-      headers: { 'x-api-key': fluxApiKey as string },
-      body: data,
+    console.log('Generating image with prompt:', promptText)
+    
+    // Create a proper request object according to the Gemini API
+    const response = await imageModel.generateContent({
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: promptText }]
+        }
+      ],
+      generationConfig: {
+        // @ts-ignore - The TypeScript definitions might not be updated for this new API
+        responseModalities: ['Text', 'Image']
+      }
     })
-
+    
     if (currentImageRequestId === imageRequestId) {
-      if (typeof response?.image === 'string') {
-        imageUrl.value = `data:image/jpeg;base64,${response.image}`
-      } else {
-        console.error('Unexpected response format:', response)
+      const result = response.response
+      
+      if (result && result.candidates && result.candidates.length > 0) {
+        const parts = result.candidates[0].content.parts
+        
+        for (const part of parts) {
+          if (part.inlineData) {
+            // Successfully found an image
+            imageUrl.value = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`
+            console.log('Image generated successfully')
+            break
+          } else if (part.text) {
+            console.log('Generated text:', part.text)
+          }
+        }
+      }
+      
+      if (!imageUrl.value) {
+        console.error('No image was generated in the response')
       }
     }
   } catch (error) {
-    console.error('Error:', error)
+    console.error('Error generating image:', error)
+    console.error('Error details:', error instanceof Error ? error.message : String(error))
   } finally {
     if (currentImageRequestId === imageRequestId) {
       isGeneratingImage.value = false
@@ -2668,391 +2433,878 @@ const generateImage = async () => {
   }
 }
 
-// Watch for changes in the generatedPrompt computed property
-// watch(generatedPrompt, () => {
-//   // return;
-//   generatePrompt()
-// })
-
-// Add this ref near the top of the script section with other refs
-const isManualMode = ref(false)
-const manualPrompt = ref('')
-
-// Add this watch effect
-watch(isManualMode, (newValue) => {
-  if (newValue) {
-    // When switching to manual mode, initialize with current prompt
-    manualPrompt.value = generatedPromptResult.value
-  } else {
-    // When switching back to auto mode, trigger regeneration
-    generatePrompt()
-  }
-})
-
-// Update the generateRelatedTags function
-const generateRelatedTags = async (parentTag: string) => {
-  // Get existing tags from mockTags data
-  const mockTagData = Object.values(mockTags).flat().find(tag => tag.text === parentTag);
-  const existingTags = mockTagData?.secondaryTags || [];
-
-  // Create a set of existing tags for case-insensitive comparison
-  const existingTagSet = new Set(existingTags.map(t => t.toLowerCase()))
-
-  const response = await model.generateContent({
-    contents: [
-      {
-        role: 'user',
-        parts: [
-          {
-            text: `You are helping users find relevant tags for their image generation. 
-            When user selects "${parentTag}" as their main subject, suggest 6 additional descriptive tags.
-
-            Requirements:
-            - Each tag should be 1-2 words
-            - Always start with a capital letter
-            - Avoid duplicating these existing tags: ${existingTags.join(', ')}
-            - Think about what users might want to achieve when they selected "${parentTag}"
-            - Include both common and creative but relevant associations
-            - Focus on visual and artistic aspects
-            - Suggest tags that would help create interesting image variations
-            - Keep tags concrete and imagery-focused
-
-            Return only a JSON array of strings, no explanation.
-            Example format: ["Mountain Peak", "Dense Forest", "Morning Mist"]`,
-          },
-        ],
-      },
-    ],
-    generationConfig: {
-      temperature: 0.7,
-      maxOutputTokens: 200,
-    },
-  })
-
-  const text = await response.response.text()
-  try {
-    const cleanedText = text.replace(/```json\n?|\n?```/g, '').trim()
-    const tags = JSON.parse(cleanedText)
-
-    // Filter out duplicates using the Set
-    const uniqueTags = tags.filter((tag: string) => !existingTagSet.has(tag.toLowerCase()))
-
-    return Array.isArray(uniqueTags) ? uniqueTags.slice(0, 5) : []
-  } catch (error) {
-    console.error('Failed to parse generated tags:', error)
-    console.error('Raw response:', text)
-    return []
-  }
+// Simple debounce function
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: ReturnType<typeof setTimeout> | null = null;
+  
+  return function(this: any, ...args: Parameters<T>) {
+    const context = this;
+    if (timeout !== null) {
+      clearTimeout(timeout);
+    }
+    timeout = setTimeout(() => {
+      func.apply(context, args);
+      timeout = null;
+    }, wait);
+  };
 }
 
-// Add the handler for zone change in the script section
-const handleZoneChange = (newZone: string) => {
-  setFocusedZone(newZone)
+const generatePrompt = debounce(async () => {
+  if (isManualMode.value) return // Skip auto-generation if in manual mode
+  
+  const prompt = generatedPrompt.value
+  if (prompt.length > 0) {
+    const currentRequestId = ++promptRequestId
+
+    const response = await model.generateContent({
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            {
+              text: `You are creating an image prompt based on the following tags: ${prompt}. You should create prompt as much exactly matching the tags as possible, based on the tags but transformed into a prompt for an image generator, the result is a prompt for an image generator, no words before, no words after, just the prompt.`,
+            },
+          ],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.5,
+        maxOutputTokens: 1000,
+      },
+    })
+
+    if (currentRequestId === promptRequestId) {
+      generatedPromptResult.value = await response.response.text()
+    }
+  }
+}, 300)
+
+function handleNodePositionsUpdated(positions: { id: string; x: number; y: number }[]) {
+  console.log('Received updated positions:', positions);
+  positions.forEach(pos => {
+    const tag = tagStore.tags.find(t => t.id === pos.id);
+    if (tag) {
+      tag.x = pos.x;
+      tag.y = pos.y;
+    }
+  });
+}
+</script>
+
+<style scoped>
+/* Component-specific styles are now in assets/scss/components/tag-cloud.scss */
+/* We keep this block for scoped styles as needed but don't add any until explicitly asked */
+</style>
+
+================
+File: components/ZoneSelector.vue
+================
+<template>
+  <div class="zone-selector" ref="container">
+    <SelectButton 
+      :modelValue="modelValue" 
+      :options="options" 
+      class="zone-buttons"
+      @update:modelValue="$emit('update:modelValue', $event)"
+    >
+      <template #option="slotProps">
+        <div :class="['zone-button-content', `zone-${slotProps.option.toLowerCase()}`]">
+          {{ slotProps.option }}
+        </div>
+      </template>
+    </SelectButton>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted, watch } from 'vue';
+
+const props = defineProps<{
+  modelValue: string;
+  options: string[];
+}>();
+
+defineEmits(['update:modelValue']);
+
+const container = ref<HTMLElement | null>(null);
+
+// Add custom attributes to buttons after rendering
+onMounted(() => {
+  addZoneAttributes();
+});
+
+// Re-apply attributes when options change
+watch(() => props.options, () => {
+  setTimeout(addZoneAttributes, 0);
+});
+
+function addZoneAttributes() {
+  if (!container.value) return;
+  
+  const buttons = container.value.querySelectorAll('button');
+  buttons.forEach((button, index) => {
+    if (index < props.options.length) {
+      button.setAttribute('option-zone', props.options[index]);
+    }
+  });
 }
 </script>
 
 <style lang="scss" scoped>
-.tag-cloud {
-  display: flex;
-  flex-direction: column;
-  padding: 0px 20px 0 20px;
+.zone-selector {
   width: 100%;
+  
+
 }
 
-.main-zone {
-  margin-bottom: 20px;
-  width: 100%;
+/* Define styles for each zone */
+:deep(button[aria-pressed="true"]) {
+  &[option-zone="Subject"] .p-togglebutton-content {
+    background: linear-gradient(135deg, #C4B3FF 0%, #A38BFE 50%, #65F0D5 100%);
+  }
+  
+  &[option-zone="Attributes"] .p-togglebutton-content {
+    background: linear-gradient(135deg, #FFB5EC 0%, #FF8AE2 50%, #FFC46B 100%);
+  }
+  
+  &[option-zone="Activity"] .p-togglebutton-content {
+    background: linear-gradient(135deg, #B9FFFA 0%, #84FFF5 50%, #4C6EF5 100%);
+  }
+  
+  &[option-zone="Aesthetics"] .p-togglebutton-content {
+    background: linear-gradient(135deg, #DBFFE6 0%, #C2FFD8 50%, #465EFB 100%);
+  }
+  
+  &[option-zone="Era"] .p-togglebutton-content {
+    background: linear-gradient(135deg, #FFE57F 0%, #F9D423 50%, #FF4E50 100%);
+  }
+  
+  &[option-zone="Abstract"] .p-togglebutton-content {
+    background: linear-gradient(135deg, #9EAAFF 0%, #667EEA 50%, #764BA2 100%);
+  }
+  
+  &[option-zone="Style"] .p-togglebutton-content {
+    background: linear-gradient(135deg, #FFE6A0 0%, #F6D365 50%, #FDA085 100%);
+  }
+  
 
-  h2 {
-    text-align: center;
-    margin-bottom: 2px;
-  }
-  .main-graph {
-    width: 100% !important;
-    border: 1px solid #cfcfcf;
-    border-radius: 10px;
-    margin-bottom: 20px;
-    background: #fff;
-  }
 }
 
-/* Add these new container styles */
-.graph-container {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+:deep(button[aria-pressed="true"]) {
+    .zone-button-content {
+        color: #fff;
+    }
 }
 
-.prompt-container {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 0 0px 0 20px;
-  min-height: 600px; /* Ensures minimum height even without image */
-
-  h2 {
-    margin-bottom: 2px;
+/* Add keyframes for the pulse animation */
+@keyframes pulse {
+  0% {
+    opacity: 0.3;
+    transform: scale(1);
   }
-
-  .prompt-box {
-    width: 100%;
-    min-height: 120px;
-    background-color: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    padding: 15px;
-    margin-bottom: 3px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-
-    p {
-      font-size: 0.9em;
-      line-height: 1.5;
-      margin: 0;
-      padding: 0 0 15px 0;
-      color: #333;
-      text-align: left;
-      flex-grow: 1;
-      min-height: 115px;
-    }
-
-    button {
-      align-self: flex-end;
-      padding: 8px 16px;
-      font-size: 0.95em;
-      background-color: #4caf50;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-
-      &:disabled {
-        background-color: #cccccc;
-        cursor: not-allowed;
-      }
-
-      &:hover:not(:disabled) {
-        background-color: #45a049;
-      }
-    }
-
-    .prompt-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 3px;
-
-      .manual-mode-toggle {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 0.9em;
-        cursor: pointer;
-
-        input[type='checkbox'] {
-          cursor: pointer;
-        }
-      }
-    }
-
-    .manual-prompt-input {
-      width: 100%;
-      min-height: 100px;
-      padding: 8px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      margin-bottom: 15px;
-      font-size: 0.9em;
-      line-height: 1.5;
-      resize: vertical;
-
-      &:focus {
-        outline: none;
-        border-color: #4caf50;
-      }
-    }
-  }
-
-  .image-container {
-    width: 100%;
-    aspect-ratio: 1 / 1;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #f8f9fa;
-    border-radius: 8px;
-    overflow: hidden;
-  }
-
-  .placeholder-container {
-    width: 100%;
-    height: 100%;
-    background-color: #f5f5f5;
-    border: 2px dashed #ddd;
-    border-radius: 8px;
-  }
-
-  .generated-image {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    border-radius: 8px;
-  }
-
-  button {
-    padding: 10px 20px;
-    font-size: 1em;
-    background-color: #4caf50;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    margin-top: auto;
-    width: fit-content;
-
-    &:disabled {
-      background-color: #cccccc;
-      cursor: not-allowed;
-    }
-
-    &:hover:not(:disabled) {
-      background-color: #45a049;
-    }
-  }
-}
-
-.preview-zones {
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.preview-zone {
-  width: calc(20% - 10px);
-  padding-top: 5px;
-  border: 1px solid #cfcfcf;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: transform 0.2s;
-  background: #fff;
-  &:hover {
+  50% {
+    opacity: 0.5;
     transform: scale(1.05);
   }
-
-  h3 {
-    text-align: center;
-    margin-bottom: 5px;
-  }
-}
-
-.loading {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  font-size: 1.5rem;
-}
-
-.loader-container {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: #f8f9fa;
-  border-radius: 8px;
-}
-
-.loader {
-  width: 120px;
-  height: 120px;
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.particles {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  animation: rotate 10s linear infinite;
-}
-
-.particle {
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #4caf50;
-  opacity: 0.6;
-  left: calc(50% - 5px);
-  top: calc(50% - 5px);
-
-  @for $i from 1 through 8 {
-    &:nth-child(#{$i}) {
-      transform: rotate($i * 45deg) translateY(-30px);
-      animation: particle-animation 2s infinite;
-      animation-delay: $i * 0.2s;
-    }
-  }
-}
-
-@keyframes rotate {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes particle-animation {
-  0% {
-    transform: rotate(0deg) translateY(-30px) scale(1);
-    opacity: 0.6;
-  }
-  50% {
-    transform: rotate(180deg) translateY(-40px) scale(1.5);
-    opacity: 1;
-    background: #2196f3;
-  }
   100% {
-    transform: rotate(360deg) translateY(-30px) scale(1);
-    opacity: 0.6;
-  }
-}
-
-.loader-text {
-  margin-top: 20px;
-  color: #666;
-  font-size: 0.9em;
-  animation: text-pulse 2s ease-in-out infinite;
-}
-
-@keyframes text-pulse {
-  0%,
-  100% {
-    opacity: 0.6;
-  }
-  50% {
-    opacity: 1;
+    opacity: 0.3;
+    transform: scale(1);
   }
 }
 </style>
 
 ================
+File: composables/useForceSimulation.ts
+================
+import * as d3 from 'd3';
+import type { GraphNode, GraphLink } from '~/types/graph';
+import type { SimulationNodeDatum } from 'd3';
+
+export function useForceSimulation() {
+  /**
+   * Creates and configures a D3 force simulation
+   */
+  const createSimulation = (
+    nodes: GraphNode[],
+    links: GraphLink[],
+    width: number,
+    height: number
+  ) => {
+    const simulation = d3.forceSimulation<GraphNode>(nodes)
+      .force('link', d3.forceLink<GraphNode, GraphLink>(links)
+        .id(d => d.id)
+        .distance(link => {
+          const target = link.target as GraphNode;
+          const source = link.source as GraphNode;
+          // Increase distance when target is selected
+          if (target.selected) return 150;
+          // Keep parent-child relationships closer
+          if (target.parentId === source.id) return 50;
+          return 140;
+        })
+        .strength(link => {
+          const target = link.target as GraphNode;
+          const source = link.source as GraphNode;
+          // Weaken link when target is selected
+          if (target.selected) return 0.05;
+          // Stronger force for parent-child relationships
+          if (target.parentId === source.id) return 0.1;
+          return 0.15;
+        }))
+      .force('charge', d3.forceManyBody()
+        .strength((d) => ((d as GraphNode).selected ? -100 : -20))) // Stronger repulsion for selected nodes
+      .force('center', d3.forceCenter(width / 2, height / 2).strength(0.00))
+      .force('collision', d3.forceCollide()
+        .radius((d) => ((d as GraphNode).selected ? (d as GraphNode).size : (d as GraphNode).size / 2) + 20)) // Larger collision radius for selected nodes
+      .velocityDecay(0.8);
+      
+    return simulation;
+  };
+  
+  /**
+   * Updates the simulation parameters when nodes or links change
+   */
+  const updateSimulation = (
+    simulation: d3.Simulation<GraphNode, GraphLink>,
+    nodes: GraphNode[],
+    links: GraphLink[],
+    width: number,
+    height: number
+  ) => {
+    simulation.stop();
+
+    const selectedParent = nodes.find(n => n.selected && !n.parentId);
+    const parentX = selectedParent ? (selectedParent.x || width / 2) : width / 2;
+    const parentY = selectedParent ? (selectedParent.y || height / 2) : height / 2;
+
+    // Update node positions and fix selected nodes
+    nodes.forEach(node => {
+      if (node.selected && !node.parentId) {
+        node.fx = node.x || parentX;
+        node.fy = node.y || parentY;
+      } else if (node.parentId) {
+        const parent = nodes.find(n => n.id === node.parentId);
+        if (parent && (!node.x || !node.y)) {
+          node.x = parent.x || parentX;
+          node.y = parent.y || parentY;
+          node.vx = 0;
+          node.vy = 0;
+        }
+      } else {
+        node.fx = null;
+        node.fy = null;
+      }
+    });
+
+    // Update simulation nodes
+    simulation.nodes(nodes);
+    
+    // Update link force
+    const linkForceTyped = simulation.force<d3.ForceLink<GraphNode, GraphLink>>('link');
+    if (linkForceTyped) {
+      linkForceTyped.links(links);
+      linkForceTyped
+        .distance(link => {
+          const target = link.target as GraphNode;
+          const source = link.source as GraphNode;
+          if (target.selected) return 150;
+          if (target.parentId === source.id) return 50;
+          return 100;
+        })
+        .strength(link => {
+          const target = link.target as GraphNode;
+          const source = link.source as GraphNode;
+          if (target.selected) return 0.05;
+          if (target.parentId === source.id) return 0.3;
+          return 0.15;
+        });
+    }
+
+    // Update charge force
+    const chargeForce = simulation.force('charge') as d3.ForceManyBody<GraphNode>;
+    if (chargeForce) {
+      chargeForce.strength((d: SimulationNodeDatum) => ((d as GraphNode).selected ? -100 : -20));
+    }
+
+    // Update collision force
+    const collisionForce = simulation.force('collision') as d3.ForceCollide<GraphNode>;
+    if (collisionForce) {
+      collisionForce.radius((d: SimulationNodeDatum) => ((d as GraphNode).selected ? (d as GraphNode).size : (d as GraphNode).size / 2) + 20);
+    }
+
+    // Restart simulation
+    simulation.alpha(0.3).restart();
+    
+    return simulation;
+  };
+  
+  /**
+   * Creates a drag behavior for nodes
+   */
+  const createDragBehavior = (simulation: d3.Simulation<GraphNode, GraphLink>) => {
+    return d3.drag<any, GraphNode>()
+      .on('start', (event) => {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        event.subject.fx = event.subject.x;
+        event.subject.fy = event.subject.y;
+      })
+      .on('drag', (event) => {
+        event.subject.fx = event.x;
+        event.subject.fy = event.y;
+      })
+      .on('end', (event) => {
+        if (!event.active) simulation.alphaTarget(0);
+        event.subject.fx = null;
+        event.subject.fy = null;
+      });
+  };
+  
+  return {
+    createSimulation,
+    updateSimulation,
+    createDragBehavior
+  };
+}
+
+================
+File: composables/useLinkStyling.ts
+================
+import { type Selection } from 'd3';
+import type { GraphLink, GraphNode } from '~/types/graph';
+
+export function useLinkStyling() {
+  /**
+   * Creates a link gradient definition in the SVG
+   */
+  const createLinkGradient = (
+    svg: Selection<SVGSVGElement, unknown, null, undefined>,
+    id: string = 'link-gradient'
+  ) => {
+    // Create default gradient for links
+    const linkGradient = svg.select('defs')
+      .append('linearGradient')
+      .attr('id', id)
+      .attr('gradientUnits', 'userSpaceOnUse')
+      .attr('x1', '0%')
+      .attr('y1', '0%')
+      .attr('x2', '100%')
+      .attr('y2', '0%');
+    
+    // Add stops to the gradient - subtle fade
+    linkGradient.append('stop')
+      .attr('offset', '0%')
+      .attr('stop-color', '#aaa')
+      .attr('stop-opacity', '0');
+      
+    linkGradient.append('stop')
+      .attr('offset', '20%')
+      .attr('stop-color', '#aaa')
+      .attr('stop-opacity', '0.5');
+      
+    linkGradient.append('stop')
+      .attr('offset', '80%')
+      .attr('stop-color', '#aaa')
+      .attr('stop-opacity', '0.5');
+      
+    linkGradient.append('stop')
+      .attr('offset', '100%')
+      .attr('stop-color', '#aaa')
+      .attr('stop-opacity', '0');
+      
+    return linkGradient;
+  };
+
+  /**
+   * Creates a unique gradient for a specific link
+   */
+  const createUniqueGradient = (
+    svg: Selection<SVGSVGElement, unknown, null, undefined>,
+    source: GraphNode,
+    target: GraphNode
+  ): string => {
+    const gradientId = `link-gradient-${source.id}-${target.id}`;
+    
+    // Check if this gradient already exists
+    if (svg.select(`#${gradientId}`).empty()) {
+      // Create a new gradient for this link
+      createLinkGradient(svg, gradientId);
+      
+      // Update the gradient orientation
+      updateGradientPositions(svg, source, target);
+    }
+    
+    return gradientId;
+  };
+  
+  /**
+   * Updates gradient positions based on node positions
+   */
+  const updateGradientPositions = (
+    svg: Selection<SVGSVGElement, unknown, null, undefined>,
+    source: GraphNode,
+    target: GraphNode
+  ) => {
+    const gradientId = `link-gradient-${source.id}-${target.id}`;
+    svg.select(`#${gradientId}`)
+      .attr('x1', source.x || 0)
+      .attr('y1', source.y || 0)
+      .attr('x2', target.x || 0)
+      .attr('y2', target.y || 0);
+  };
+  
+  /**
+   * Apply styling to a link
+   */
+  const applyLinkStyle = (
+    selection: Selection<any, GraphLink, any, any>
+  ) => {
+    selection
+      .attr('stroke-opacity', 0.5)
+      .attr('stroke-width', d => Math.max(1, Math.sqrt(d.value) * 0.7))
+      .attr('stroke-linecap', 'round');
+  };
+
+  return {
+    createLinkGradient,
+    createUniqueGradient,
+    updateGradientPositions,
+    applyLinkStyle
+  };
+}
+
+================
+File: composables/useNodeStyling.ts
+================
+import { type Selection } from 'd3';
+import type { GraphNode } from '~/types/graph';
+import * as d3 from 'd3';
+
+export function useNodeStyling() {
+  /**
+   * Maps zone names to their gradient colors
+   */
+  const zoneGradients = {
+    'Subject': { 
+      light: '#C4B3FF',  // Lighter lavender
+      main: '#A38BFE',   // Main lavender
+      dark: '#65F0D5'    // Mint accent
+    },
+    'Attributes': { 
+      light: '#FFB5EC',  // Lighter pink
+      main: '#FF8AE2',   // Main pink
+      dark: '#FFC46B'    // Gold accent
+    },
+    'Activity': { 
+      light: '#B9FFFA',  // Lighter cyan
+      main: '#84FFF5',   // Main cyan
+      dark: '#4C6EF5'    // Indigo accent
+    },
+    'Composition': { 
+      light: '#FFE6A0',  // Lighter yellow
+      main: '#F6D365',   // Main yellow
+      dark: '#FDA085'    // Peach accent
+    },
+    'Aesthetics': { 
+      light: '#DBFFE6',  // Lighter mint
+      main: '#C2FFD8',   // Main mint
+      dark: '#465EFB'    // Blue accent
+    },
+    'Era': { 
+      light: '#FFE57F',  // Lighter gold
+      main: '#F9D423',   // Main gold
+      dark: '#FF4E50'    // Red accent
+    },
+    'Abstract': { 
+      light: '#9EAAFF',  // Lighter indigo
+      main: '#667EEA',   // Main indigo
+      dark: '#764BA2'    // Purple accent
+    }
+  };
+
+  // Default gradient for fallback
+  const defaultGradient = { 
+    light: '#9B9DFF',
+    main: '#6366f1', 
+    dark: '#8B5CF6' 
+  };
+  
+  /**
+   * Creates node gradient definitions in the SVG
+   */
+  const createNodeGradients = (svg: Selection<SVGSVGElement, unknown, null, undefined>) => {
+    // First check if we already have defs
+    if (svg.select('defs').empty()) {
+      svg.append('defs');
+    }
+    
+    const defs = svg.select('defs');
+    
+    // Create gradients for each zone
+    Object.entries(zoneGradients).forEach(([zone, colors]) => {
+      const gradientId = `node-gradient-${zone.toLowerCase()}`;
+      
+      // Only create if it doesn't exist yet
+      if (defs.select(`#${gradientId}`).empty()) {
+        // Create a radial gradient for sphere-like effect
+        const gradient = defs.append('radialGradient')
+          .attr('id', gradientId)
+          .attr('cx', '30%')      // Move highlight more to the top-left
+          .attr('cy', '30%')
+          .attr('r', '80%')       // Cover more of the circle
+          .attr('fx', '7%')      // Focus highlight in top-left corner
+          .attr('fy', '7%');
+          
+        // Start with a lighter version of the main color at center
+        gradient.append('stop')
+          .attr('offset', '0%')
+          .attr('stop-color', colors.light)  // Lighter shade
+          .attr('stop-opacity', '1');
+          
+        // Transition to main color
+        gradient.append('stop')
+          .attr('offset', '30%')
+          .attr('stop-color', colors.main)   // Main color
+          .attr('stop-opacity', '1');
+          
+        // Transition to darker end color
+        gradient.append('stop')
+          .attr('offset', '100%')
+          .attr('stop-color', colors.dark)   // Darker accent color
+          .attr('stop-opacity', '0.9');
+        
+        // Add glow filter
+        if (defs.select(`#glow-${zone.toLowerCase()}`).empty()) {
+          const filter = defs.append('filter')
+            .attr('id', `glow-${zone.toLowerCase()}`)
+            .attr('x', '-30%')
+            .attr('y', '-30%')
+            .attr('width', '160%')
+            .attr('height', '160%');
+            
+          // Add subtle blur effect
+          filter.append('feGaussianBlur')
+            .attr('stdDeviation', '1.5')
+            .attr('result', 'blur');
+            
+          // Combine original with blur
+          filter.append('feComposite')
+            .attr('in', 'SourceGraphic')
+            .attr('in2', 'blur')
+            .attr('operator', 'over');
+        }
+      }
+    });
+    
+    // Create default gradient
+    if (defs.select('#node-gradient-default').empty()) {
+      const gradient = defs.append('radialGradient')
+        .attr('id', 'node-gradient-default')
+        .attr('cx', '30%')
+        .attr('cy', '30%')
+        .attr('r', '80%')
+        .attr('fx', '15%')
+        .attr('fy', '15%');
+        
+      gradient.append('stop')
+        .attr('offset', '0%')
+        .attr('stop-color', defaultGradient.light)
+        .attr('stop-opacity', '1');
+        
+      gradient.append('stop')
+        .attr('offset', '30%')
+        .attr('stop-color', defaultGradient.main)
+        .attr('stop-opacity', '1');
+        
+      gradient.append('stop')
+        .attr('offset', '100%')
+        .attr('stop-color', defaultGradient.dark)
+        .attr('stop-opacity', '0.9');
+        
+      // Add default glow
+      if (defs.select('#glow-default').empty()) {
+        const filter = defs.append('filter')
+          .attr('id', 'glow-default')
+          .attr('x', '-30%')
+          .attr('y', '-30%')
+          .attr('width', '160%')
+          .attr('height', '160%');
+          
+        filter.append('feGaussianBlur')
+          .attr('stdDeviation', '1.5')
+          .attr('result', 'blur');
+          
+        filter.append('feComposite')
+          .attr('in', 'SourceGraphic')
+          .attr('in2', 'blur')
+          .attr('operator', 'over');
+      }
+    }
+  };
+  
+  /**
+   * Gets the gradient URL for a node based on its zone
+   */
+  const getNodeGradient = (node: GraphNode): string => {
+    if (!node.selected) {
+      return 'rgba(255, 255, 255, 0.2)';
+    }
+    
+    const zone = node.zone || 'default';
+    const normalizedZone = Object.keys(zoneGradients).find(
+      z => z.toLowerCase() === zone.toLowerCase()
+    ) || 'default';
+    
+    return `url(#node-gradient-${normalizedZone.toLowerCase()})`;
+  };
+  
+  /**
+   * Gets the glow filter URL for a node based on its zone
+   */
+  const getNodeGlowFilter = (node: GraphNode): string | null => {
+    if (!node.selected) {
+      return null;
+    }
+    
+    const zone = node.zone || 'default';
+    const normalizedZone = Object.keys(zoneGradients).find(
+      z => z.toLowerCase() === zone.toLowerCase()
+    ) || 'default';
+    
+    return `url(#glow-${normalizedZone.toLowerCase()})`;
+  };
+
+  /**
+   * Applies styling to a graph node
+   */
+  const applyNodeStyle = (
+    selection: Selection<any, GraphNode, any, any>,
+    isHover = false,
+    svg?: Selection<SVGSVGElement, unknown, null, undefined> | null
+  ) => {
+    // Create gradients if we have the SVG reference
+    if (svg) {
+      createNodeGradients(svg);
+    }
+    
+    // Apply circle styling
+    selection.select('.node-circle')
+      .attr('fill', d => getNodeGradient(d))
+      .attr('filter', d => isHover && d.selected ? getNodeGlowFilter(d) : null)
+      .attr('stroke', d => {
+        if (d.selected) return '#fff';
+        return isHover ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.5)';
+      })
+      .attr('stroke-width', d => d.selected ? 1.5 : 1)
+      .attr('r', d => d.size / 2);
+    
+    // Update text content and styling
+    selection.selectAll('.node-text').remove(); // Remove existing text
+    
+    // Function to format text into multiple lines if needed
+    const formatNodeText = (text: string): string[] => {
+      const words = text.split(' ');
+      
+      // If single word or empty, return as is
+      if (words.length <= 1) {
+        return [text];
+      }
+      
+      // For two words, split into two lines
+      if (words.length === 2) {
+        return words;
+      }
+      
+      // For three words, put first word on first line, remaining on second
+      if (words.length === 3) {
+        return [
+          words[0],
+          `${words[1]} ${words[2]}`
+        ];
+      }
+      
+      // For more than three words, try to balance lines
+      // Prioritize putting fewer words on the first line
+      const firstLineCount = Math.floor(words.length / 2);
+      return [
+        words.slice(0, firstLineCount).join(' '),
+        words.slice(firstLineCount).join(' ')
+      ];
+    };
+    
+    // Add text labels directly to the node (not in a group)
+    selection.each(function(d) {
+      const node = d3.select(this);
+      const textLines = formatNodeText(d.text);
+      
+      // Remove any existing node-text
+      node.selectAll('.node-text').remove();
+      
+      // For single-line text, use the standard approach
+      if (textLines.length === 1) {
+        node.append('text')
+          .attr('class', 'node-text')
+          .attr('x', 0) // Center horizontally
+          .attr('y', d.size / 2 + 6) // Position below the circle
+          .attr('text-anchor', 'middle')
+          .attr('dominant-baseline', 'hanging') // Align from the top of the text
+          .attr('font-size', '10px')
+          .attr('fill', 'rgba(0, 0, 0, 0.8)')
+          .attr('font-weight', d.selected ? '600' : '500')
+          .attr('text-shadow', '0 0 4px rgba(255, 255, 255, 0.9)')
+          .text(d.text);
+        return;
+      }
+      
+      // For multi-line text, create separate text elements
+      textLines.forEach((line, i) => {
+        const yPos = d.size / 2 + 6 + (i * 12); // Start closer to node and add line height
+        
+        node.append('text')
+          .attr('class', 'node-text')
+          .attr('x', 0) // Center horizontally
+          .attr('y', yPos) // Position based on line number
+          .attr('text-anchor', 'middle')
+          .attr('dominant-baseline', 'hanging') // Align from the top of the text
+          .attr('font-size', '10px')
+          .attr('fill', 'rgba(0, 0, 0, 0.8)')
+          .attr('font-weight', d.selected ? '600' : '500')
+          .attr('text-shadow', '0 0 4px rgba(255, 255, 255, 0.9)')
+          .text(line);
+      });
+    });
+    
+    // Selected nodes should be brought to front
+    if (selection.data()[0]?.selected) {
+      selection.raise();
+    }
+  };
+
+  /**
+   * Gets the image path for a subject node
+   */
+  const getSubjectImagePath = (text: string): string => {
+    // Map the node text to the correct filename
+    const nodeTextToFilename: Record<string, string> = {
+      'Humans': 'humans',
+      'Animals': 'animals',
+      'Mythical Creatures': 'mythical-creatures',
+      'Plants': 'plants',
+      'Objects': 'objects',
+      'Abstract Concepts': 'abstract-concepts',
+      'Structures': 'structures',
+      'Landscapes': 'landscapes'
+    };
+    
+    const filename = nodeTextToFilename[text] || text.toLowerCase().replace(/\s+/g, '-');
+    // Use dynamic imports of assets instead of hard-coded paths
+    return new URL(`/assets/pics/subject/${filename}.png`, import.meta.url).href;
+  };
+
+  return {
+    applyNodeStyle,
+    getSubjectImagePath,
+    createNodeGradients
+  };
+}
+
+================
+File: composables/useZoom.ts
+================
+import { ref } from 'vue';
+import * as d3 from 'd3';
+
+export function useZoom() {
+  const zoomBehavior = ref<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+  const currentTransform = ref<d3.ZoomTransform>(d3.zoomIdentity);
+
+  function initializeZoom(
+    svg: d3.Selection<SVGSVGElement, unknown, null, undefined>, 
+    g: d3.Selection<SVGGElement, unknown, null, undefined>,
+    initialScale: number = 1.0
+  ) {
+    // Initialize zoom behavior
+    zoomBehavior.value = d3.zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.2, 4]) // Set min/max zoom scale
+      .on('zoom', (event) => {
+        currentTransform.value = event.transform;
+        g.attr('transform', event.transform.toString());
+      });
+
+    // Apply zoom behavior to SVG with initial scale
+    svg.call(zoomBehavior.value as any);
+    
+    // Set initial zoom level
+    const initialTransform = d3.zoomIdentity.scale(initialScale);
+    svg.call(zoomBehavior.value.transform as any, initialTransform);
+  }
+
+  function centerOnNode(
+    svg: d3.Selection<SVGSVGElement, unknown, null, undefined>,
+    node: { x?: number; y?: number },
+    width: number,
+    height: number
+  ) {
+    if (!zoomBehavior.value || !svg.node() || !node.x || !node.y) return;
+
+    // Get current transform state
+    const currentTransform = d3.zoomTransform(svg.node()!);
+    const scale = currentTransform.k;
+
+    // Calculate center point
+    const centerX = width / 2;
+    const centerY = height / 2;
+
+    // Calculate the new transform
+    const newTransform = d3.zoomIdentity
+      .translate(centerX - node.x * scale, centerY - node.y * scale)
+      .scale(scale);
+
+    // Apply smooth transition
+    svg.transition()
+      .duration(750)
+      .call(zoomBehavior.value.transform as any, newTransform);
+  }
+
+  function zoomIn(svg: d3.Selection<SVGSVGElement, unknown, null, undefined>) {
+    if (!zoomBehavior.value) return;
+    svg.transition()
+      .duration(300)
+      .call(zoomBehavior.value.scaleBy as any, 1.5);
+  }
+
+  function zoomOut(svg: d3.Selection<SVGSVGElement, unknown, null, undefined>) {
+    if (!zoomBehavior.value) return;
+    svg.transition()
+      .duration(300)
+      .call(zoomBehavior.value.scaleBy as any, 0.75);
+  }
+
+  function resetZoom(svg: d3.Selection<SVGSVGElement, unknown, null, undefined>) {
+    if (!zoomBehavior.value) return;
+    svg.transition()
+      .duration(300)
+      .call(zoomBehavior.value.transform as any, d3.zoomIdentity);
+  }
+
+  return {
+    zoomBehavior,
+    currentTransform,
+    initializeZoom,
+    centerOnNode,
+    zoomIn,
+    zoomOut,
+    resetZoom
+  };
+}
+
+================
 File: pages/index.vue
 ================
 <template>
-    <div class="container mx-auto">
-      <h1 class="text-center text-2xl font-bold">Tag Cloud Image Prompt Generator</h1>
+    <div class="mx-auto max-w-[96vw]">
       <TagCloud />
     </div>
   </template>
@@ -3074,6 +3326,346 @@ File: server/tsconfig.json
 }
 
 ================
+File: services/graphLayoutService.ts
+================
+import type { Tag } from '~/types/tag';
+
+export function distributeChildNodes(parentTag: Tag, radius: number): void {
+  const children = parentTag.children || [];
+  if (children.length === 0) return;
+  
+  const angleIncrement = (2 * Math.PI) / children.length;
+  children.forEach((child, i) => {
+    const angle = i * angleIncrement;
+    const px = parentTag.x ?? 300;
+    const py = parentTag.y ?? 200;
+    child.x = px + radius * Math.cos(angle);
+    child.y = py + radius * Math.sin(angle);
+  });
+}
+
+export function expandChildAwayFromParent(child: Tag, parent: Tag): void {
+  if (!parent) return;
+  
+  const dx = (child.x ?? 0) - (parent.x ?? 0);
+  const dy = (child.y ?? 0) - (parent.y ?? 0);
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  const newDistance = distance * 3; // Increase by factor of 3
+  const ux = dx / distance;
+  const uy = dy / distance;
+  
+  child.x = (parent.x ?? 0) + newDistance * ux;
+  child.y = (parent.y ?? 0) + newDistance * uy;
+}
+
+interface GraphData {
+  nodes: Tag[];
+  links: Array<{ source: string; target: string; value: number }>;
+}
+
+export function computeGraphData(tags: Tag[], focusedZone: string): GraphData {
+  // Get visible nodes
+  const zoneTags = tags.filter(t => t.zone === focusedZone);
+  const topLevel = zoneTags.filter(t => !t.parentId);
+  
+  if (!topLevel.some(t => t.selected)) {
+    return {
+      nodes: topLevel,
+      links: []
+    };
+  }
+
+  // Build visible nodes tree
+  let activeTop = topLevel.filter(t => t.selected);
+  let visible: Tag[] = [...activeTop];
+  let currentLevel = activeTop;
+
+  while (true) {
+    const nextLevel = currentLevel.flatMap(node => 
+      (node.children && !node.isLoading ? node.children : [])
+    );
+    if (nextLevel.length === 0) break;
+    visible.push(...nextLevel);
+    const selectedNext = nextLevel.filter(n => n.selected);
+    if (selectedNext.length === 0) break;
+    currentLevel = selectedNext;
+  }
+
+  // Build links between visible nodes
+  const links = visible.reduce((acc: Array<{ source: string; target: string; value: number }>, node) => {
+    if (node.children) {
+      node.children.forEach(child => {
+        if (visible.some(n => n.id === child.id)) {
+          acc.push({ source: node.id, target: child.id, value: 1 });
+        }
+      });
+    }
+    return acc;
+  }, []);
+
+  return {
+    nodes: visible,
+    links
+  };
+}
+
+================
+File: services/tagGenerationService.ts
+================
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import type { Tag } from '~/types/tag';
+
+export async function generateRelatedTags(
+  parentTag: Tag,
+  existingTags: Tag[],
+  apiKey: string
+): Promise<Tag[]> {
+  const existingTexts = existingTags
+    .filter(t => t.zone === parentTag.zone)
+    .map(t => t.text.toLowerCase());
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-8b' });
+
+  const prompt = `You are helping users find relevant tags for their image generation. 
+When user selects "${parentTag.text}" as their main subject in the "${parentTag.zone}" zone, suggest 6 additional descriptive tags.
+
+Context about the application's zone structure:
+- Our application has several zones: Subject, Mood, Setting, Activity, Aesthetic, etc.
+- Each zone contains different types of concepts.
+- The user is currently in the "${parentTag.zone}" zone, so all suggestions must be appropriate for this specific zone.
+- Tags from the ${parentTag.zone} zone should only describe ${parentTag.zone.toLowerCase()} elements, not elements from other zones.
+
+Examples by zone:
+- Subject zone: objects, beings, or things (e.g., "Mountain", "Tiger", "Robot")
+- Mood zone: emotional qualities (e.g., "Serene", "Mysterious", "Joyful")
+- Setting zone: locations or environments (e.g., "Forest", "Urban", "Underwater")
+- Aesthetic zone: artistic styles (e.g., "Minimalist", "Surreal", "Vintage")
+
+Requirements:
+- Each tag should be 1-2 words
+- Always start with a capital letter
+- Avoid duplicating these existing tags: ${existingTexts.join(', ')}
+- Think about what users might want to achieve when they selected "${parentTag.text}" in the "${parentTag.zone}" zone
+- Include both common and creative but relevant associations
+- Focus on visual and artistic aspects that fit the "${parentTag.zone}" zone
+- Suggest tags that would help create interesting image variations
+- Keep tags concrete and imagery-focused
+- IMPORTANT: Only suggest tags that belong in the "${parentTag.zone}" zone. Do not mix concepts from different zones.
+
+Return only a JSON array of strings, no explanation.
+Example format: ["Mountain Peak", "Dense Forest", "Morning Mist"]`;
+
+  try {
+    const response = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 200
+      }
+    });
+
+    const rawText = response.response.text();
+    const cleanedText = rawText.replace(/```json\n|\n```/g, '').trim();
+    const newTagsText = JSON.parse(cleanedText) as string[];
+
+    return newTagsText.map((text: string, index: number): Tag => ({
+      id: `${parentTag.id}-dyn-${index}`,
+      text,
+      size: 40,
+      selected: false,
+      zone: parentTag.zone,
+      alias: text.toLowerCase().replace(/\s+/g, '-'),
+      parentId: parentTag.id,
+      x: parentTag.x,
+      y: parentTag.y,
+      isLoading: false,
+      children: [],
+      depth: (parentTag.depth ?? 0) + 1
+    }));
+  } catch (error) {
+    console.error('Error fetching dynamic tags:', error);
+    throw error;
+  }
+}
+
+================
+File: services/tagProcessingService.ts
+================
+import type { Tag } from '~/types/tag';
+import { mockTags } from '~/store/mockTags';
+
+export function getAvailableZones(): string[] {
+  return Object.keys(mockTags).length > 0 
+    ? Object.keys(mockTags)
+    : ['Subject', 'Style', 'Medium', 'Mood'];
+}
+
+export function processTag(
+  tagData: string | Tag,
+  zone: string,
+  existingTags: Tag[],
+  parentId?: string,
+  level: number = 0
+): Tag {
+  const isString = typeof tagData === 'string';
+  const text = isString ? tagData : tagData.text;
+  const id = parentId ? `${parentId}-${existingTags.length}` : `${zone}-${existingTags.length}`;
+  
+  const tag: Tag = {
+    id,
+    text,
+    size: 40,
+    selected: false,
+    zone,
+    alias: (isString ? text.toLowerCase().replace(/\s+/g, '-') : tagData.alias) || '',
+    parentId,
+    x: level === 0 ? 300 : undefined,
+    y: level === 0 ? 200 : undefined,
+    isLoading: false,
+    children: [],
+    depth: level
+  };
+
+  // Process children if they exist
+  if (!isString && tagData.children) {
+    // Process both predefined and dynamic children
+    tag.children = tagData.children.map(child => {
+      const childTag = processTag(child, zone, existingTags, tag.id, level + 1);
+      existingTags.push(childTag); // Add child to existingTags
+      return childTag;
+    });
+  }
+
+  return tag;
+}
+
+export function initializeTags(): Tag[] {
+  const tags: Tag[] = [];
+  
+  // If mockTags is empty or undefined, provide default tags
+  const defaultTags: Record<string, (string | Tag)[]> = {
+    Subject: ['Portrait', 'Landscape', 'Abstract'],
+    Style: ['Realistic', 'Impressionist', 'Minimalist'],
+    Medium: ['Digital', 'Oil Paint', 'Watercolor'],
+    Mood: ['Peaceful', 'Energetic', 'Mysterious']
+  };
+
+  const tagsToProcess = Object.keys(mockTags).length > 0 ? mockTags : defaultTags;
+  
+  Object.entries(tagsToProcess).forEach(([zone, zoneTags]) => {
+    zoneTags.forEach((tagData: string | Tag) => {
+      const tag = processTag(tagData, zone, tags);
+      if (!tag.parentId) { // Only push top-level tags directly
+        tags.push(tag);
+      }
+    });
+  });
+
+  return tags;
+}
+
+export function findTagById(id: string, tagList: Tag[]): Tag | undefined {
+  for (const tag of tagList) {
+    if (tag.id === id) return tag;
+    if (tag.children) {
+      const found = findTagById(id, tag.children);
+      if (found) return found;
+    }
+  }
+  return undefined;
+}
+
+================
+File: services/tagSelectionService.ts
+================
+import type { Tag } from '~/types/tag';
+import { findTagById } from './tagProcessingService';
+import { generateRelatedTags } from './tagGenerationService';
+import { distributeChildNodes, expandChildAwayFromParent } from './graphLayoutService';
+
+export function removeDynamicChildren(tag: Tag, allTags: Tag[]): Tag[] {
+  if (!tag.children) return allTags;
+
+  // Identify dynamic children
+  const dynamicIds = tag.children
+    .filter(child => child.id.includes('-dyn-'))
+    .map(child => child.id);
+
+  // Remove from parent's children
+  tag.children = tag.children.filter(child => !child.id.includes('-dyn-'));
+
+  // Remove from global tags array
+  return allTags.filter(t => !dynamicIds.includes(t.id));
+}
+
+export function unselectChildren(tag: Tag): void {
+  if (tag.children) {
+    tag.children.forEach(child => {
+      child.selected = false;
+      unselectChildren(child);
+    });
+  }
+}
+
+export function unselectTopLevelSiblings(tag: Tag, allTags: Tag[]): void {
+  if (!tag.parentId) {
+    allTags
+      .filter(t => t.zone === tag.zone && !t.parentId && t.id !== tag.id)
+      .forEach(t => {
+        if (t.selected) {
+          allTags = removeDynamicChildren(t, allTags);
+        }
+        t.selected = false;
+        unselectChildren(t);
+      });
+  }
+}
+
+export async function toggleTag(
+  id: string,
+  allTags: Tag[],
+  apiKey: string
+): Promise<{ updatedTags: Tag[]; selectedTag: Tag }> {
+  const tag = findTagById(id, allTags);
+  if (!tag) {
+    throw new Error(`Tag ${id} not found`);
+  }
+
+  const wasSelected = tag.selected;
+  let updatedTags = [...allTags];
+
+  if (!wasSelected) {
+    unselectTopLevelSiblings(tag, updatedTags);
+    tag.selected = true;
+
+    if (tag.parentId) {
+      const parent = findTagById(tag.parentId, updatedTags);
+      if (parent) {
+        expandChildAwayFromParent(tag, parent);
+      }
+    }
+
+    try {
+      tag.isLoading = true;
+      const newTags = await generateRelatedTags(tag, updatedTags, apiKey);
+      tag.children = [...(tag.children || []), ...newTags];
+      updatedTags = [...updatedTags, ...newTags];
+      // Distribute children in a circle after adding new ones
+      distributeChildNodes(tag, 80);
+    } finally {
+      tag.isLoading = false;
+    }
+  } else {
+    updatedTags = removeDynamicChildren(tag, updatedTags);
+    unselectChildren(tag);
+    tag.selected = false;
+  }
+
+  return { updatedTags, selectedTag: tag };
+}
+
+================
 File: store/mockTags.ts
 ================
 export const mockTags = {
@@ -3081,7 +3673,7 @@ export const mockTags = {
     {
       text: 'Humans',
         alias: 'humans',
-        secondaryTags: [
+        children: [
           'Adult Male',
           'Adult Female',
           'Child',
@@ -3095,7 +3687,7 @@ export const mockTags = {
       {
         text: 'Animals',
         alias: 'animals',
-        secondaryTags: [
+        children: [
           'Mammals',
           'Birds',
           'Reptiles',
@@ -3109,7 +3701,7 @@ export const mockTags = {
       {
         text: 'Mythical Creatures',
         alias: 'mythical creatures',
-        secondaryTags: [
+        children: [
           'Dragons',
           'Unicorns',
           'Phoenix',
@@ -3123,7 +3715,7 @@ export const mockTags = {
       {
         text: 'Plants',
         alias: 'plants',
-        secondaryTags: [
+        children: [
           'Trees',
           'Flowers',
           'Grass',
@@ -3137,7 +3729,7 @@ export const mockTags = {
       {
         text: 'Objects',
         alias: 'objects',
-        secondaryTags: [
+        children: [
           'Vehicles',
           'Instruments',
           'Tools',
@@ -3151,7 +3743,7 @@ export const mockTags = {
       {
         text: 'Abstract Concepts',
         alias: 'abstract concepts',
-        secondaryTags: [
+        children: [
           'Love',
           'Time',
           'Freedom',
@@ -3165,7 +3757,7 @@ export const mockTags = {
       {
         text: 'Landscapes',
         alias: 'landscapes',
-        secondaryTags: [
+        children: [
           'Mountains',
           'Forests',
           'Beaches',
@@ -3179,7 +3771,7 @@ export const mockTags = {
       {
         text: 'Structures',
         alias: 'structures',
-        secondaryTags: [
+        children: [
           'Castles',
           'Skyscrapers',
           'Bridges',
@@ -3195,7 +3787,7 @@ export const mockTags = {
         {
           text: 'Roles',
           alias: 'roles',
-          secondaryTags: [
+          children: [
             'Hero',
             'Villain',
             'Mentor',
@@ -3209,7 +3801,7 @@ export const mockTags = {
         {
           text: 'Characteristics',
           alias: 'characteristics',
-          secondaryTags: [
+          children: [
             'Brave',
             'Intelligent',
             'Cunning',
@@ -3223,7 +3815,7 @@ export const mockTags = {
         {
           text: 'Emotions',
           alias: 'emotions',
-          secondaryTags: [
+          children: [
             'Happy',
             'Sad',
             'Angry',
@@ -3237,7 +3829,7 @@ export const mockTags = {
         {
           text: 'Abilities',
           alias: 'abilities',
-          secondaryTags: [
+          children: [
             'Flying',
             'Invisibility',
             'Super Strength',
@@ -3251,7 +3843,7 @@ export const mockTags = {
         {
           text: 'Occupations',
           alias: 'occupations',
-          secondaryTags: [
+          children: [
             'Doctor',
             'Engineer',
             'Artist',
@@ -3265,7 +3857,7 @@ export const mockTags = {
         {
           text: 'Personality Traits',
           alias: 'personality traits',
-          secondaryTags: [
+          children: [
             'Optimistic',
             'Pessimistic',
             'Introverted',
@@ -3279,7 +3871,7 @@ export const mockTags = {
         {
           text: 'Physical Traits',
           alias: 'physical traits',
-          secondaryTags: [
+          children: [
             'Tall',
             'Short',
             'Athletic',
@@ -3293,7 +3885,7 @@ export const mockTags = {
         {
           text: 'Relationships',
           alias: 'relationships',
-          secondaryTags: [
+          children: [
             'Friend',
             'Enemy',
             'Sibling',
@@ -3305,11 +3897,11 @@ export const mockTags = {
           ]
         }
       ],
-    ActivityEvent: [
+    Activity: [
       {
         text: 'Action',
         alias: 'action',
-        secondaryTags: [
+        children: [
           'Running',
           'Jumping',
           'Flying',
@@ -3323,7 +3915,7 @@ export const mockTags = {
       {
         text: 'Celebration',
         alias: 'celebration',
-        secondaryTags: [
+        children: [
           'Party',
           'Festival',
           'Parade',
@@ -3337,7 +3929,7 @@ export const mockTags = {
       {
         text: 'Exploration',
         alias: 'exploration',
-        secondaryTags: [
+        children: [
           'Hiking',
           'Sailing',
           'Space Travel',
@@ -3351,7 +3943,7 @@ export const mockTags = {
       {
         text: 'Conflict',
         alias: 'conflict',
-        secondaryTags: [
+        children: [
           'Battle',
           'Argument',
           'Duel',
@@ -3365,7 +3957,7 @@ export const mockTags = {
       {
         text: 'Transformation',
         alias: 'transformation',
-        secondaryTags: [
+        children: [
           'Metamorphosis',
           'Evolution',
           'Aging',
@@ -3379,7 +3971,7 @@ export const mockTags = {
       {
         text: 'Creation',
         alias: 'creation',
-        secondaryTags: [
+        children: [
           'Painting',
           'Sculpting',
           'Building',
@@ -3393,7 +3985,7 @@ export const mockTags = {
       {
         text: 'Destruction',
         alias: 'destruction',
-        secondaryTags: [
+        children: [
           'Explosion',
           'Fire',
           'Collapse',
@@ -3407,7 +3999,7 @@ export const mockTags = {
       {
         text: 'Peaceful Moments',
         alias: 'peaceful moments',
-        secondaryTags: [
+        children: [
           'Sleeping',
           'Meditating',
           'Reading',
@@ -3420,11 +4012,11 @@ export const mockTags = {
       }
     ],
   
-    StyleAesthetic: [
+    Aesthetics: [
       {
         text: 'Realism',
         alias: 'realism',
-        secondaryTags: [
+        children: [
           'Photorealism',
           'Hyperrealism',
           'Naturalism',
@@ -3438,7 +4030,7 @@ export const mockTags = {
       {
         text: 'Impressionism',
         alias: 'impressionism',
-        secondaryTags: [
+        children: [
           'Pointillism',
           'Plein Air',
           'Light Play',
@@ -3452,7 +4044,7 @@ export const mockTags = {
       {
         text: 'Surrealism',
         alias: 'surrealism',
-        secondaryTags: [
+        children: [
           'Dreamlike',
           'Juxtaposition',
           'Symbolism',
@@ -3466,7 +4058,7 @@ export const mockTags = {
       {
         text: 'Abstract',
         alias: 'abstract',
-        secondaryTags: [
+        children: [
           'Geometric',
           'Expressionism',
           'Cubism',
@@ -3480,7 +4072,7 @@ export const mockTags = {
       {
         text: 'Pop Art',
         alias: 'pop art',
-        secondaryTags: [
+        children: [
           'Bold Colors',
           'Comic Style',
           'Celebrity Imagery',
@@ -3494,7 +4086,7 @@ export const mockTags = {
       {
         text: 'Minimalism',
         alias: 'minimalism',
-        secondaryTags: [
+        children: [
           'Monochromatic',
           'Simple Forms',
           'Negative Space',
@@ -3508,7 +4100,7 @@ export const mockTags = {
       {
         text: 'Futurism',
         alias: 'futurism',
-        secondaryTags: [
+        children: [
           'Dynamic Lines',
           'Movement',
           'Industrial Themes',
@@ -3522,7 +4114,7 @@ export const mockTags = {
       {
         text: 'Vintage',
         alias: 'vintage',
-        secondaryTags: [
+        children: [
           'Retro',
           'Sepia Tones',
           'Nostalgic',
@@ -3535,11 +4127,11 @@ export const mockTags = {
       }
     ],
   
-    MoodAtmosphere: [
+    Mood: [
       {
         text: 'Joyful',
         alias: 'joyful',
-        secondaryTags: [
+        children: [
           'Cheerful',
           'Playful',
           'Excited',
@@ -3553,7 +4145,7 @@ export const mockTags = {
       {
         text: 'Melancholic',
         alias: 'melancholic',
-        secondaryTags: [
+        children: [
           'Sad',
           'Nostalgic',
           'Lonely',
@@ -3567,7 +4159,7 @@ export const mockTags = {
       {
         text: 'Mysterious',
         alias: 'mysterious',
-        secondaryTags: [
+        children: [
           'Enigmatic',
           'Suspenseful',
           'Cryptic',
@@ -3581,7 +4173,7 @@ export const mockTags = {
       {
         text: 'Energetic',
         alias: 'energetic',
-        secondaryTags: [
+        children: [
           'Vibrant',
           'Dynamic',
           'Lively',
@@ -3595,7 +4187,7 @@ export const mockTags = {
       {
         text: 'Calm',
         alias: 'calm',
-        secondaryTags: [
+        children: [
           'Peaceful',
           'Serene',
           'Tranquil',
@@ -3609,7 +4201,7 @@ export const mockTags = {
       {
         text: 'Fearful',
         alias: 'fearful',
-        secondaryTags: [
+        children: [
           'Terrifying',
           'Horrific',
           'Anxious',
@@ -3623,7 +4215,7 @@ export const mockTags = {
       {
         text: 'Romantic',
         alias: 'romantic',
-        secondaryTags: [
+        children: [
           'Passionate',
           'Loving',
           'Affectionate',
@@ -3637,7 +4229,7 @@ export const mockTags = {
       {
         text: 'Inspirational',
         alias: 'inspirational',
-        secondaryTags: [
+        children: [
           'Uplifting',
           'Motivational',
           'Empowering',
@@ -3650,11 +4242,11 @@ export const mockTags = {
       }
     ],
   
-    SettingEnvironment: [
+    Setting: [
       {
         text: 'Urban',
         alias: 'urban',
-        secondaryTags: [
+        children: [
           'City Streets',
           'Skyscrapers',
           'Suburbs',
@@ -3668,7 +4260,7 @@ export const mockTags = {
       {
         text: 'Nature',
         alias: 'nature',
-        secondaryTags: [
+        children: [
           'Forest',
           'Ocean',
           'Desert',
@@ -3682,7 +4274,7 @@ export const mockTags = {
       {
         text: 'Space',
         alias: 'space',
-        secondaryTags: [
+        children: [
           'Planets',
           'Stars',
           'Galaxies',
@@ -3696,7 +4288,7 @@ export const mockTags = {
       {
         text: 'Underwater',
         alias: 'underwater',
-        secondaryTags: [
+        children: [
           'Coral Reefs',
           'Deep Sea',
           'Shipwrecks',
@@ -3710,7 +4302,7 @@ export const mockTags = {
       {
         text: 'Fantasy World',
         alias: 'fantasy world',
-        secondaryTags: [
+        children: [
           'Enchanted Forest',
           'Floating Islands',
           'Magical Cities',
@@ -3724,7 +4316,7 @@ export const mockTags = {
       {
         text: 'Historical Period',
         alias: 'historical period',
-        secondaryTags: [
+        children: [
           'Medieval',
           'Ancient Egypt',
           'Victorian Era',
@@ -3738,7 +4330,7 @@ export const mockTags = {
       {
         text: 'Futuristic',
         alias: 'futuristic',
-        secondaryTags: [
+        children: [
           'Cyberpunk City',
           'Utopian Society',
           'Dystopian Wasteland',
@@ -3752,7 +4344,7 @@ export const mockTags = {
       {
         text: 'Domestic',
         alias: 'domestic',
-        secondaryTags: [
+        children: [
           'Living Room',
           'Kitchen',
           'Bedroom',
@@ -3765,11 +4357,11 @@ export const mockTags = {
       }
     ],
   
-    CompositionLayout: [
+    Layout: [
       {
         text: 'Symmetry',
         alias: 'symmetry',
-        secondaryTags: [
+        children: [
           'Mirror Reflection',
           'Radial Symmetry',
           'Bilateral Symmetry',
@@ -3783,7 +4375,7 @@ export const mockTags = {
       {
         text: 'Rule of Thirds',
         alias: 'rule of thirds',
-        secondaryTags: [
+        children: [
           'Off-Center Subject',
           'Grid Alignment',
           'Asymmetrical Balance',
@@ -3797,7 +4389,7 @@ export const mockTags = {
       {
         text: 'Leading Lines',
         alias: 'leading lines',
-        secondaryTags: [
+        children: [
           'Roads',
           'Rivers',
           'Bridges',
@@ -3811,7 +4403,7 @@ export const mockTags = {
       {
         text: 'Framing',
         alias: 'framing',
-        secondaryTags: [
+        children: [
           'Natural Frames',
           'Doorways',
           'Windows',
@@ -3825,7 +4417,7 @@ export const mockTags = {
       {
         text: 'Depth of Field',
         alias: 'depth of field',
-        secondaryTags: [
+        children: [
           'Shallow Focus',
           'Deep Focus',
           'Bokeh Effect',
@@ -3839,7 +4431,7 @@ export const mockTags = {
       {
         text: 'Close-Up',
         alias: 'close-up',
-        secondaryTags: [
+        children: [
           'Macro',
           'Detail Shot',
           'Texture Emphasis',
@@ -3853,7 +4445,7 @@ export const mockTags = {
       {
         text: 'Bird’s Eye View',
         alias: 'bird’s eye view',
-        secondaryTags: [
+        children: [
           'Aerial Landscape',
           'Top-Down Cityscape',
           'Maps',
@@ -3867,7 +4459,7 @@ export const mockTags = {
       {
         text: 'Worm’s Eye View',
         alias: 'worm’s eye view',
-        secondaryTags: [
+        children: [
           'Looking Up',
           'Tall Structures',
           'Sky Emphasis',
@@ -3885,759 +4477,102 @@ export const mockTags = {
 ================
 File: store/tagStore.ts
 ================
-import { defineStore } from 'pinia'
-import * as d3 from 'd3';
-import { shallowRef } from 'vue';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+// stores/tagStore.ts
+import { defineStore } from 'pinia';
+import { ref, computed } from 'vue';
 import { useRuntimeConfig } from '#app';
+import type { Tag } from '~/types/tag';
+import { initializeTags, getAvailableZones } from '~/services/tagProcessingService';
+import { toggleTag } from '~/services/tagSelectionService';
+import { computeGraphData } from '~/services/graphLayoutService';
 
+export const useTagStore = defineStore('tags', () => {
+  const tags = ref<Tag[]>([]);
+  const zones = ref<string[]>(getAvailableZones());
+  const focusedZone = ref<string>(zones.value[0] || 'Subject');
 
-import { mockTags } from './mockTags';
+  // Initialize tags on store creation
+  tags.value = initializeTags();
 
-interface Tag {
-  id: string
-  text: string
-  zone: string
-  size: number
-  selected: boolean
-  x: number
-  y: number
-  fx: number | null
-  fy: number | null
-  alias: string
-  secondaryTags?: Tag[]
-  isDynamic?: boolean
-  isLoading?: boolean
-  isPreconfigured?: boolean
-  isHybrid?: boolean
-  isHybridChild?: boolean
-  childTags?: Tag[]
-  isHidden?: boolean
-  sourceTags?: Tag[]
-  parentId?: string
-  vx?: number
-  vy?: number
-}
-
-interface ZoneGraph {
-  nodes: Tag[];
-  links: any[];
-  simulation: d3.Simulation<any, undefined> | null;
-  svg: d3.Selection<SVGSVGElement, unknown, null, undefined> | null;
-  lastClickedTagId: string | null;
-  lastClickedNode: Tag | null;
-  hybridTags?: Tag[];
-}
-
-// Add new interface for hybrid tags
-interface HybridTag extends Tag {
-  childTags: Tag[];
-  isHybrid: boolean;
-}
-
-// Add these constants at the top of the file, after imports
-const DEFAULT_WIDTH = 600;  // Default width matching ForceGraph default
-const DEFAULT_HEIGHT = 728; // Default height matching ForceGraph default
-const HYBRID_DISTANCE = 300; // Reduced from ~400 (30% less)
-const CHILD_RADIUS = 120;   // Reduced from 150 (much closer to parent)
-const CHILD_TAG_RADIUS = 130; // Adjust as needed for spacing
-
-// Add these constants at the top with other constants
-const HYBRID_DIRECTIONS = [
-  { angle: 0, label: 'right' },    // Right
-  { angle: Math.PI / 2, label: 'bottom' },  // Bottom
-  { angle: Math.PI, label: 'left' },     // Left
-  { angle: -Math.PI / 2, label: 'top' }   // Top
-];
-
-const HYBRID_SPACING = {
-  initialDistance: HYBRID_DISTANCE,
-  incrementDistance: 290, // Additional distance for each subsequent hybrid in same direction
-};
-
-export const useTagStore = defineStore('tags', {
-  state: () => ({
-    tags: [] as Tag[],
-    zones: Object.keys(mockTags),
-    zoneGraphs: Object.fromEntries(
-      Object.keys(mockTags).map(zone => [zone, {
-        nodes: shallowRef([]),
-        links: shallowRef([]),
-        simulation: null,
-        svg: null,
-        lastClickedTagId: null,
-        lastClickedNode: null,
-        hybridTags: []
-      } as ZoneGraph])
-    ),
-    focusedZone: 'Subject' as string,
-    dynamicTags: new Map<string, Tag[]>(), // Store dynamic tags by parent ID
-    hybridPositions: new Map<string, { direction: number, count: number }>(), // Track hybrid positions by zone
-  }),
-  actions: {
-    async fetchTags() {
-      // Simulating API call
-      this.tags = Object.entries(mockTags).flatMap(([zone, zoneTags]) =>
-        zoneTags.map((tagData, index) => ({
-          id: `${zone}-${index}`,
-          text: tagData.text,
-          zone,
-          size: 40,
-          selected: false,
-          x: 0,
-          y: 0,
-          fx: null,
-          fy: null,
-          alias: tagData.alias,
-          secondaryTags: tagData.secondaryTags.map((secondaryText, secIndex) => ({
-            id: `${zone}-${index}-${secIndex}`,
-            text: secondaryText,
-            zone: `${zone}-secondary`,
-            size: 30,
-            selected: false,
-            x: 0,
-            y: 0,
-            fx: null,
-            fy: null,
-            alias: secondaryText.toLowerCase().replace(/\s+/g, '-'),
-            isPreconfigured: true
-          }))
-        }))
-      );
-    },
-    toggleTag(id: string, zone: string) {
-      const tag = this.tags.find(t => t.id === id)
-      if (tag) {
-        if (!tag.selected) {
-          const currentSelected = this.tags.find(t => t.zone === zone && t.selected && t.id !== id)
-          if (currentSelected) {
-            currentSelected.selected = false
-            this.removeSecondaryTagsByParent(currentSelected.id)
-          }
-        }
-        
-        tag.selected = !tag.selected
-        
-        if (tag.selected) {
-          // Center the selected tag
-          tag.x = DEFAULT_WIDTH / 2;
-          tag.y = DEFAULT_HEIGHT / 2;
-          tag.fx = tag.x;  // Fix the position
-          tag.fy = tag.y;
-          
-          // Distribute child tags immediately after selection
-          this.distributeChildTagsCircularly(tag);
-        } else {
-          // Unfix the position when unselected
-          tag.fx = null;
-          tag.fy = null;
-          
-          this.removeSecondaryTagsByParent(id)
-          
-          const hybridsToRemove = this.zoneGraphs[zone].hybridTags || [];
-          hybridsToRemove.forEach(hybridTag => {
-            this.removeSelectedHybridTag(hybridTag.id, zone);
-          });
-        }
-
-        // Update the graph
-        const zoneGraph = this.zoneGraphs[zone];
-        if (zoneGraph && zoneGraph.simulation) {
-          zoneGraph.simulation.alpha(0.3).restart();
-        }
-      }
-    },
-    unselectAllSecondaryTagsFromZone(zone: string, alias: string) {
-      const primaryTags = this.tags.filter(tag => tag.zone === zone);
-      primaryTags.forEach(primaryTag => {
-        if (primaryTag.alias !== alias) {
-          primaryTag.secondaryTags?.forEach(secTag => {
-            secTag.selected = false;
-          });
-        }
-      });
-    },
-    toggleSecondaryTag(primaryId: string, secondaryId: string) {
-      const primaryTag = this.tags.find(t => t.id === primaryId)
-      if (primaryTag && primaryTag.secondaryTags) {
-        const secondaryTag = primaryTag.secondaryTags.find(t => t.id === secondaryId)
-        if (secondaryTag) {
-          secondaryTag.selected = !secondaryTag.selected;
-          secondaryTag.size = 30;
-        }
-      }
-    },
-    updateTagPosition(id: string, x: number, y: number) {
-      const tag = this.tags.find(t => t.id === id) || 
-                  this.tags.flatMap(t => t.secondaryTags || []).find(t => t.id === id)
-      if (tag) {
-        tag.x = x
-        tag.y = y
-      }
-    },
-    fixTagPosition(id: string, x: number, y: number) {
-      const tag = this.tags.find(t => t.id === id) || 
-                  this.tags.flatMap(t => t.secondaryTags || []).find(t => t.id === id)
-      if (tag) {
-        tag.fx = x
-        tag.fy = y
-      }
-    },
-    unfixTagPosition(id: string) {
-      const tag = this.tags.find(t => t.id === id) || 
-                  this.tags.flatMap(t => t.secondaryTags || []).find(t => t.id === id)
-      if (tag) {
-        tag.fx = null
-        tag.fy = null
-      }
-    },
-    getSecondaryTagsByZoneAndAlias(zone: string, alias: string) {
-      const primaryTag = this.tags.find(t => t.zone === zone && t.alias === alias);
-      return primaryTag ? primaryTag.secondaryTags || [] : [];
-    },
-    setLastClickedTag(zone: string, tagId: string | null, x?: number, y?: number) {
-      const zoneGraph = this.zoneGraphs[zone];
-      zoneGraph.lastClickedTagId = tagId;
-      zoneGraph.lastClickedNode = this.tags.find(t => t.id === tagId) || null;
-      if (zoneGraph.lastClickedNode && x !== undefined && y !== undefined) {
-        zoneGraph.lastClickedNode.x = x;
-        zoneGraph.lastClickedNode.y = y;
-      }
-    },
-
-    updateZoneGraph(zone: string, nodes: Tag[], links: any[]) {
-      this.zoneGraphs[zone].nodes = nodes;
-      this.zoneGraphs[zone].links = links;
-    },
-
-    getSecondaryTagsForZone(zone: string): Tag[] {
-      const primaryTag = this.tags.find(t => t.zone === zone && t.selected);
-      return (primaryTag && !primaryTag.isLoading) ? primaryTag.secondaryTags || [] : [];
-    },
-
-    createLinksBySourceId(zone: string): any[] {
-      const sourceId = this.zoneGraphs[zone].lastClickedTagId;
-      const links = [];
-
-      if (sourceId) {
-        // Get all nodes that should have links
-        const allLinkedTags = [
-          ...this.getSecondaryTagsForZone(zone),
-          ...(this.zoneGraphs[zone].hybridTags || [])
-        ];
-
-        // Create links for all nodes at once, but skip hybrid tags that were created from other hybrid's children
-        links.push(...allLinkedTags
-          .filter(tag => {
-            if (!tag.isHybrid) return true;
-            // Check if this hybrid was created from another hybrid's children
-            const isChildHybrid = tag.sourceTags?.every(sourceTag => 
-              this.zoneGraphs[zone].hybridTags?.some(hybrid => 
-                hybrid.childTags?.some(child => child.id === sourceTag.id)
-              )
-            );
-            return !isChildHybrid;
-          })
-          .map(tag => ({
-            source: sourceId,
-            target: tag.id,
-            value: 1,
-          }))
-        );
-
-        // Add links between hybrid tags and their child tags
-        const hybridTags = this.zoneGraphs[zone].hybridTags || [];
-        hybridTags.forEach(hybridTag => {
-          if (hybridTag.childTags) {
-            // Create links between hybrid tag and its child tags
-            links.push(...hybridTag.childTags.map(childTag => ({
-              source: hybridTag.id,
-              target: childTag.id,
-              value: 1,
-              isHybridLink: true
-            })));
-
-            // Find any child hybrid tags that were created from this hybrid's children
-            const childHybrids = hybridTags.filter(otherHybrid => 
-              otherHybrid.sourceTags?.every(sourceTag => 
-                hybridTag.childTags?.some(childTag => childTag.id === sourceTag.id)
-              )
-            );
-
-            // Create chain links between hybrid and child hybrids
-            childHybrids.forEach(childHybrid => {
-              links.push({
-                source: hybridTag.id,
-                target: childHybrid.id,
-                value: 1,
-                isHybridLink: true,
-                isHybridChainLink: true
-              });
-            });
-          }
-        });
-      }
-
-      return links;
-    },
-    setFocusedZone(zone: string) {
-      this.focusedZone = zone;
-    },
-    async addSecondaryTag(parentId: string, tag: Tag) {
-      const parent = this.tags.find(t => t.id === parentId)
-      if (parent) {
-        if (!parent.secondaryTags) {
-          parent.secondaryTags = []
-        }
-        
-        // Add parentId to dynamic tags
-        tag.parentId = parentId;
-        tag.isDynamic = true;
-        tag.isPreconfigured = tag.isPreconfigured || false;
-        
-        parent.secondaryTags.push(tag)
-        
-        // If parent is selected, immediately distribute all child tags
-        if (parent.selected) {
-          this.distributeChildTagsCircularly(parent);
-        }
-      }
-    },
-
-    removeSecondaryTagsByParent(parentId: string) {
-      const parent = this.tags.find(t => t.id === parentId)
-      if (parent && parent.secondaryTags) {
-        // Keep preconfigured tags, remove only dynamic ones
-        parent.secondaryTags = parent.secondaryTags.filter(tag => tag.isPreconfigured);
-        // Deselect all remaining tags
-        parent.secondaryTags.forEach(tag => {
-          tag.selected = false;
-        });
-      }
-    },
-    setTagLoading(tagId: string, loading: boolean) {
-      const tag = this.tags.find(t => t.id === tagId)
-      if (tag) {
-        tag.isLoading = loading
-      }
-    },
-
-    async createHybridTag(zone: string, tags: Tag[]) {
-      // Initialize Gemini
-      const config = useRuntimeConfig();
-      const apiKey = config.public.GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error('GEMINI_API_KEY is not defined');
-      }
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-8b' });
-
-      // Improved prompt for more specific and meaningful combinations
-      const prompt = `Create a concise but descriptive tag that combines these specific concepts: ${
-        tags.map(t => t.text).join(', ')
-      }. 
-      Requirements:
-      - The result should be 2-4 words
-      - Must directly reference the key elements from the input tags
-      - Avoid generic or overly abstract terms
-      - Focus on the unique combination of these specific elements
-      - Keep it concrete and imagery-focused
-      - Don't use metaphors or poetic language
-      
-      Return only the tag phrase, no explanation or additional text.
-      
-      Example inputs and good outputs:
-      "Fire, Water" → "Steaming Elements"
-      "Forest, Night, Magic" → "Enchanted Dark Woods"
-      "Desert, Ocean" → "Coastal Sand Wilderness"`;
-
-      try {
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const hybridText = await response.text();
-
-        // Check if this is a child hybrid (created from another hybrid's child tags)
-        const parentHybrid = this.zoneGraphs[zone].hybridTags?.find(hybrid => 
-          tags.every(tag => hybrid.childTags?.some(child => child.id === tag.id))
-        );
-
-        let hybridX, hybridY, direction;
-
-        if (parentHybrid) {
-          // This is a child hybrid - use parent's direction but increase distance
-          const parentDirection = HYBRID_DIRECTIONS.find(d => 
-            Math.abs(Math.atan2(parentHybrid.y - DEFAULT_HEIGHT/2, parentHybrid.x - DEFAULT_WIDTH/2) - d.angle) < 0.1
-          );
-          direction = parentDirection || HYBRID_DIRECTIONS[0];
-          const distance = Math.sqrt(
-            Math.pow(parentHybrid.x - DEFAULT_WIDTH/2, 2) + 
-            Math.pow(parentHybrid.y - DEFAULT_HEIGHT/2, 2)
-          ) + HYBRID_SPACING.incrementDistance;
-
-          hybridX = DEFAULT_WIDTH/2 + Math.cos(direction.angle) * distance;
-          hybridY = DEFAULT_HEIGHT/2 + Math.sin(direction.angle) * distance;
-        } else {
-          // This is a new primary hybrid - get next available direction
-          if (!this.hybridPositions.has(zone)) {
-            this.hybridPositions.set(zone, { direction: 0, count: 0 });
-          }
-          const positionInfo = this.hybridPositions.get(zone)!;
-
-          direction = HYBRID_DIRECTIONS[positionInfo.direction];
-          const distance = HYBRID_SPACING.initialDistance + 
-            (HYBRID_SPACING.incrementDistance * Math.floor(positionInfo.count / HYBRID_DIRECTIONS.length));
-
-          hybridX = DEFAULT_WIDTH/2 + Math.cos(direction.angle) * distance;
-          hybridY = DEFAULT_HEIGHT/2 + Math.sin(direction.angle) * distance;
-
-          // Update position tracking for next primary hybrid
-          positionInfo.count++;
-          if (positionInfo.count % HYBRID_DIRECTIONS.length === 0) {
-            positionInfo.direction = 0;
-          } else {
-            positionInfo.direction = (positionInfo.direction + 1) % HYBRID_DIRECTIONS.length;
-          }
-        }
-
-        const hybridTag: Tag = {
-          id: `hybrid-${Date.now()}`,
-          text: hybridText.trim(),
-          zone: zone,
-          size: 50,
-          selected: true,
-          isHybrid: true,
-          sourceTags: tags,
-          childTags: [],
-          x: hybridX,
-          y: hybridY,
-          fx: hybridX,
-          fy: hybridY,
-          alias: hybridText.toLowerCase().replace(/\s+/g, '-')
-        };
-
-        // Generate meaningful child tags using Gemini
-        const childTagsPrompt = `You are helping users find relevant tags for their image generation. 
-        When user combines concepts into "${hybridText.trim()}", suggest 8 additional more specific level descriptive tags that continue story of "${hybridText.trim()}", all maintaining general ${zone} subgroup.
-
-        Requirements:
-        - Each tag should be 1-2 words
-        - Always start with a capital letter
-        - Think about what visual elements would extend and expand on "${hybridText.trim()}"
-        - Include both common and creative but relevant associations
-        - Focus on visual and artistic aspects
-        - Suggest tags that would help create interesting image variations
-        - Keep tags concrete and imagery-focused
-
-        Return only a JSON array of strings, no explanation.
-        Example format: ["Mountain Peak", "Dense Forest", "Morning Mist"]`;
-
-        const childTagsResult = await model.generateContent({
-          contents: [{ role: 'user', parts: [{ text: childTagsPrompt }] }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 200,
-          },
-        });
-
-        const childTagsText = await childTagsResult.response.text();
-        let childTags: string[] = [];
-        try {
-          const cleanedText = childTagsText.replace(/```json\n?|\n?```/g, '').trim();
-          childTags = JSON.parse(cleanedText);
-        } catch (error) {
-          console.error('Failed to parse generated child tags:', error);
-          childTags = ['Variation 1', 'Variation 2', 'Variation 3', 'Variation 4', 'Variation 5'];
-        }
-
-        // When creating child tags, align them with the hybrid's direction
-        const generatedTags = childTags.map((text, index) => {
-          const childAngle = (index / childTags.length) * Math.PI * 2 + direction.angle;
-          const childX = hybridX + Math.cos(childAngle) * CHILD_RADIUS;
-          const childY = hybridY + Math.sin(childAngle) * CHILD_RADIUS;
-          return {
-            id: `${hybridTag.id}-child-${index}`,
-            text,
-            zone: `${zone}-secondary`,
-            size: 30,
-            selected: false,
-            x: childX,
-            y: childY,
-            fx: childX,
-            fy: childY,
-            alias: text.toLowerCase().replace(/\s+/g, '-'),
-            isHybridChild: true
-          };
-        });
-
-        hybridTag.childTags = generatedTags;
-
-        // Add to zone's hybrid tags
-        const zoneGraph = this.zoneGraphs[zone];
-        if (zoneGraph && zoneGraph.simulation) {
-          zoneGraph.hybridTags = [...(zoneGraph.hybridTags || []), hybridTag];
-          
-          // Just a gentle simulation restart
-          zoneGraph.simulation
-            ?.alpha(0.1)
-            .alphaTarget(0)
-            .restart();
-        }
-
-        // Hide source tags
-        tags.forEach(sourceTag => {
-          // Update in the store's tags array
-          const storeTag = this.tags.find(t => t.id === sourceTag.id);
-          if (storeTag) {
-            storeTag.isHidden = true;
-            storeTag.selected = false;
-          }
-
-          // Update in secondary tags if it's a secondary tag
-          const primaryTag = this.tags.find(t => t.secondaryTags?.some(st => st.id === sourceTag.id));
-          if (primaryTag) {
-            const secondaryTag = primaryTag.secondaryTags?.find(st => st.id === sourceTag.id);
-            if (secondaryTag) {
-              secondaryTag.isHidden = true;
-              secondaryTag.selected = false;
-            }
-          }
-
-          // Update in hybrid child tags if it's a hybrid child
-          Object.values(this.zoneGraphs).forEach(zoneGraph => {
-            zoneGraph.hybridTags?.forEach(hybrid => {
-              const childTag = hybrid.childTags?.find(child => child.id === sourceTag.id);
-              if (childTag) {
-                childTag.isHidden = true;
-                childTag.selected = false;
-              }
-            });
-          });
-        });
-
-        return hybridTag;
-      } catch (error) {
-        console.error('Error generating hybrid tag:', error);
-        // Fallback to simple concatenation if LLM fails
-        const fallbackTag = {
-          id: `hybrid-${Date.now()}`,
-          text: tags.map(t => t.text).join(' + '),
-          zone: zone,
-          size: 30,
-          selected: true,
-          isHybrid: true,
-          childTags: tags,
-          x: 0,
-          y: 0,
-          fx: null,
-          fy: null,
-          alias: `hybrid-${Date.now()}`
-        };
-        
-        // Add the fallback hybrid tag directly to the zone's hybrid tags
-        const zoneGraph = this.zoneGraphs[zone];
-        if (zoneGraph) {
-          zoneGraph.hybridTags = [...(zoneGraph.hybridTags || []), fallbackTag];
-        }
-        
-        return fallbackTag;
-      }
-    },
-
-    addSelectedHybridTag(hybridTag: Tag) {
-      const zoneGraph = this.zoneGraphs[hybridTag.zone];
-      if (zoneGraph) {
-        // Check if this hybrid tag already exists
-        const existingTag = zoneGraph.hybridTags?.find(t => 
-          t.childTags?.every(child => 
-            hybridTag.childTags?.some(newChild => newChild.id === child.id)
-          )
-        );
-
-        if (!existingTag) {
-          // Only add if it doesn't exist
-          zoneGraph.hybridTags = [...(zoneGraph.hybridTags || []), hybridTag];
-          
-          // Hide child tags
-          if (hybridTag.childTags) {
-            hybridTag.childTags.forEach(childTag => {
-              const tag = this.allTags.find(t => t.id === childTag.id);
-              if (tag) {
-                tag.isHidden = true;
-                tag.selected = false;
-              }
-            });
-          }
-        }
-      }
-    },
-
-    removeSelectedHybridTag(hybridTagId: string, zone: string) {
-      const zoneGraph = this.zoneGraphs[zone];
-      const hybridTag = zoneGraph.hybridTags?.find(t => t.id === hybridTagId);
-      
-      if (hybridTag) {
-        // Find all child hybrids that were created from this hybrid's children
-        const childHybrids = zoneGraph.hybridTags?.filter(otherHybrid => 
-          otherHybrid.sourceTags?.some(sourceTag => 
-            hybridTag.childTags?.some(childTag => childTag.id === sourceTag.id)
-          )
-        ) || [];
-
-        // Recursively remove child hybrids
-        childHybrids.forEach(childHybrid => {
-          this.removeSelectedHybridTag(childHybrid.id, zone);
-        });
-
-        // Unselect all child tags
-        hybridTag.childTags?.forEach(childTag => {
-          childTag.selected = false;
-          childTag.isHidden = false;
-        });
-
-        // Remove the hybrid tag itself
-        zoneGraph.hybridTags = zoneGraph.hybridTags?.filter(t => t.id !== hybridTagId) || [];
-        
-        // Unhide source tags
-        hybridTag.sourceTags?.forEach(sourceTag => {
-          const tag = this.allTags.find(t => t.id === sourceTag.id);
-          if (tag) {
-            tag.isHidden = false;
-          }
-        });
-      }
-    },
-
-    removeHybridTag(hybridId: string) {
-      const hybridEntries = Array.from(this.hybridTags.entries());
-      const entry = hybridEntries.find(([_, tag]) => tag.id === hybridId);
-      if (entry) {
-        this.hybridTags.delete(entry[0]);
-      }
-    },
-
-    getHybridTagsForZone(zone: string): Tag[] {
-      return this.zoneGraphs[zone].hybridTags || [];
-    },
-
-    distributeChildTagsCircularly(parentTag: Tag) {
-      // Get all child tags (both preconfigured and dynamic)
-      const allChildTags = [
-        ...(parentTag.secondaryTags || []),
-        ...Array.from(this.dynamicTags.get(parentTag.id) || [])
-      ];
-      
-      const angleStep = (2 * Math.PI) / allChildTags.length;
-      const centerX = parentTag.x || DEFAULT_WIDTH / 2;
-      const centerY = parentTag.y || DEFAULT_HEIGHT / 2;
-
-      allChildTags.forEach((childTag, index) => {
-        const angle = index * angleStep;
-        childTag.x = centerX + Math.cos(angle) * CHILD_TAG_RADIUS;
-        childTag.y = centerY + Math.sin(angle) * CHILD_TAG_RADIUS;
-        childTag.fx = childTag.x; // Fix position
-        childTag.fy = childTag.y; // Fix position
-        
-        // Reset any existing velocities
-        childTag.vx = 0;
-        childTag.vy = 0;
-      });
-
-      // Update the zone graph if it exists
-      const zoneGraph = this.zoneGraphs[parentTag.zone];
-      if (zoneGraph && zoneGraph.simulation) {
-        zoneGraph.simulation
-          .alpha(0.1)
-          .alphaDecay(0.05)
-          .velocityDecay(0.6)
-          .restart();
-      }
-    },
-
-    // Add this helper method to reset hybrid positions when needed
-    resetHybridPositions(zone: string) {
-      this.hybridPositions.set(zone, { direction: 0, count: 0 });
-    }
-  },
-  getters: {
-    tagsByZone: (state) => {
-      return (zone: string) => {
-        const tags = state.tags.filter(tag => tag.zone === zone);
-        const selectedTag = tags.find(tag => tag.selected);
-        
-        // If there's a selected tag, only return it; otherwise return all tags
-        return selectedTag ? [selectedTag] : tags;
-      }
-    },
-    selectedTags: (state) => {
-      return state.tags.filter(tag => tag.selected)
-    },
-    selectedSecondaryTags: (state) => {
-      return state.tags.flatMap(tag => 
-        tag.secondaryTags ? tag.secondaryTags.filter(secTag => secTag.selected) : []
-      )
-    },
-    allTags: (state) => {
-      return [
-        ...state.tags,
-        ...state.tags.flatMap(tag => tag.secondaryTags || [])
-      ]
-    },
-    getZoneGraph: (state) => {
-      return (zone: string) => state.zoneGraphs[zone];
-    },
-    getDynamicTags: (state) => {
-      return (parentId: string) => state.dynamicTags.get(parentId) || []
-    },
-    nonSelectedPrimaryTags: (state) => {
-      return (zone: string) => state.tags.filter(tag => 
-        tag.zone === zone && !tag.selected
-      );
-    },
-    getAllSecondaryTagsForZone: (state) => {
-      return (zone: string) => {
-        const primaryTag = state.tags.find(t => t.zone === zone && t.selected);
-        if (!primaryTag || primaryTag.isLoading) return [];
-        
-        const secondaryTags = primaryTag.secondaryTags || [];
-        const hybridTags = state.zoneGraphs[zone].hybridTags || [];
-        
-        return [...secondaryTags, ...hybridTags];
-      }
-    },
-    selectedTags(): Tag[] {
-      return this.allTags.filter(tag => tag.selected && !tag.isHidden);
-    },
-    selectedSecondaryTags(): Tag[] {
-      return this.allTags.filter(tag => 
-        tag.zone.includes('-secondary') && 
-        tag.selected && 
-        !tag.isHidden
-      );
-    },
-    allSelectedTags(): Tag[] {
-      // Get visible regular tags
-      const visibleTags = this.allTags.filter(tag => tag.selected && !tag.isHidden);
-      
-      // Get hybrid tags from all zones
-      const allZoneHybrids = Object.values(this.zoneGraphs)
-        .flatMap(zoneGraph => zoneGraph.hybridTags || []);
-
-      console.log('allZoneHybrids:', allZoneHybrids);
-      const allZoneHybridChildren = allZoneHybrids.flatMap(hybrid => {
-        console.log('hybrid:', hybrid);
-        const childTags = hybrid.childTags?.filter(child => {
-          console.log('child:', child);
-          return child.selected && !child.isHidden;
-        }) || [];
-        console.log('filtered childTags:', childTags);
-        return childTags;
-      });
-      console.log('allZoneHybridChildren:', allZoneHybridChildren);
-      
-      return [...visibleTags, ...allZoneHybrids, ...allZoneHybridChildren];
-    }
+  function setFocusedZone(zone: string) {
+    console.log(`Setting focused zone to ${zone}`);
+    focusedZone.value = zone;
   }
-})
+
+  async function handleTagToggle(id: string) {
+    const config = useRuntimeConfig();
+    const apiKey = config.public.GEMINI_API_KEY;
+    
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY is not defined');
+    }
+
+    const { updatedTags, selectedTag } = await toggleTag(id, tags.value, apiKey);
+    tags.value = updatedTags;
+    console.log(`Toggled tag ${id} to selected: ${selectedTag.selected}`);
+  }
+
+  // Computed properties for graph visualization
+  const graphNodes = computed(() => computeGraphData(tags.value, focusedZone.value).nodes);
+  const graphLinks = computed(() => computeGraphData(tags.value, focusedZone.value).links);
+
+  return {
+    tags,
+    zones,
+    focusedZone,
+    setFocusedZone,
+    toggleTag: handleTagToggle,
+    graphNodes,
+    graphLinks
+  };
+});
+
+================
+File: types/graph.ts
+================
+import type { SimulationNodeDatum, SimulationLinkDatum } from 'd3';
+
+/**
+ * Represents a node in the force-directed graph
+ */
+export interface GraphNode extends SimulationNodeDatum {
+  id: string;
+  text: string;
+  size: number;
+  selected: boolean;
+  zone: string;
+  alias: string;
+  children?: GraphNode[];
+  parentId?: string;
+  x?: number;
+  y?: number;
+  isLoading?: boolean;
+}
+
+/**
+ * Represents a link between nodes in the force-directed graph
+ */
+export interface GraphLink extends SimulationLinkDatum<GraphNode> {
+  value: number;
+}
+
+================
+File: types/tag.ts
+================
+export interface Tag {
+  id: string;
+  text: string;
+  size: number;
+  selected: boolean;
+  zone: string;
+  alias: string;
+  children?: Tag[];
+  parentId?: string;
+  x?: number;
+  y?: number;
+  isLoading?: boolean;
+  depth?: number;
+}
 
 ================
 File: .eslintrc.js
@@ -4710,25 +4645,213 @@ File: .prettierrc
 File: app.vue
 ================
 <template>
-  <div>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <!-- Logo at the top -->
+      <div class="logo-container">
+        <img src="/assets/dreamseed-logo.png" alt="DreamSeed" class="logo">
+      </div>
+      
+      <!-- Navigation items -->
+      <nav class="nav-menu">
+        <a href="#" class="nav-item active">
+          <i class="pi pi-home"></i>
+          <span>Home</span>
+        </a>
+        <a href="#" class="nav-item">
+          <i class="pi pi-plus"></i>
+          <span>Create</span>
+        </a>
+        <a href="#" class="nav-item">
+          <i class="pi pi-images"></i>
+          <span>Library</span>
+        </a>
+        <a href="#" class="nav-item">
+          <i class="pi pi-compass"></i>
+          <span>Explore</span>
+        </a>
+        <a href="#" class="nav-item">
+          <i class="pi pi-search"></i>
+          <span>Search</span>
+        </a>
+        <a href="#" class="nav-item">
+          <i class="pi pi-bell"></i>
+          <span>Notifications</span>
+        </a>
+      </nav>
+      
+      <!-- User section at bottom -->
+      <div class="user-section">
+        <div class="user-profile">
+          <div class="user-avatar">
+            <i class="pi pi-user"></i>
+          </div>
+          <span class="user-name">User</span>
+        </div>
+      </div>
+    </div>
     
-    <NuxtPage />
+    <!-- Main content -->
+    <div class="main-content">
+      <NuxtPage />
+    </div>
   </div>
 </template>
+
+<style lang="scss">
+.app-container {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 220px;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 0;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+
+.logo-container {
+  padding: 10px 20px 25px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 15px;
+  
+  .logo {
+    height: 40px;
+    width: auto;
+  }
+}
+
+.nav-menu {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  
+  .nav-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 20px;
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    
+    i {
+      margin-right: 12px;
+      font-size: 1.2rem;
+    }
+    
+    &:hover, &.active {
+      color: #fff;
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    &.active {
+      border-left: 3px solid #8EC5FC;
+      padding-left: 17px;
+    }
+  }
+}
+
+.user-section {
+  margin-top: auto;
+  padding: 15px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  
+  .user-profile {
+    display: flex;
+    align-items: center;
+    
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #8EC5FC, #E0C3FC);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 10px;
+      
+      i {
+        color: #fff;
+        font-size: 0.9rem;
+      }
+    }
+    
+    .user-name {
+      color: #fff;
+      font-size: 0.9rem;
+    }
+  }
+}
+
+.main-content {
+  flex: 1;
+  padding: 20px;
+  overflow-x: hidden;
+  min-width: 0;
+}
+</style>
 
 ================
 File: nuxt.config.ts
 ================
+import Aura from '@primeuix/themes/aura';
+import { definePreset } from '@primeuix/themes';
+
+
+const MyPreset = definePreset(Aura, {
+  semantic: {
+      primary: {
+          50: '{indigo.50}',
+          100: '{indigo.100}',
+          200: '{indigo.200}',
+          300: '{indigo.300}',
+          400: '{indigo.400}',
+          500: '{indigo.500}',
+          600: '{indigo.600}',
+          700: '{indigo.700}',
+          800: '{indigo.800}',
+          900: '{indigo.900}',
+          950: '{indigo.950}'
+      }
+  }
+});
+
+
 export default defineNuxtConfig({
   modules: [
+    '@primevue/nuxt-module',
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt',
-    // 'flowbite/plugin' // Already removed in Step 1
+    '@nuxtjs/google-fonts', // Add the google fonts module
   ],
+  googleFonts: { // Add google fonts configuration
+    families: {
+      Roboto: true // Specify Roboto font
+    }
+  },
+  primevue: {
+    options: {
+        theme: {
+            options: {
+                darkModeSelector: '.my-app-dark',
+            },
+            preset: MyPreset
+        },
+    }
+},
 
   css: [
+    'primeicons/primeicons.css',       // Add PrimeIcons CSS
     '~/assets/scss/main.scss',         // Your main SCSS file
-    'flowbite/dist/flowbite.css'       // Flowbite's CSS
   ],
 
   runtimeConfig: {
@@ -4743,7 +4866,6 @@ export default defineNuxtConfig({
       preprocessorOptions: {
         scss: {
           additionalData: '@use "~/assets/scss/variables.scss";',
-          // Remove 'api: modern-compiler' as it's invalid
         },
       },
     },
@@ -4757,7 +4879,6 @@ export default defineNuxtConfig({
 
   tailwindcss: {
     configPath: './tailwind.config.js', // Reference to the separate config file
-    // quiet: false, // Optionally set to true to suppress warnings
   },
 
   postcss: {
@@ -4791,24 +4912,30 @@ File: package.json
     "@heroicons/vue": "^2.1.5",
     "@nuxtjs/tailwindcss": "^6.12.2",
     "@pinia/nuxt": "^0.5.5",
+    "@primeuix/themes": "^1.0.0",
+    "@primevue/forms": "^4.3.3",
     "d3": "^7.9.0",
     "d3-force": "^3.0.0",
-    "flowbite": "^2.5.2",
-    "flowbite-vue": "^0.1.6",
     "gsap": "^3.12.5",
     "nuxt": "^3.13.0",
     "pinia": "^2.2.4",
+    "primeicons": "^7.0.0",
+    "primevue": "^4.3.3",
     "sass": "^1.79.4",
+    "tailwindcss-primeui": "^0.6.1",
     "typescript": "^5.6.3",
     "vue": "latest",
     "vue-router": "latest"
   },
   "packageManager": "pnpm@9.12.3+sha512.cce0f9de9c5a7c95bef944169cc5dfe8741abfb145078c0d508b868056848a87c81e626246cb60967cbd7fd29a6c062ef73ff840d96b3c86c40ac92cf4a813ee",
   "devDependencies": {
+    "@nuxtjs/google-fonts": "^3.2.0",
+    "@primevue/nuxt-module": "^4.3.3",
+    "@types/d3": "^7.4.3",
     "@typescript-eslint/eslint-plugin": "^5.0.0",
     "@typescript-eslint/parser": "^5.0.0",
     "autoprefixer": "^10.4.20",
-    "eslint": "^6.7.2",
+    "eslint": "^6.8.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^4.0.0",
     "postcss": "^8.4.48",
@@ -4817,16 +4944,6 @@ File: package.json
     "tailwindcss": "^3.4.14"
   }
 }
-
-================
-File: postcss.config.js
-================
-module.exports = {
-    plugins: {
-      tailwindcss: {},
-      autoprefixer: {},
-    },
-  }
 
 ================
 File: README.md
@@ -4907,9 +5024,141 @@ bun run preview
 
 Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
 
+
+
+Overview
+This is a Nuxt.js application with Vue.js and D3.js, designed to visualize and interact with a tag-based system for generating image prompts. Users can select tags organized by zones (e.g., Subject), with parent tags (e.g., Humans, Animals) and secondary tags (e.g., Adult Male, Mammals) displayed in a force-directed graph. The project aims to eventually support dynamic tags (fetched from a server) and hybrid tags (combinations of selected tags).
+
+Core Components
+TagCloud.vue: The main UI component, orchestrating zone switching and node interactions, interfacing with the store.
+ForceGraph.vue: A reusable D3.js force-directed graph component, rendering nodes and links based on props, emitting events for interactions.
+tagStore.ts: A Pinia store managing tags, zones, and graph data (nodes and links).
+
+Project Structure
+components/
+  TagCloud.vue
+  ForceGraph.vue
+stores/
+  tagStore.ts
+types/
+  (future: shared interfaces like Tag)
+utils/
+  (future: layout helpers if needed)
+
+Core Functionalities
+1. Zone-Based Tag System
+Description: Tags are grouped into zones (e.g., Subject), each containing parent tags with optional secondary tags.
+Implementation:
+tagStore.ts holds zones (Subject), parent tags (Humans, Animals), and secondary tags (Adult Male, etc.).
+TagCloud.vue displays the current zone via focusedZone and switches with buttons.
+Behavior: Only one zone is active at a time, showing its parent tags initially; selecting a parent reveals its secondary tags.
+2. Force-Directed Graph Visualization
+Description: Displays tags as nodes and relationships as links in a dynamic graph.
+Implementation:
+ForceGraph.vue uses D3’s forceSimulation to position nodes (props.nodes) and links (props.links).
+Nodes are <g> elements with <circle> (visual) and <text> (label); links are <line> elements.
+Behavior: 
+Parent nodes start centered (e.g., (300, 200)), secondary tags grow around them when selected.
+Nodes are draggable, with positions saved on zone switch.
+3. Node Selection
+Description: Users can select parent and secondary tags, indicated by a green color (#4CAF50).
+Implementation:
+tagStore.toggleTag(id) toggles selected state.
+ForceGraph.vue updates fill in updateNodes based on selected.
+Behavior: Selection persists across zone switches, visually updated in real-time.
+4. State Persistence
+Description: Node positions (x, y) and selections (selected) persist when switching zones.
+Implementation:
+ForceGraph.vue emits nodePositionsUpdated on unmount, sending { id, x, y }.
+TagCloud.vue updates tagStore.tags with these positions.
+Behavior: Nodes retain their last dragged positions and selection state.
+
+Core Implementation Details
+tagStore.ts
+State:
+tags: Flat array of all tags (parents and secondaries), with x, y, selected.
+zones: Array of zone names (e.g., ["Subject"]).
+focusedZone: Current zone (e.g., "Subject").
+
+Actions:
+setFocusedZone(zone): Switches zones without resetting state.
+toggleTag(id): Toggles selected, deselects other parents if a parent is clicked.
+Getters:
+graphNodes: Returns parent tags or selected parent + secondary tags.
+graphLinks: Links from selected parent to its secondary tags.
+ForceGraph.vue
+Props: width, height, nodes, links.
+Emits: 
+nodeClick(id): Fired on node click.
+nodePositionsUpdated(positions): Fired on unmount with { id, x, y }[].
+Key Functions:
+initializeGraph: Sets up SVG, simulation, and initial positions.
+updateGraph: Updates simulation with pinned parent and secondary tag positions.
+updateNodes: Renders nodes, applies selected color.
+saveNodePositions: Emits updated positions.
+TagCloud.vue
+Computed: focusedZone, zones, graphNodes, graphLinks from tagStore.
+Handlers:
+handleNodeClick: Calls toggleTag.
+switchToZone: Calls setFocusedZone.
+handleNodePositionsUpdated: Updates tagStore.tags with positions.
+
+Potential Issues
+Simulation Instability:
+Cause: Strong forces (e.g., charge, center) or low velocityDecay can make nodes fly off-canvas.
+Fix: Keep forces minimal (charge: -20, center.strength: 0.05, velocityDecay: 0.8) and pin nodes initially.
+Reactivity Loops:
+Cause: D3 updating x and y in props.nodes triggers Vue’s watch, restarting the simulation.
+Fix: Watch only structural/state changes (id, text, size, selected), not x/y.
+Secondary Tag Positioning:
+Cause: Undefined x/y for secondary tags causes erratic parent movement.
+Fix: Set secondary tags’ initial x/y to the parent’s position in updateGraph.
+Performance with Many Nodes:
+Cause: Large numbers of nodes/links slow D3 rendering.
+Fix: Optimize updateNodes (e.g., batch updates), consider throttling simulation ticks.
+No-No Hints (Avoid These Pitfalls)
+Don’t Use Store in ForceGraph.vue:
+Why: Breaks modularity; ForceGraph should be a dumb component using only props and emits.
+Do: Emit events (e.g., nodePositionsUpdated) and let the parent (TagCloud.vue) update the store.
+Don’t Mutate props.nodes Reactively Without Control:
+Why: D3’s simulation updates x and y, triggering Vue watchers and causing infinite loops.
+Do: Watch only non-positional properties or use a throttle/debounce if position updates are needed.
+Don’t Clone Nodes Unnecessarily:
+Why: Cloning breaks D3’s reference to node objects, resetting positions or causing sync issues.
+Do: Use props.nodes directly and manage positions via emits.
+Don’t Overpower Simulation Forces:
+Why: Strong charge or center forces make nodes fly unpredictably.
+Do: Use minimal forces (charge: -20, center: 0.05) and pin key nodes with fx/fy.
+Don’t Skip Position Saving:
+Why: Without saveNodePositions, x and y reset on zone switches.
+Do: Always emit positions on unmount and update the store.
+
+Future Expansion
+Planned Features
+Dynamic Tags:
+Fetch secondary tags from a server on parent click.
+Add isLoading to Tag for a flashing state during fetch.
+Hybrid Tags:
+Create a new tag combining two selected tags (e.g., Adult Male + Mammals).
+Add to graphNodes with links to parents.
+Node Enhancements:
+Icons: Add <image> in <g> via icon property.
+Dropdown Menus: Emit showMenu on right-click, render in TagCloud.vue.
+Foundation Readiness
+Robust: Handles selected, positions, and basic structure.
+Extensible: Tag interface and updateNodes support new properties (e.g., isLoading, icon).
+Modular: ForceGraph.vue stays agnostic, ready for new emits or props.
+Testing Checklist
+Initial Load: Parent nodes start at (300, 200) and stabilize.
+Parent Selection: Click a parent → Stays put, secondary tags grow around it, turns green.
+Secondary Selection: Click a secondary tag → Turns green, state persists.
+Zone Switch: Switch zones → Positions and selections persist.
+No Loops: Console logs only on clicks/switches, not ticks.
+
 ================
 File: tailwind.config.js
 ================
+import PrimeUI from 'tailwindcss-primeui';
 module.exports = {
     content: [
       // Specify the paths to all of your template files
@@ -4925,9 +5174,7 @@ module.exports = {
         // Extend your theme here if needed
       },
     },
-    plugins: [
-      require('flowbite/plugin') // Integrate Flowbite as a Tailwind CSS plugin
-    ],
+    plugins: [PrimeUI],
   }
 
 ================

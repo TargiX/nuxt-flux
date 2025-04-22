@@ -343,7 +343,7 @@ export const mockTags = {
       }
     ],
   
-    Aesthetic: [
+    Aesthetics: [
       {
         text: 'Realism',
         alias: 'realism',
@@ -688,7 +688,7 @@ export const mockTags = {
       }
     ],
   
-    Composition: [
+    Layout: [
       {
         text: 'Symmetry',
         alias: 'symmetry',
@@ -772,7 +772,7 @@ export const mockTags = {
           'Intricate Details',
           'Extreme Close-Up'
         ]
-      },
+            },
       {
         text: 'Bird’s Eye View',
         alias: 'bird’s eye view',

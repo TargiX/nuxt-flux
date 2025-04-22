@@ -8,39 +8,44 @@ export function useNodeStyling() {
    */
   const zoneGradients = {
     'Subject': { 
-      light: '#C4B3FF',  // Lighter lavender
+      light: '#A38BFE',  // Lighter lavender
       main: '#A38BFE',   // Main lavender
       dark: '#65F0D5'    // Mint accent
     },
-    'Style': { 
-      light: '#FFB5EC',  // Lighter pink
+    'Attributes': { 
+      light: '#FF8AE2',  // Lighter pink
       main: '#FF8AE2',   // Main pink
       dark: '#FFC46B'    // Gold accent
     },
-    'Lighting': { 
-      light: '#B9FFFA',  // Lighter cyan
+    'Activity': { 
+      light: '#84FFF5',  // Lighter cyan
       main: '#84FFF5',   // Main cyan
       dark: '#4C6EF5'    // Indigo accent
     },
     'Composition': { 
-      light: '#FFE6A0',  // Lighter yellow
+      light: '#F6D365',  // Lighter yellow
       main: '#F6D365',   // Main yellow
       dark: '#FDA085'    // Peach accent
     },
-    'Texture': { 
-      light: '#DBFFE6',  // Lighter mint
+    'Aesthetics': { 
+      light: '#C2FFD8',  // Lighter mint
       main: '#C2FFD8',   // Main mint
       dark: '#465EFB'    // Blue accent
     },
-    'Era': { 
-      light: '#FFE57F',  // Lighter gold
+    'Mood': { 
+      light: '#F9D423',  // Lighter gold
       main: '#F9D423',   // Main gold
       dark: '#FF4E50'    // Red accent
     },
-    'Abstract': { 
+    'Setting': { 
       light: '#9EAAFF',  // Lighter indigo
       main: '#667EEA',   // Main indigo
       dark: '#764BA2'    // Purple accent
+    },
+    'Layout': { 
+      light: '#FFD870',  // Lighter gold
+      main: '#FFD870',   // Main gold
+      dark: '#E5B845'    // Peach accent
     }
   };
 
