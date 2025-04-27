@@ -127,10 +127,11 @@ let promptRequestId = 0
 let imageRequestId = 0
 
 const generatedPrompt = computed(() => {
-  const selectedPrimaryTags = tagStore.tags
-    .filter(tag => tag.selected)
-    .map(tag => tag.text);
-  return selectedPrimaryTags.join(', ')
+  const allSelectedTags = tagStore.tags
+    .filter(tag => tag.selected) 
+    .map(tag => tag.text)
+    .sort();
+  return allSelectedTags.join(', ');
 })
 
 watch(() => tagStore.zones, () => {
