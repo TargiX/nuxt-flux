@@ -1,5 +1,6 @@
 // import { GoogleGenerativeAI } from '@google/generative-ai'; // Removed SDK import
 import type { Tag } from '~/types/tag';
+import { callGeminiAPI } from '~/utils/api'; // Import the helper
 
 export async function generateRelatedTags(
   parentTag: Tag,
@@ -11,7 +12,7 @@ export async function generateRelatedTags(
     .map(t => t.text.toLowerCase());
 
   // Construct the prompt as before
-  const prompt = `You are helping users find relevant tags for their image generation. 
+  const generationPrompt = `You are helping users find relevant tags for their image generation. 
 When user selects "${parentTag.text}" as their main subject in the "${parentTag.zone}" zone, suggest 6 additional descriptive tags.
 
 Context about the application's zone structure:
@@ -43,34 +44,29 @@ Example format: ["Mountain Peak", "Dense Forest", "Morning Mist"]`;
   // Define generation config
   const generationConfig = {
     temperature: 0.7,
-    maxOutputTokens: 200
-    // modelName: 'gemini-1.5-flash' // Can optionally specify model here too
+    maxOutputTokens: 200,
+    modelName: 'gemini-2.0-flash-lite' // Specify the model for this specific task
   };
 
   try {
-    // Call the backend proxy API
-    const response = await fetch('/api/gemini', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        prompt,
-        ...generationConfig,
-      }),
+    // Call the backend proxy API using the helper
+    const response = await callGeminiAPI({
+      prompt: generationPrompt,
+      ...generationConfig,
     });
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`API Error (${response.status}): ${errorBody}`);
-    }
-
-    const data = await response.json();
-    const rawText = data.generatedText;
+    const rawText = response.generatedText;
 
     // Parse the JSON response from the generated text
     const cleanedText = rawText.replace(/```json\n|\n```/g, '').trim();
-    const newTagsText = JSON.parse(cleanedText) as string[];
+    // Add a try-catch for JSON parsing for robustness
+    let newTagsText: string[];
+    try {
+      newTagsText = JSON.parse(cleanedText);
+    } catch (parseError) {
+      console.error('Failed to parse JSON from Gemini response:', cleanedText, parseError);
+      throw new Error('Invalid JSON response received from AI for tag generation.');
+    }
 
     // Map to Tag objects as before
     return newTagsText.map((text: string, index: number): Tag => ({
