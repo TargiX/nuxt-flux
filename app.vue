@@ -171,7 +171,7 @@ const { status, data, signIn, signOut } = useAuth()
         height: 100%;
         object-fit: cover;
       }
-
+      
       i {
         color: #fff;
         font-size: 0.9rem;

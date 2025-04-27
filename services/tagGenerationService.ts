@@ -1,18 +1,16 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+// import { GoogleGenerativeAI } from '@google/generative-ai'; // Removed SDK import
 import type { Tag } from '~/types/tag';
 
 export async function generateRelatedTags(
   parentTag: Tag,
   existingTags: Tag[],
-  apiKey: string
+  // apiKey: string // Removed apiKey parameter
 ): Promise<Tag[]> {
   const existingTexts = existingTags
     .filter(t => t.zone === parentTag.zone)
     .map(t => t.text.toLowerCase());
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-8b' });
-
+  // Construct the prompt as before
   const prompt = `You are helping users find relevant tags for their image generation. 
 When user selects "${parentTag.text}" as their main subject in the "${parentTag.zone}" zone, suggest 6 additional descriptive tags.
 
@@ -42,19 +40,39 @@ Requirements:
 Return only a JSON array of strings, no explanation.
 Example format: ["Mountain Peak", "Dense Forest", "Morning Mist"]`;
 
+  // Define generation config
+  const generationConfig = {
+    temperature: 0.7,
+    maxOutputTokens: 200
+    // modelName: 'gemini-1.5-flash' // Can optionally specify model here too
+  };
+
   try {
-    const response = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 200
-      }
+    // Call the backend proxy API
+    const response = await fetch('/api/gemini', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        prompt,
+        ...generationConfig,
+      }),
     });
 
-    const rawText = response.response.text();
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new Error(`API Error (${response.status}): ${errorBody}`);
+    }
+
+    const data = await response.json();
+    const rawText = data.generatedText;
+
+    // Parse the JSON response from the generated text
     const cleanedText = rawText.replace(/```json\n|\n```/g, '').trim();
     const newTagsText = JSON.parse(cleanedText) as string[];
 
+    // Map to Tag objects as before
     return newTagsText.map((text: string, index: number): Tag => ({
       id: `${parentTag.id}-dyn-${index}`,
       text,
@@ -70,7 +88,9 @@ Example format: ["Mountain Peak", "Dense Forest", "Morning Mist"]`;
       depth: (parentTag.depth ?? 0) + 1
     }));
   } catch (error) {
-    console.error('Error fetching dynamic tags:', error);
+    console.error('Error generating related tags via API:', error);
+    // Re-throw or return an empty array depending on desired error handling
+    // return [];
     throw error;
   }
 } 

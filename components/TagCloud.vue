@@ -11,6 +11,7 @@
         :links="graphLinks"
         @nodeClick="handleNodeClick"
         @nodePositionsUpdated="handleNodePositionsUpdated"
+        @nodeTextUpdated="handleNodeTextUpdated"
       >
         <!-- Zone selector will be moved here via slot later -->
         <template #controls>
@@ -297,6 +298,15 @@ function handleNodePositionsUpdated(positions: { id: string; x: number; y: numbe
       tag.y = pos.y;
     }
   });
+}
+
+function handleNodeTextUpdated({ id, text }: { id: string; text: string }) {
+  console.log('[TagCloud] Received nodeTextUpdated:', { id, text });
+  tagStore.updateTagText(id, text);
+  // Trigger prompt generation if not in manual mode
+  if (!isManualMode.value) {
+    generatePrompt();
+  }
 }
 </script>
 

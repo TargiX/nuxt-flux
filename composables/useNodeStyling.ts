@@ -2,6 +2,17 @@ import { type Selection } from 'd3';
 import type { GraphNode } from '~/types/graph';
 import * as d3 from 'd3';
 
+// Helper to check if currently editing
+let currentlyEditingNodeId: string | null = null;
+let activeInput: HTMLInputElement | null = null;
+// Store the callback globally to avoid recreating it
+let globalTextUpdateCallback: ((nodeId: string, newText: string) => void) | null = null;
+// Track if we've initialized the event handlers
+let eventHandlersInitialized = false;
+
+// Add a cleanup flag to prevent double-removal
+let isCleaningUp = false;
+
 export function useNodeStyling() {
   /**
    * Maps zone names to their gradient colors
@@ -202,14 +213,26 @@ export function useNodeStyling() {
   };
 
   /**
-   * Applies styling to a graph node
+   * Applies styling to a graph node, including editable text
    */
   const applyNodeStyle = (
     selection: Selection<any, GraphNode, any, any>,
     isHover = false,
-    svg?: Selection<SVGSVGElement, unknown, null, undefined> | null
+    svg?: Selection<any, unknown, null, undefined> | null,
+    textUpdateCallback?: (nodeId: string, newText: string) => void
   ) => {
-    // Create gradients if we have the SVG reference
+    // Store the callback globally if provided
+    if (textUpdateCallback) {
+      globalTextUpdateCallback = textUpdateCallback;
+      
+      // Initialize global event handlers only once
+      if (!eventHandlersInitialized && svg && svg.node()) {
+        console.log('Initializing global handlers');
+        initializeGlobalEventHandlers(svg);
+      }
+    }
+    
+    // Create gradients if needed
     if (svg) {
       createNodeGradients(svg);
     }
@@ -225,87 +248,247 @@ export function useNodeStyling() {
       .attr('stroke-width', d => d.selected ? 1.5 : 1)
       .attr('r', d => d.size / 2);
     
-    // Update text content and styling
-    selection.selectAll('.node-text').remove(); // Remove existing text
-    
-    // Function to format text into multiple lines if needed
+    // Text Formatting Function
     const formatNodeText = (text: string): string[] => {
       const words = text.split(' ');
-      
-      // If single word or empty, return as is
-      if (words.length <= 1) {
-        return [text];
-      }
-      
-      // For two words, split into two lines
-      if (words.length === 2) {
-        return words;
-      }
-      
-      // For three words, put first word on first line, remaining on second
-      if (words.length === 3) {
-        return [
-          words[0],
-          `${words[1]} ${words[2]}`
-        ];
-      }
-      
-      // For more than three words, try to balance lines
-      // Prioritize putting fewer words on the first line
+      if (words.length <= 1) return [text];
+      if (words.length === 2) return words;
+      if (words.length === 3) return [words[0], `${words[1]} ${words[2]}`];
       const firstLineCount = Math.floor(words.length / 2);
-      return [
-        words.slice(0, firstLineCount).join(' '),
-        words.slice(firstLineCount).join(' ')
-      ];
+      return [words.slice(0, firstLineCount).join(' '), words.slice(firstLineCount).join(' ')];
     };
     
-    // Add text labels directly to the node (not in a group)
+    // --- Text Handling --- 
     selection.each(function(d) {
-      const node = d3.select(this);
+      const nodeGroup = d3.select(this);
+      
+      // Remove any previous text elements or foreignObjects to avoid duplication
+      nodeGroup.selectAll('.node-text, .node-text-editor-fo').remove();
+
+      // Create text elements
       const textLines = formatNodeText(d.text);
+      const textElements: d3.Selection<SVGTextElement, unknown, any, any>[] = [];
       
-      // Remove any existing node-text
-      node.selectAll('.node-text').remove();
-      
-      // For single-line text, use the standard approach
-      if (textLines.length === 1) {
-        node.append('text')
-          .attr('class', 'node-text')
-          .attr('x', 0) // Center horizontally
-          .attr('y', d.size / 2 + 6) // Position below the circle
-          .attr('text-anchor', 'middle')
-          .attr('dominant-baseline', 'hanging') // Align from the top of the text
-          .attr('font-size', '10px')
-          .attr('fill', 'rgba(0, 0, 0, 0.8)')
-          .attr('font-weight', d.selected ? '600' : '500')
-          .attr('text-shadow', '0 0 4px rgba(255, 255, 255, 0.9)')
-          .text(d.text);
-        return;
-      }
-      
-      // For multi-line text, create separate text elements
       textLines.forEach((line, i) => {
-        const yPos = d.size / 2 + 6 + (i * 12); // Start closer to node and add line height
-        
-        node.append('text')
+        const yPos = d.size / 2 + 6 + (i * 12);
+        const textElement = nodeGroup.append('text')
           .attr('class', 'node-text')
-          .attr('x', 0) // Center horizontally
-          .attr('y', yPos) // Position based on line number
+          .attr('x', 0)
+          .attr('y', yPos)
           .attr('text-anchor', 'middle')
-          .attr('dominant-baseline', 'hanging') // Align from the top of the text
+          .attr('dominant-baseline', 'hanging')
           .attr('font-size', '10px')
           .attr('fill', 'rgba(0, 0, 0, 0.8)')
           .attr('font-weight', d.selected ? '600' : '500')
           .attr('text-shadow', '0 0 4px rgba(255, 255, 255, 0.9)')
-          .text(line);
+          .style('cursor', 'text')
+          .style('pointer-events', 'auto')
+          .text(line)
+          .attr('data-node-id', d.id);
+          
+        // TEMPORARY: Add direct click handler to each text element
+        // This is less efficient but will help diagnose issues
+        if (globalTextUpdateCallback) {
+          textElement.on('click', function(event) {
+            console.log('Direct text click:', d.id);
+            event.stopPropagation();
+            if (currentlyEditingNodeId !== null) return;
+            
+            // Use non-null assertion since we already checked it's not null
+            startTextEdit(event, d, nodeGroup as any, textElements, globalTextUpdateCallback!);
+          });
+        }
+        
+        textElements.push(textElement);
       });
     });
     
     // Selected nodes should be brought to front
-    if (selection.data()[0]?.selected) {
+    if (selection.data().length > 0 && selection.data()[0]?.selected) {
       selection.raise();
     }
   };
+  
+  /**
+   * Set up global event delegation for text editing
+   */
+  function initializeGlobalEventHandlers(svg: Selection<any, unknown, null, undefined>) {
+    if (eventHandlersInitialized) return;
+    
+    const svgNode = svg.node();
+    if (!svgNode) return;
+    
+    // For debugging - add a click handler to the SVG root
+    svgNode.addEventListener('click', (e: Event) => {
+      const target = e.target as Element;
+      console.log('SVG click event:', {
+        target: target.tagName,
+        classes: target.classList.toString(),
+        isText: target.tagName.toLowerCase() === 'text',
+        hasNodeTextClass: target.classList.contains('node-text'),
+        attributes: {
+          nodeId: target.getAttribute('data-node-id')
+        }
+      });
+    });
+    
+    eventHandlersInitialized = true;
+    console.log('Global text editing event handlers initialized');
+  }
+  
+  // --- Edit Functions --- 
+  
+  function startTextEdit(
+    event: any, 
+    d: GraphNode, 
+    nodeGroup: Selection<any, GraphNode, any, any>,
+    originalTextElements: d3.Selection<SVGTextElement, unknown, any, any>[],
+    textUpdateCallback: (nodeId: string, newText: string) => void
+  ) {
+    console.log('Starting text edit for node:', d.id);
+    currentlyEditingNodeId = d.id;
+
+    // Hide original text elements
+    originalTextElements.forEach(el => el.style('display', 'none'));
+
+    // Calculate position and size for the input
+    let firstLineY = d.size / 2 + 6;
+    const approxInputHeight = 20;
+    const inputWidth = 100;
+
+    // Create foreignObject
+    const foreignObject = nodeGroup.append('foreignObject')
+      .attr('class', 'node-text-editor-fo')
+      .attr('x', -inputWidth / 2)
+      .attr('y', firstLineY - 2)
+      .attr('width', inputWidth)
+      .attr('height', approxInputHeight)
+      .style('overflow', 'visible');
+
+    // Create HTML input inside foreignObject with improved styling
+    const input = foreignObject.append('xhtml:input')
+      .attr('type', 'text')
+      .attr('value', d.text)
+      .style('width', `${inputWidth}px`)
+      .style('height', `${approxInputHeight}px`)
+      .style('position', 'absolute')
+      .style('top', '0')
+      .style('left', '0')
+      .style('font-size', '10px')
+      .style('text-align', 'center')
+      .style('border', '1px solid #ccc')
+      .style('border-radius', '3px')
+      .style('padding', '1px 3px')
+      .style('box-shadow', '0 1px 3px rgba(0,0,0,0.1)')
+      .style('color', 'rgba(0, 0, 0, 0.8)') // Add text color to match the text elements
+      .style('background-color', 'rgba(255, 255, 255, 0.95)') // Slightly transparent white
+      .node() as HTMLInputElement;
+
+    activeInput = input;
+
+    // Focus and select text
+    input.focus();
+    input.select();
+
+    // Add event listeners
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        saveTextEdit(d.id, input.value, foreignObject, originalTextElements, textUpdateCallback);
+      } else if (e.key === 'Escape') {
+        cancelTextEdit(foreignObject, originalTextElements);
+      }
+    });
+
+    input.addEventListener('blur', () => {
+      if (currentlyEditingNodeId === d.id) {
+        cancelTextEdit(foreignObject, originalTextElements);
+      }
+    });
+  }
+
+  function saveTextEdit(
+    nodeId: string, 
+    newValue: string, 
+    foreignObject: Selection<any, GraphNode, any, any>,
+    originalTextElements: d3.Selection<SVGTextElement, unknown, any, any>[],
+    textUpdateCallback: (nodeId: string, newText: string) => void
+  ) {
+    console.log(`Saving text for ${nodeId}: ${newValue}`);
+    
+    // Prevent race condition with blur event
+    if (isCleaningUp) {
+      console.log('Already cleaning up, skipping save');
+      return;
+    }
+    
+    // Set flag to prevent multiple cleanups
+    isCleaningUp = true;
+    
+    // Call the callback before cleanup
+    textUpdateCallback(nodeId, newValue);
+    
+    // Use try/catch to handle any DOM removal errors
+    try {
+      cleanupEdit(foreignObject, originalTextElements);
+    } catch (error) {
+      console.warn('Error during edit cleanup:', error);
+      // Reset editing state even if cleanup fails
+      currentlyEditingNodeId = null;
+      activeInput = null;
+    } finally {
+      // Reset cleanup flag when done
+      isCleaningUp = false;
+    }
+  }
+
+  function cancelTextEdit(
+    foreignObject: Selection<any, GraphNode, any, any>,
+    originalTextElements: d3.Selection<SVGTextElement, unknown, any, any>[]
+  ) {
+    console.log(`Cancelling text edit for ${currentlyEditingNodeId}`);
+    
+    // Skip if already cleaning up from save
+    if (isCleaningUp) {
+      console.log('Already cleaning up, skipping cancel');
+      return;
+    }
+    
+    isCleaningUp = true;
+    
+    try {
+      cleanupEdit(foreignObject, originalTextElements);
+    } catch (error) {
+      console.warn('Error during edit cleanup:', error);
+      // Reset editing state even if cleanup fails
+      currentlyEditingNodeId = null;
+      activeInput = null;
+    } finally {
+      isCleaningUp = false;
+    }
+  }
+  
+  function cleanupEdit(
+    foreignObject: Selection<any, any, any, any>,
+    originalTextElements: d3.Selection<SVGTextElement, unknown, any, any>[]
+  ) {
+    if (!foreignObject.empty()) {
+      try {
+        foreignObject.remove();
+      } catch (error) {
+        console.warn('Error removing foreignObject:', error);
+      }
+    }
+    
+    try {
+      originalTextElements.forEach(el => el.style('display', null));
+    } catch (error) {
+      console.warn('Error restoring text elements:', error);
+    }
+    
+    currentlyEditingNodeId = null;
+    activeInput = null;
+  }
 
   /**
    * Gets the image path for a subject node

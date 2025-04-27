@@ -33,6 +33,15 @@ export const useTagStore = defineStore('tags', () => {
     console.log(`Toggled tag ${id} to selected: ${selectedTag.selected}`);
   }
 
+  function updateTagText(id: string, newText: string) {
+    const tag = tags.value.find(t => t.id === id);
+    if (tag && tag.text !== newText) {
+      tag.text = newText;
+      console.log(`Updated text for tag ${id} to: ${newText}`);
+      // Note: Graph nodes/links computed properties will update automatically due to reactivity.
+    }
+  }
+
   // Computed properties for graph visualization
   const graphNodes = computed(() => computeGraphData(tags.value, focusedZone.value).nodes);
   const graphLinks = computed(() => computeGraphData(tags.value, focusedZone.value).links);
@@ -43,6 +52,7 @@ export const useTagStore = defineStore('tags', () => {
     focusedZone,
     setFocusedZone,
     toggleTag: handleTagToggle,
+    updateTagText,
     graphNodes,
     graphLinks
   };

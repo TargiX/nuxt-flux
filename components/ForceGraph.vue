@@ -61,7 +61,7 @@ const props = defineProps<{
   links: GraphLink[];
 }>();
 
-const emit = defineEmits(['nodeClick', 'nodePositionsUpdated']);
+const emit = defineEmits(['nodeClick', 'nodePositionsUpdated', 'nodeTextUpdated']);
 const container = ref<HTMLElement | null>(null);
 let svg: d3.Selection<SVGSVGElement, unknown, null, undefined> | null = null;
 let linkGroup: d3.Selection<SVGGElement, unknown, null, undefined> | null = null;
@@ -338,43 +338,35 @@ function updateLinks() {
 function updateNodes() {
   if (!nodeGroup || !simulation || !svg) return;
 
-  // Create node gradients
   createNodeGradients(svg);
 
   const node = nodeGroup.selectAll<SVGGElement, GraphNode>('g')
     .data(props.nodes, d => d.id);
 
-  // Enter new nodes
   const nodeEnter = node.enter()
     .append('g')
     .attr('class', 'node')
     .call(createDragBehavior(simulation))
-    .on('click', (event, d) => {
+    .on('click', (event: MouseEvent, d: GraphNode) => {
+      // Ignore clicks on the edit input itself
+      const targetEl = event.target as Element;
+      if (targetEl.tagName.toLowerCase() === 'input') {
+        return;
+      }
+
       console.log('Node clicked:', d.id);
       emit('nodeClick', d.id);
       updateNodeSelection(d.id);
-      // Center on the clicked node with smooth transition
       if (svg) {
         centerOnNode(svg, d, props.width, props.height);
       }
     })
-    .on('mouseenter', function() {
-      // Apply hover styling
-      applyNodeStyle(d3.select(this), true, svg);
-    })
-    .on('mouseleave', function() {
-      // Restore normal styling
-      applyNodeStyle(d3.select(this), false, svg);
-    });
 
-  // Add circle background
   nodeEnter.append('circle')
     .attr('r', d => d.size / 2)
     .attr('class', 'node-circle');
   
-  // We no longer add text directly here - our applyNodeStyle function handles text creation
-
-  // Add images for Subject nodes (main parent nodes only)
+  // Add images for Subject nodes
   nodeEnter.filter(d => d.zone === 'Subject' && !d.parentId)
     .append('image')
     .attr('xlink:href', d => getSubjectImagePath(d.text))
@@ -388,13 +380,12 @@ function updateNodes() {
       d3.select(this).style('display', 'none');
     });
 
-  // Remove old nodes
   node.exit().remove();
 
   // Apply styling to all nodes (new and existing)
   nodeGroup.selectAll<SVGGElement, GraphNode>('g')
     .each(function(d) {
-      applyNodeStyle(d3.select(this), false, svg);
+      applyNodeStyle(d3.select(this), false, svg, updateTextForNode);
     });
 }
 
@@ -404,19 +395,14 @@ function updateNodeSelection(id: string) {
   // Update all nodes to reset their styles first
   nodeGroup.selectAll<SVGGElement, GraphNode>('g')
     .each(function(d) {
-      applyNodeStyle(d3.select(this), false, svg);
+      applyNodeStyle(d3.select(this), false, svg, updateTextForNode);
     });
 
-  // Then specially handle the selected node
   const node = nodeGroup.selectAll<SVGGElement, GraphNode>('g')
     .filter(d => d.id === id);
     
-  // Apply styling with a slight delay to create a sequential animation
   setTimeout(() => {
-    // Apply styling using our composable with hover effect for additional emphasis
-    applyNodeStyle(node, true, svg);
-    
-    // Add a subtle animation to draw attention to the circle only
+    applyNodeStyle(node, true, svg, updateTextForNode);
     node.select('.node-circle')
       .transition()
       .duration(300)
@@ -424,8 +410,6 @@ function updateNodeSelection(id: string) {
       .transition()
       .duration(300)
       .attr('r', d => d.size / 2);
-      
-    // Raise to front
     node.raise();
   }, 50);
 }
@@ -440,6 +424,20 @@ function saveNodePositions() {
   console.log('Emitting updated positions:', updatedPositions);
   emit('nodePositionsUpdated', updatedPositions);
 }
+
+// Callback function to handle text updates from the styling composable
+function updateTextForNode(nodeId: string, newText: string) {
+  console.log('[ForceGraph] Emitting nodeTextUpdated:', { id: nodeId, text: newText });
+  emit('nodeTextUpdated', { id: nodeId, text: newText });
+  // No need to update local state here, parent component (TagCloud) handles store update,
+  // which will trigger props update and graph redraw.
+}
+
+// Global variables from useNodeStyling that we need access to
+// We need to import these or manage state differently if they are required outside
+// For now, assume they are accessible or handle state appropriately if needed.
+// declare let currentlyEditingNodeId: string | null;
+// declare let activeInput: HTMLInputElement | null;
 </script>
 
 
@@ -480,7 +478,8 @@ function saveNodePositions() {
   .node-text {
     font-weight: 500;
     text-shadow: 0 0 4px rgba(255, 255, 255, 0.9);
-    pointer-events: none; // Prevent text from interfering with clicks
+    pointer-events: auto; /* Allow text clicks to register for editing */
+    cursor: text;
     transition: all 0.2s ease;
   }
 }
