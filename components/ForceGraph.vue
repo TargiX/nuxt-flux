@@ -361,6 +361,7 @@ function updateNodes() {
         centerOnNode(svg, d, props.width, props.height);
       }
     })
+  
 
   nodeEnter.append('circle')
     .attr('r', d => d.size / 2)

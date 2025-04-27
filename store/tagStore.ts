@@ -7,38 +7,53 @@ import { initializeTags, getAvailableZones } from '~/services/tagProcessingServi
 import { toggleTag } from '~/services/tagSelectionService';
 import { computeGraphData } from '~/services/graphLayoutService';
 
+// Interface for the saved dream data structure (subset of what's saved)
+interface DreamData {
+  focusedZone: string;
+  tags: Tag[];
+  generatedPrompt?: string; // Optional
+  imageUrl?: string | null; // Optional
+}
+
 export const useTagStore = defineStore('tags', () => {
   const tags = ref<Tag[]>([]);
   const zones = ref<string[]>(getAvailableZones());
   const focusedZone = ref<string>(zones.value[0] || 'Subject');
+  
+  // --- Add state for prompt and image ---
+  const currentGeneratedPrompt = ref<string>('');
+  const currentImageUrl = ref<string | null>(null);
+  const loadedDreamId = ref<number | null>(null); // Track loaded dream ID
+  const hasUnsavedChanges = ref(false); // Track unsaved changes
+  let _refreshDreamsList: (() => void) | null = null; // Placeholder for refresh function
+  // ------------------------------------
 
   // Initialize tags on store creation
   tags.value = initializeTags();
+  const initialTagsState = JSON.parse(JSON.stringify(tags.value)); // Store initial state for reset
 
   function setFocusedZone(zone: string) {
-    console.log(`Setting focused zone to ${zone}`);
+    if (focusedZone.value !== zone) {
+      hasUnsavedChanges.value = true;
+    }
     focusedZone.value = zone;
   }
 
   async function handleTagToggle(id: string) {
-    const config = useRuntimeConfig();
-    const apiKey = config.public.GEMINI_API_KEY;
-    
-    if (!apiKey) {
-      throw new Error('GEMINI_API_KEY is not defined');
+    const originalSelectedState = tags.value.find(t => t.id === id)?.selected;
+    const { updatedTags, selectedTag } = await toggleTag(id, tags.value);
+    if (selectedTag.selected !== originalSelectedState) {
+        hasUnsavedChanges.value = true;
     }
-
-    const { updatedTags, selectedTag } = await toggleTag(id, tags.value, apiKey);
     tags.value = updatedTags;
-    console.log(`Toggled tag ${id} to selected: ${selectedTag.selected}`);
+    currentImageUrl.value = null;
   }
 
   function updateTagText(id: string, newText: string) {
     const tag = tags.value.find(t => t.id === id);
     if (tag && tag.text !== newText) {
       tag.text = newText;
-      console.log(`Updated text for tag ${id} to: ${newText}`);
-      // Note: Graph nodes/links computed properties will update automatically due to reactivity.
+      hasUnsavedChanges.value = true; 
     }
   }
 
@@ -46,14 +61,148 @@ export const useTagStore = defineStore('tags', () => {
   const graphNodes = computed(() => computeGraphData(tags.value, focusedZone.value).nodes);
   const graphLinks = computed(() => computeGraphData(tags.value, focusedZone.value).links);
 
+  // --- Action to load a saved dream state ---
+  function loadDreamState(dreamData: DreamData, dreamId: number | null) {
+    console.log("Loading dream state for ID:", dreamId);
+    if (!dreamData || typeof dreamData !== 'object') {
+      console.error("Invalid dream data provided to loadDreamState");
+      return;
+    }
+
+    // Recreate the base predefined tags
+    const baseTags = initializeTags();
+
+    // Build a map of id to Tag object for fast lookup
+    const tagMap = new Map<string, Tag>();
+    baseTags.forEach(t => tagMap.set(t.id, t));
+
+    // Start reconstructedTags with base tags
+    const reconstructedTags: Tag[] = [...baseTags];
+
+    // Overlay saved tag states
+    dreamData.tags.forEach(savedTag => {
+      const existing = tagMap.get(savedTag.id);
+      if (existing) {
+        // Predefined tag: apply saved properties
+        existing.selected = savedTag.selected;
+        if (savedTag.x !== undefined) existing.x = savedTag.x;
+        if (savedTag.y !== undefined) existing.y = savedTag.y;
+      } else {
+        // Dynamic tag: re-create Tag object
+        const dynamicTag: Tag = {
+          id: savedTag.id,
+          text: savedTag.text,
+          size: savedTag.size,
+          selected: savedTag.selected,
+          zone: savedTag.zone,
+          alias: savedTag.alias,
+          parentId: savedTag.parentId,
+          x: savedTag.x,
+          y: savedTag.y,
+          isLoading: savedTag.isLoading || false,
+          children: [],
+          depth: savedTag.depth
+        };
+
+        // Attach dynamic tag to its parent in base tags
+        if (dynamicTag.parentId) {
+          const parent = tagMap.get(dynamicTag.parentId);
+          if (parent) {
+            parent.children = parent.children ? [...parent.children, dynamicTag] : [dynamicTag];
+          }
+        }
+
+        // Add to reconstructed tags and map
+        reconstructedTags.push(dynamicTag);
+        tagMap.set(dynamicTag.id, dynamicTag);
+      }
+    });
+
+    // Commit reconstructed tags to store
+    tags.value = reconstructedTags;
+
+    // Restore focused zone, prompt, image
+    focusedZone.value = dreamData.focusedZone || zones.value[0];
+    currentGeneratedPrompt.value = dreamData.generatedPrompt || '';
+    currentImageUrl.value = dreamData.imageUrl || null;
+    loadedDreamId.value = dreamId;
+    hasUnsavedChanges.value = false;
+    console.log("Dream state loaded.");
+  }
+  // ------------------------------------------
+
+  // --- Action to reset to initial/current state ---
+  function resetToCurrentSession() {
+    console.log("Resetting to current session state");
+    // Re-initialize might be too destructive, let's just clear loaded ID for now
+    // If you want a full reset, you might need to reload initialTagsState
+    // tags.value = JSON.parse(JSON.stringify(initialTagsState));
+    // focusedZone.value = zones.value[0]; 
+    // currentGeneratedPrompt.value = '';
+    // currentImageUrl.value = null;
+    loadedDreamId.value = null; // Indicate current session is active
+    hasUnsavedChanges.value = false; // Reset flag assumes we revert changes
+  }
+  // ----------------------------------------------
+
+  // --- Actions to set prompt and image --- (add unsaved changes flag)
+  function setCurrentGeneratedPrompt(prompt: string) {
+    if (currentGeneratedPrompt.value !== prompt) {
+        currentGeneratedPrompt.value = prompt;
+        hasUnsavedChanges.value = true;
+    }
+  }
+  function setCurrentImageUrl(url: string | null) {
+     if (currentImageUrl.value !== url) {
+        currentImageUrl.value = url;
+        // debatable if generating image counts as unsaved change to the *dream state*
+        // hasUnsavedChanges.value = true; 
+    }
+  }
+  // --------------------------------------
+
+  // --- Action to mark state as saved ---
+  function markAsSaved() {
+      hasUnsavedChanges.value = false;
+  }
+  // -----------------------------------
+
+  // --- Action to set the refresh function ---
+  function setDreamsListRefresher(refreshFn: () => void) {
+      _refreshDreamsList = refreshFn;
+  }
+  // ----------------------------------------
+
+  // --- Action to trigger refresh ---
+  function refreshDreamsList() {
+      if (_refreshDreamsList) {
+          console.log('Refreshing dreams list via store action...');
+          _refreshDreamsList();
+      } else {
+          console.warn('refreshDreamsList called but no refresher function was set.');
+      }
+  }
+  // -------------------------------
+
   return {
     tags,
     zones,
     focusedZone,
+    currentGeneratedPrompt, // Expose state
+    currentImageUrl,      // Expose state
     setFocusedZone,
     toggleTag: handleTagToggle,
     updateTagText,
+    loadDreamState,           // Expose action
+    resetToCurrentSession,    // Expose action
+    markAsSaved,              // Expose action
+    setCurrentGeneratedPrompt, // Expose action
+    setCurrentImageUrl,      // Expose action
     graphNodes,
-    graphLinks
+    graphLinks,
+    loadedDreamId,            // Expose state
+    hasUnsavedChanges,         // Expose state
+    setDreamsListRefresher,    // Expose action
+    refreshDreamsList          // Expose action
   };
 });
