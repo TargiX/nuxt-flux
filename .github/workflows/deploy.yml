@@ -1,0 +1,73 @@
+name: CI & Deploy to Hetzner
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4 # Use latest version
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8 # Specify your pnpm version if needed
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18' # Ensure this matches your project's requirement (check package.json engines field)
+          cache: 'pnpm' # Cache pnpm dependencies
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # - name: Run tests # Uncomment this block if you have tests configured
+
+      - name: Build Nuxt
+        run: pnpm run build
+        env:
+          NODE_ENV: production
+          # Add any other build-time environment variables needed from secrets
+          # DATABASE_URL: ${{ secrets.DATABASE_URL_BUILD_TIME }}
+          # NUXT_PUBLIC_API_BASE: ${{ secrets.NUXT_PUBLIC_API_BASE }}
+
+      - name: Prepare deployment package
+        run: |
+          mkdir deployment-package
+          cp -R .output deployment-package/
+          cp package.json pnpm-lock.yaml deployment-package/
+          # Copy .env file if your production server needs it and it's not managed otherwise
+          # if [ -f .env ]; then cp .env deployment-package/.env; fi 
+          # Make sure .env is gitignored if you copy it!
+          echo "Deployment package created."
+          ls -la deployment-package # List contents for debugging
+
+      - name: Copy deployment package to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_SSH_PORT || 22 }}
+          source: "deployment-package/*" # Copy contents of the package dir
+          target: "/var/www/dreamseed"  # Target directory on the server
+          strip_components: 1 # Remove the 'deployment-package' directory layer
+          overwrite: true # Ensure files are overwritten
+
+      - name: Trigger deploy script on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_SSH_PORT || 22 }}
+          script: |
+            echo "Executing remote deployment script..."
+            sudo /usr/local/bin/deploy.sh # Use sudo if needed by script permissions/actions
+            echo "Remote deployment script finished." 
