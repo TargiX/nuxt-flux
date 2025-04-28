@@ -48,7 +48,7 @@ jobs:
         run: |
           mkdir deployment-package
           cp -R .output deployment-package/
-          cp package.json pnpm-lock.yaml deployment-package/
+          cp package.json pnpm-lock.yaml ecosystem.config.cjs deployment-package/
           # Copy .env file if your production server needs it and it's not managed otherwise
           # if [ -f .env ]; then cp .env deployment-package/.env; fi 
           # Make sure .env is gitignored if you copy it!
