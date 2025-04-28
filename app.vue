@@ -1,5 +1,6 @@
 <template>
   <div class="app-container">
+    <Toast />
     <!-- Sidebar -->
     <div class="sidebar">
       <!-- Logo at the top -->
@@ -130,6 +131,7 @@
 import { ref, watch, onMounted } from 'vue';
 import Button from 'primevue/button';
 import ConfirmDialog from 'primevue/confirmdialog'; // Import ConfirmDialog
+import Toast from 'primevue/toast'; // Import Toast component
 import { useConfirm } from "primevue/useconfirm"; // Import useConfirm
 import type { Dream } from '~/types/dream';
 import { useTagStore } from '~/store/tagStore'; // Import the store

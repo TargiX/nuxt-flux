@@ -96,7 +96,7 @@
           <Button 
             @click="generateImage" 
             severity="primary"
-            :disabled="!(isManualMode ? manualPrompt : tagStore.currentGeneratedPrompt) || isGeneratingImage || isSavingDream"
+            :disabled="!(isManualMode ? manualPrompt : tagStore.currentGeneratedPrompt) || isGeneratingImage || isSavingDream || isImageCooldown"
             class="flex items-center gap-2 flex-nowrap whitespace-nowrap px-8 py-1"
           >
             <ProgressSpinner
@@ -105,7 +105,7 @@
               strokeWidth="8" 
               fill="transparent"
             />
-            {{ isGeneratingImage ? 'Generating...' : 'Generate Image' }}
+            {{ isGeneratingImage ? 'Generating...' : (isImageCooldown ? 'Cooldown...' : 'Generate Image') }}
           </Button>
         </div>
       </div>
@@ -122,15 +122,11 @@ import ForceGraph from './ForceGraph.vue';
 import ZoneSelector from './ZoneSelector.vue';
 import { generateImagePrompt } from '~/services/promptGenerationService';
 import { generateImageFromPrompt } from '~/services/imageGenerationService';
-// Import useToast if using PrimeVue Toast service
-// import { useToast } from "primevue/usetoast";
-import type { Tag } from '~/types/tag'; // Import the Tag type
+import { useToast } from "primevue/usetoast";
+import type { Tag } from '~/types/tag';
 
 const tagStore = useTagStore();
-
-// --- Define Emits ---
-// const emit = defineEmits<{ (e: 'dreamSaved'): void }>(); // Removed
-// --------------------
+const toast = useToast();
 
 const focusedZone = computed(() => tagStore.focusedZone);
 const zoneOptions = ref([...tagStore.zones]);
@@ -139,10 +135,8 @@ const graphLinks = computed(() => tagStore.graphLinks);
 
 const selectedZone = ref(focusedZone.value);
 
-// Add state for saving process
 const isSavingDream = ref(false);
-const saveStatus = ref<string | null>(null); // To show save success/error
-// const toast = useToast(); // Uncomment if using PrimeVue Toast
+const saveStatus = ref<string | null>(null);
 
 watch(selectedZone, (newZone) => {
   if (newZone) {
@@ -153,6 +147,7 @@ watch(selectedZone, (newZone) => {
 const isManualMode = ref(false)
 const manualPrompt = ref('')
 const isGeneratingImage = ref(false)
+const isImageCooldown = ref(false)
 const isGeneratingPrompt = ref(false);
 
 let promptRequestId = 0
@@ -204,10 +199,16 @@ const triggerPromptGeneration = debounce(async () => {
       if (currentRequestId === promptRequestId) {
         tagStore.setCurrentGeneratedPrompt(result);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to generate prompt:', error);
       if (currentRequestId === promptRequestId) {
         tagStore.setCurrentGeneratedPrompt('Error generating prompt.');
+        toast.add({
+          severity: 'error',
+          summary: 'Prompt Generation Failed',
+          detail: error.message || 'Could not generate prompt. Please try again.',
+          life: 5000,
+        });
       }
     } finally {
       if (currentRequestId === promptRequestId) {
@@ -227,9 +228,19 @@ onMounted(() => {
   triggerPromptGeneration();
 });
 
-function handleNodeClick(id: string) {
+async function handleNodeClick(id: string) {
   console.log('TagCloud received nodeClick:', id);
-  tagStore.toggleTag(id);
+  try {
+    await tagStore.toggleTag(id);
+  } catch (error: any) {
+    console.error('Error toggling tag or generating related tags:', error);
+    toast.add({
+      severity: 'error',
+      summary: 'Tag Action Failed',
+      detail: error.message || 'Could not toggle tag or generate related tags. Please try again.',
+      life: 5000,
+    });
+  }
 }
 
 function switchToZone(zone: string) {
@@ -240,35 +251,54 @@ function switchToZone(zone: string) {
 const generateImage = async () => {
   const promptText = isManualMode.value ? manualPrompt.value : tagStore.currentGeneratedPrompt;
   
-  if (!promptText) {
-    console.error('No prompt text available for image generation.');
+  if (!promptText || isGeneratingImage.value || isImageCooldown.value) {
+    if (!promptText) {
+      console.error('No prompt text available for image generation.');
+      toast.add({
+        severity: 'warn',
+        summary: 'Missing Prompt',
+        detail: 'Cannot generate image without a prompt text.',
+        life: 3000,
+      });
+    }
     return;
   }
 
   isGeneratingImage.value = true;
   tagStore.setCurrentImageUrl(null);
   const currentImageRequestId = ++imageRequestId;
-
   try {
-    const generatedImageUrl = await generateImageFromPrompt(promptText);
-    
+    const imageUrl = await generateImageFromPrompt(promptText);
     if (currentImageRequestId === imageRequestId) {
-      tagStore.setCurrentImageUrl(generatedImageUrl);
-      if (!generatedImageUrl) {
-        console.error('Image generation service returned null.');
-      }
+      tagStore.setCurrentImageUrl(imageUrl);
+      toast.add({
+        severity: 'success',
+        summary: 'Image Generated',
+        detail: 'Image generated successfully!',
+        life: 3000,
+      });
     }
-  } catch (error) {
-    console.error('Error generating image:', error);
+  } catch (error: any) {
+    console.error('Failed to generate image:', error);
     if (currentImageRequestId === imageRequestId) {
       tagStore.setCurrentImageUrl(null);
+      toast.add({
+        severity: 'error',
+        summary: 'Image Generation Failed',
+        detail: error.message || 'Could not generate image. Please try again.',
+        life: 5000,
+      });
     }
   } finally {
     if (currentImageRequestId === imageRequestId) {
       isGeneratingImage.value = false;
+      isImageCooldown.value = true;
+      setTimeout(() => {
+        isImageCooldown.value = false;
+      }, 1500);
     }
   }
-}
+};
 
 function handleNodePositionsUpdated(positions: { id: string; x: number; y: number }[]) {
   console.log('Received updated positions:', positions);
@@ -287,66 +317,59 @@ function handleNodeTextUpdated({ id, text }: { id: string; text: string }) {
   triggerPromptGeneration();
 }
 
-// --- Updated Save Dream Logic ---
 async function saveDream() {
   if (isSavingDream.value) return;
   
   isSavingDream.value = true;
-  saveStatus.value = null; // Clear previous status
+  saveStatus.value = null;
 
-  // Prepare the data payload
-  // Using structuredClone for a deep copy, but handle tags separately
-  const plainTags = JSON.parse(JSON.stringify(tagStore.tags)); // Convert reactive tags to plain objects
-  const dreamData = structuredClone({
+  const plainTags = JSON.parse(JSON.stringify(tagStore.tags));
+  const dreamData = {
     focusedZone: focusedZone.value,
-    tags: plainTags, // Use the plain version of tags
-    generatedPrompt: tagStore.currentGeneratedPrompt, // Save the AI-generated prompt
-    imageUrl: tagStore.currentImageUrl // Optionally save the image URL
-    // Add any other relevant state here
-  });
+    tags: plainTags,
+    generatedPrompt: tagStore.currentGeneratedPrompt,
+    imageUrl: tagStore.currentImageUrl
+  };
 
-  // Optional: Create a simple title based on selected tags
   const title = dreamData.tags
-    .filter((t: Tag) => t.selected) // Add type : Tag
-    .slice(0, 3) // Take first 3 selected tags for title
-    .map((t: Tag) => t.text) // Add type : Tag
+    .filter((t: Tag) => t.selected)
+    .slice(0, 3)
+    .map((t: Tag) => t.text)
     .join(', ') || 'Untitled Dream';
 
   try {
-    const response = await fetch('/api/dreams', {
+    const response = await $fetch<{ id: number }>('/api/dreams', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ title: title, data: dreamData }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: title,
+        data: dreamData,
+      })
     });
-
-    if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(`Failed to save dream (${response.status}): ${errorData}`);
-    }
-
-    const savedDream = await response.json();
-    console.log('Dream saved successfully:', savedDream);
+    console.log('Dream saved successfully:', response);
     saveStatus.value = 'Saved!';
+    toast.add({ severity: 'success', summary: 'Success', detail: 'Dream saved successfully!', life: 3000 });
+    
     tagStore.markAsSaved();
     
-    // Call refresh function from store directly
     tagStore.refreshDreamsList(); 
     
     setTimeout(() => { saveStatus.value = null; }, 3000);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error saving dream:', error);
-    saveStatus.value = `Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
-    // Optionally use PrimeVue Toast for errors
-    // toast.add({ severity: 'error', summary: 'Error', detail: 'Could not save dream', life: 3000 });
-    // Keep error message visible longer
+    let errorMessage = 'Could not save dream due to an unknown error.';
+    if (error.data && error.data.message) {
+      errorMessage = error.data.message;
+    } else if (error.statusMessage) {
+      errorMessage = error.statusMessage;
+    }
+    saveStatus.value = `Error: ${errorMessage}`;
+    toast.add({ severity: 'error', summary: 'Save Failed', detail: errorMessage, life: 5000 });
     setTimeout(() => { saveStatus.value = null; }, 5000);
   } finally {
     isSavingDream.value = false;
   }
 }
-// --- End Save Dream Logic ---
 
 </script>
 
