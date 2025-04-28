@@ -80,7 +80,7 @@
           <Button 
             @click="saveDream"
             severity="secondary" 
-            :disabled="isSavingDream || tagStore.tags.filter(t => t.selected).length === 0"
+            :disabled="isSavingDisabled"
             class="flex items-center gap-1 flex-nowrap whitespace-nowrap px-4 py-1" 
             icon="pi pi-save" 
             v-tooltip.top="'Save current state as Dream'" 
@@ -96,7 +96,7 @@
           <Button 
             @click="generateImage" 
             severity="primary"
-            :disabled="!(isManualMode ? manualPrompt : tagStore.currentGeneratedPrompt) || isGeneratingImage || isSavingDream || isImageCooldown"
+            :disabled="isGenerationDisabled"
             class="flex items-center gap-2 flex-nowrap whitespace-nowrap px-8 py-1"
           >
             <ProgressSpinner
@@ -152,6 +152,14 @@ const isGeneratingPrompt = ref(false);
 
 let promptRequestId = 0
 let imageRequestId = 0
+
+const isGenerationDisabled = computed(() => {
+  return !(isManualMode.value ? manualPrompt.value : tagStore.currentGeneratedPrompt) || isGeneratingImage.value || isSavingDream.value || isImageCooldown.value
+})
+
+const isSavingDisabled = computed(() => {
+  return isSavingDream.value || tagStore.tags.filter(t => t.selected).length === 0
+})
 
 const generatedPrompt = computed(() => {
   const allSelectedTags = tagStore.tags

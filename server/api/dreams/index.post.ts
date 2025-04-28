@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { defineEventHandler, readBody, createError } from 'h3';
 import { z } from 'zod';
+import logger from '~/utils/logger';
 
 // TODO: Consider the Prisma Client lifecycle recommendation (global singleton)
 // const prisma = new PrismaClient(); 
@@ -57,7 +58,7 @@ export default defineEventHandler(async (event) => {
   const userId = event.context.auth?.userId as string | undefined;
 
   if (!userId) {
-      console.error('Authentication Error: Missing userId in request context.');
+      logger.error('Authentication Error: Missing userId in request context.');
       throw createError({
           statusCode: 401,
           statusMessage: 'Unauthorized: User authentication required.',
@@ -67,15 +68,14 @@ export default defineEventHandler(async (event) => {
 
   try {
     const body = await readBody<{ title?: string; data: unknown }>(event);
-    // TODO: Remove or gate detailed logging in production
-    // console.log("Received body for /api/dreams POST:", JSON.stringify(body, null, 2)); 
+    logger.debug('[POST /api/dreams] Request Body:', body);
     const { title, data } = body;
 
     // --- Zod Validation --- 
     const validationResult = DreamDataSchema.safeParse(data);
 
     if (!validationResult.success) {
-        console.error('Validation Error:', validationResult.error.errors);
+        logger.warn('[POST /api/dreams] Validation Error:', validationResult.error.errors);
         // Format errors for a more user-friendly response
         const formattedErrors = validationResult.error.errors.map(e => ({
             field: e.path.join('.'),
@@ -92,7 +92,7 @@ export default defineEventHandler(async (event) => {
     const validatedData = validationResult.data;
     // ----------------------
 
-    console.log(`Attempting to save dream for user ${userId}...`);
+    logger.debug(`[POST /api/dreams] Saving dream for user ${userId}`);
     const dream = await prisma.dream.create({
       data: {
         title, 
@@ -101,12 +101,12 @@ export default defineEventHandler(async (event) => {
         userId: userId, // Associate dream with the authenticated user
       },
     });
-    console.log(`Dream saved successfully with ID: ${dream.id} for user ${userId}`);
+    logger.info(`[POST /api/dreams] Saved dream ID: ${dream.id} for user ${userId}`);
 
     return dream;
 
   } catch (error: any) {
-    console.error(`Error processing /api/dreams POST for user ${userId || 'unknown'}:`, error);
+    logger.error(`[POST /api/dreams] Error for user ${userId || 'unknown'}:`, error);
 
     if (error.statusCode) {
         // Re-throw H3/validation errors
@@ -120,8 +120,10 @@ export default defineEventHandler(async (event) => {
     throw createError({
       statusCode: 500,
       statusMessage: 'Internal Server Error',
-      // Optionally include a generic error code for the frontend
-      data: { code: 'DREAM_SAVE_FAILED', message: 'Could not save dream due to an internal error.' }
+      data: {
+        code: 'DREAM_SAVE_FAILED',
+        message: error.message || 'Could not save dream due to an internal error.'
+      }
     });
   }
 }); 
