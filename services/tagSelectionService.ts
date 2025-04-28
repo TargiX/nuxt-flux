@@ -43,8 +43,7 @@ export function unselectTopLevelSiblings(tag: Tag, allTags: Tag[]): void {
 
 export async function toggleTag(
   id: string,
-  allTags: Tag[],
-  apiKey: string
+  allTags: Tag[]
 ): Promise<{ updatedTags: Tag[]; selectedTag: Tag }> {
   const tag = findTagById(id, allTags);
   if (!tag) {
@@ -67,7 +66,7 @@ export async function toggleTag(
 
     try {
       tag.isLoading = true;
-      const newTags = await generateRelatedTags(tag, updatedTags, apiKey);
+      const newTags = await generateRelatedTags(tag, updatedTags);
       tag.children = [...(tag.children || []), ...newTags];
       updatedTags = [...updatedTags, ...newTags];
       // Distribute children in a circle after adding new ones

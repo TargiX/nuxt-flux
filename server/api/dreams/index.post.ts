@@ -1,63 +1,127 @@
 import { PrismaClient } from '@prisma/client';
 import { defineEventHandler, readBody, createError } from 'h3';
+import { z } from 'zod';
 
-// Instantiate Prisma Client outside the handler for reuse
+// TODO: Consider the Prisma Client lifecycle recommendation (global singleton)
+// const prisma = new PrismaClient(); 
+// globalThis.prisma ||= new PrismaClient()
+// For now, keeping the module-scope instance:
 const prisma = new PrismaClient();
 
+// --- Zod Schema Definition ---
+const BaseTagSchema = z.object({
+  id: z.string(),
+  text: z.string(),
+  size: z.number(),
+  selected: z.boolean(),
+  zone: z.string(),
+  alias: z.string(),
+  parentId: z.string().optional(),
+  x: z.number().optional(),
+  y: z.number().optional(),
+  isLoading: z.boolean().optional(),
+  depth: z.number().optional(),
+});
+
+type TagInput = z.infer<typeof BaseTagSchema> & {
+  children?: TagInput[];
+};
+
+const TagSchema: z.ZodType<TagInput> = BaseTagSchema.extend({
+  children: z.lazy(() => TagSchema.array()).optional(),
+});
+
+const DreamDataSchema = z.object({
+  focusedZone: z.string(), // Assuming zone names are strings
+  tags: z.array(TagSchema),
+  generatedPrompt: z.string().optional(),
+  imageUrl: z.string().nullable().optional(),
+});
+// ---------------------------
+
 export default defineEventHandler(async (event) => {
+  // --- Rate Limiting Placeholder --- 
+  // TODO: Implement rate limiting logic here.
+  // Example: Check user's save count within a time window.
+  // If exceeded, throw createError({ statusCode: 429, statusMessage: 'Too Many Requests' })
+  // const userId = event.context.auth?.userId; // Example: Get user ID from context
+  // if (userId) { 
+  //    const saveCount = await checkUserSaveCount(userId); 
+  //    if (saveCount >= MAX_SAVES_PER_DAY) { throw ... } 
+  // }
+  // ----------------------------------
+
+  // --- Authentication Check --- 
+  // Assuming authentication middleware adds user info to context
+  // Example: event.context.auth = { userId: 'some-user-id' }
+  const userId = event.context.auth?.userId as string | undefined;
+
+  if (!userId) {
+      console.error('Authentication Error: Missing userId in request context.');
+      throw createError({
+          statusCode: 401,
+          statusMessage: 'Unauthorized: User authentication required.',
+      });
+  }
+  // ----------------------------
+
   try {
-    // Read the body, expecting 'title' (optional) and 'data' (required)
-    const body = await readBody<{ title?: string; data: any }>(event);
-    console.log("Received body for /api/dreams POST:", JSON.stringify(body, null, 2)); // Log received data
+    const body = await readBody<{ title?: string; data: unknown }>(event);
+    // TODO: Remove or gate detailed logging in production
+    // console.log("Received body for /api/dreams POST:", JSON.stringify(body, null, 2)); 
     const { title, data } = body;
 
-    // Basic validation: Ensure 'data' exists
-    if (!data) {
-      console.error('Validation Error: Missing data field');
-      throw createError({
-        statusCode: 400,
-        statusMessage: "Bad Request: Missing required \'data\' field in request body.", // Escaped quote
-      });
-    }
+    // --- Zod Validation --- 
+    const validationResult = DreamDataSchema.safeParse(data);
 
-    // Add more specific validation if needed (e.g., typeof data === 'object')
-    if (typeof data !== 'object' || data === null) {
-        console.error('Validation Error: Data field is not an object');
+    if (!validationResult.success) {
+        console.error('Validation Error:', validationResult.error.errors);
+        // Format errors for a more user-friendly response
+        const formattedErrors = validationResult.error.errors.map(e => ({
+            field: e.path.join('.'),
+            message: e.message,
+        }));
         throw createError({
             statusCode: 400,
-            statusMessage: "Bad Request: \'data\' field must be an object.",
+            statusMessage: 'Bad Request: Invalid data structure.',
+            data: { code: 'VALIDATION_FAILED', errors: formattedErrors },
         });
     }
+    
+    // Use the validated data from now on
+    const validatedData = validationResult.data;
+    // ----------------------
 
-    console.log('Attempting to save dream to database...');
-    // Create the dream entry in the database
+    console.log(`Attempting to save dream for user ${userId}...`);
     const dream = await prisma.dream.create({
       data: {
-        title, // Will be null if not provided
-        data,  // The actual graph state or other JSON data
+        title, 
+        // Prisma expects 'JsonValue', validatedData should be compatible
+        data: validatedData as any, // Cast needed as Prisma Json type is broad
+        userId: userId, // Associate dream with the authenticated user
       },
     });
-    console.log('Dream saved successfully with ID:', dream.id);
+    console.log(`Dream saved successfully with ID: ${dream.id} for user ${userId}`);
 
-    // Return the newly created dream
     return dream;
 
   } catch (error: any) {
-    // Log the specific error encountered during creation
-    console.error("Error processing /api/dreams POST:", error);
+    console.error(`Error processing /api/dreams POST for user ${userId || 'unknown'}:`, error);
 
-    // Throw a generic server error, hiding internal details
-    // If it's an H3 error (like our 400), re-throw it
     if (error.statusCode) {
-      throw error;
+        // Re-throw H3/validation errors
+        throw error;
     }
-    
-    // Check for Prisma-specific errors if possible (example)
+
+    // TODO: Check for specific Prisma errors for more granular responses
     // if (error instanceof Prisma.PrismaClientKnownRequestError) { ... }
-    
+
+    // Return a structured error for other internal issues
     throw createError({
       statusCode: 500,
-      statusMessage: 'Internal Server Error: Could not save dream.',
+      statusMessage: 'Internal Server Error',
+      // Optionally include a generic error code for the frontend
+      data: { code: 'DREAM_SAVE_FAILED', message: 'Could not save dream due to an internal error.' }
     });
   }
 }); 

@@ -27,6 +27,7 @@ model User {
 
   // Optional: Add relations if you plan to link users to other models
   // posts Post[]
+  dreams Dream[] // Add relation to Dream model
 }
 
 // Add the Dream model
@@ -35,4 +36,6 @@ model Dream {
   createdAt DateTime @default(now())
   title     String? // Optional title for the dream
   data      Json    // Store the graph state or other relevant data as JSON
+  userId    String  // Foreign key to the User model
+  user      User     @relation(fields: [userId], references: [id]) // Relation field
 }
