@@ -1,6 +1,7 @@
 // import { GoogleGenerativeAI } from '@google/generative-ai'; // Removed SDK import
 import type { Tag } from '~/types/tag';
 import { callGeminiAPI } from '~/utils/api'; // Import the helper
+import { v4 as uuidv4 } from 'uuid'; // Import UUID generator
 
 export async function generateRelatedTags(
   parentTag: Tag,
@@ -68,9 +69,9 @@ Example format: ["Mountain Peak", "Dense Forest", "Morning Mist"]`;
       throw new Error('Invalid JSON response received from AI for tag generation.');
     }
 
-    // Map to Tag objects as before
-    return newTagsText.map((text: string, index: number): Tag => ({
-      id: `${parentTag.id}-dyn-${index}`,
+    // Map to Tag objects, using UUID for ID
+    return newTagsText.map((text: string): Tag => ({
+      id: `${parentTag.id}-dyn-${uuidv4()}`,
       text,
       size: 40,
       selected: false,
