@@ -16,13 +16,20 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
         with:
-          version: 8 # Specify your pnpm version if needed
+          version: 9 # Use pnpm v9 to match local environment
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18' # Ensure this matches your project's requirement (check package.json engines field)
           cache: 'pnpm' # Cache pnpm dependencies
+
+      - name: Check for lockfile
+        run: |
+          pwd
+          ls -la
+          echo "--- Checking pnpm-lock.yaml head ---"
+          head -n 10 pnpm-lock.yaml || echo "pnpm-lock.yaml not found or empty"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
