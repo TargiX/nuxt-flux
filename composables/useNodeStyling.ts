@@ -13,6 +13,7 @@ let eventHandlersInitialized = false;
 // Add a cleanup flag to prevent double-removal
 let isCleaningUp = false;
 
+
 export function useNodeStyling() {
   /**
    * Maps zone names to their gradient colors
