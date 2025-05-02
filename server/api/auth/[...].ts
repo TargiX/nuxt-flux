@@ -80,6 +80,6 @@ export const authOptions: AuthConfig = {
 }
 
 // Export the handler, passing options and runtime config
-export default NuxtAuthHandler(authOptions)
+export default NuxtAuthHandler(authOptions, runtimeConfig)
 
 /* Removing all old commented out code */ 
