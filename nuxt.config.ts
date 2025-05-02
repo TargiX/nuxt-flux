@@ -94,15 +94,8 @@ export default defineNuxtConfig({
 
   auth: {
     isEnabled: true,
-    origin: 'http://localhost:3000',
-    basePath: '/api/auth',
-    enableSessionRefreshPeriodically: false,
-    enableSessionRefreshOnWindowFocus: true,
-    globalAppMiddleware: {
-        isEnabled: true,
-    },
-    defaultProvider: undefined,
-    addDefaultCallbackUrl: true,
+    // The full URL (origin + base path) for auth endpoints to avoid recursion
+    baseURL: `${process.env.AUTH_ORIGIN || 'http://localhost:3000'}/api/auth`,
   },
 
 })
