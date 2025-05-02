@@ -40,6 +40,8 @@ jobs:
         run: pnpm run build
         env:
           NODE_ENV: production
+          NUXT_NEXTAUTH_SECRET: ${{ secrets.NUXT_NEXTAUTH_SECRET }}
+          NUXT_NEXTAUTH_URL: ${{ secrets.NUXT_NEXTAUTH_URL }}
           # Add any other build-time environment variables needed from secrets
           # DATABASE_URL: ${{ secrets.DATABASE_URL_BUILD_TIME }}
           # NUXT_PUBLIC_API_BASE: ${{ secrets.NUXT_PUBLIC_API_BASE }}

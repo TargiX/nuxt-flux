@@ -64,10 +64,12 @@ export const authOptions: AuthConfig = {
           return null
         }
 
+        // Ensure password is a string before comparing
+        const passwordStr = String(credentials.password)
         const isPasswordValid = await bcrypt.compare(
-          credentials.password,
+          passwordStr,
           user.passwordHash
-        );
+        )
 
         if (!isPasswordValid) {
           console.log('Invalid password for email:', credentials.email)
