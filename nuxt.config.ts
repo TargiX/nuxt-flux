@@ -29,6 +29,12 @@ export default defineNuxtConfig({
     '@nuxtjs/google-fonts', // Add the google fonts module
     '@sidebase/nuxt-auth', // Add the auth module
   ],
+  
+  // Disable experimental app manifest (known to cause fetch 404 issues in some versions)
+  experimental: {
+    appManifest: false
+  },
+  
   googleFonts: { // Add google fonts configuration
     families: {
       Roboto: true // Specify Roboto font
