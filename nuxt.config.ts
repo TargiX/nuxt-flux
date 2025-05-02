@@ -67,7 +67,7 @@ export default defineNuxtConfig({
     public: {
       GEMINI_API_KEY: process.env.GEMINI_API_KEY,
       FLUX_API_KEY: process.env.FLUX_API_KEY,
-      AUTH_ORIGIN: process.env.AUTH_ORIGIN
+      AUTH_ORIGIN: "http://188.245.189.226"
     }
   },
 
@@ -101,8 +101,7 @@ export default defineNuxtConfig({
 
   auth: {
     isEnabled: true,
-    // Define the base URL using AUTH_ORIGIN env var, crucial for older versions
-    baseURL: `${process.env.AUTH_ORIGIN || 'http://localhost:3000'}/api/auth`
+    baseURL: "http://188.245.189.226/api/auth"
   },
 
 })
