@@ -42,7 +42,7 @@
     <!-- Bottom Left: Settings Placeholder -->
     <div class="settings-container glass-card">
       <h2>Settings</h2>
-      <!-- Settings content will go here -->
+    
       <p>Settings placeholder...</p>
     </div>
 
