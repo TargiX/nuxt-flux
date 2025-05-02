@@ -100,7 +100,8 @@ export default defineNuxtConfig({
 
   auth: {
     isEnabled: true,
-    // Let nuxt-auth use defaults and rely on AUTH_ORIGIN env var on the server
+    // Use AUTH_ORIGIN at build time for API endpoints
+    baseURL: `${process.env.AUTH_ORIGIN}/api/auth`,
   },
 
 })
