@@ -94,8 +94,7 @@ export default defineNuxtConfig({
 
   auth: {
     isEnabled: true,
-    // The full URL (origin + base path) for auth endpoints to avoid recursion
-    baseURL: `${process.env.AUTH_ORIGIN || 'http://localhost:3000'}/api/auth`,
+    // Let nuxt-auth use defaults and rely on AUTH_ORIGIN env var on the server
   },
 
 })
