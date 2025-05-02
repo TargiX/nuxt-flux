@@ -65,6 +65,9 @@ export default defineNuxtConfig({
       clientId: process.env.NUXT_GOOGLE_CLIENT_ID,
       clientSecret: process.env.NUXT_GOOGLE_CLIENT_SECRET
     },
+    gemini: {
+      apiKey: process.env.GEMINI_API_KEY
+    },
     public: {
       GEMINI_API_KEY: process.env.GEMINI_API_KEY,
       FLUX_API_KEY: process.env.FLUX_API_KEY,
