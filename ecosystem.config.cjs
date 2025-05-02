@@ -14,7 +14,10 @@ module.exports = {
         // DATABASE_URL: "your_production_db_string"
         
         // *** Add the crucial AUTH_ORIGIN variable ***
-        AUTH_ORIGIN: "http://188.245.189.226" // Use HTTP for now
+        AUTH_ORIGIN: "http://188.245.189.226", // Use HTTP for now
+
+        // *** Add the public base URL including the path ***
+        NUXT_PUBLIC_AUTH_BASE_URL: "http://188.245.189.226/api/auth"
       }
     }]
   }
