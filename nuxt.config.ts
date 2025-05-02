@@ -66,7 +66,8 @@ export default defineNuxtConfig({
     },
     public: {
       GEMINI_API_KEY: process.env.GEMINI_API_KEY,
-      FLUX_API_KEY: process.env.FLUX_API_KEY
+      FLUX_API_KEY: process.env.FLUX_API_KEY,
+      AUTH_ORIGIN: process.env.AUTH_ORIGIN
     }
   },
 
