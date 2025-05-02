@@ -100,8 +100,8 @@ export default defineNuxtConfig({
 
   auth: {
     isEnabled: true,
-    // Use AUTH_ORIGIN at build time for API endpoints
-    baseURL: `${process.env.AUTH_ORIGIN}/api/auth`,
+    // Define the base URL using AUTH_ORIGIN env var, crucial for older versions
+    baseURL: `${process.env.AUTH_ORIGIN || 'http://localhost:3000'}/api/auth`
   },
 
 })
