@@ -1,6 +1,9 @@
 // Import from virtual module and types
 import { NuxtAuthHandler } from '#auth'
-import type { AuthConfig, Profile, User } from "@auth/core/types"
+import type { AuthConfig, User } from "@auth/core/types"
+// Import official providers
+import GoogleProvider from '@auth/core/providers/google'
+import CredentialsProvider from '@auth/core/providers/credentials'
 
 import bcrypt from 'bcrypt'
 import prisma from '~/server/utils/db'
@@ -21,70 +24,41 @@ export const authOptions: AuthConfig = {
   //   signIn: '/login',
   // },
   providers: [
-    // Google provider definition (should be compatible)
-    {
-      id: 'google',
-      name: 'Google',
-      type: 'oauth',
-      authorization: { params: { scope: 'openid email profile' } },
-      wellKnown: 'https://accounts.google.com/.well-known/openid-configuration',
+    // Official Google OAuth provider (configured via well-known issuer)
+    GoogleProvider({
       clientId: runtimeConfig.google.clientId,
       clientSecret: runtimeConfig.google.clientSecret,
-      profile(profile: Record<string, any> & { sub: string, picture: string }) {
-        return {
-          id: profile.sub,
-          name: profile.name,
-          email: profile.email,
-          image: profile.picture,
-        }
-      },
-    },
+      issuer: 'https://accounts.google.com' // Specify the OIDC issuer for Google
+    }),
     
-    // Credentials provider definition (should be compatible)
-    {
-      id: 'credentials',
+    // Credentials provider for email/password login
+    CredentialsProvider({
       name: 'Credentials',
-      type: 'credentials',
       credentials: {
-        email: { label: "Email", type: "text" },
-        password: { label: "Password", type: "password" }
+        email: { label: 'Email', type: 'text' },
+        password: { label: 'Password', type: 'password' }
       },
-      async authorize(credentials: Partial<Record<string, unknown>> | undefined, req: Request): Promise<User | null> {
+      async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
           console.error('Credentials missing')
           return null
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        });
-
+        const user = await prisma.user.findUnique({ where: { email: credentials.email } })
         if (!user || !user.passwordHash) {
-          console.log('No user found or user has no password hash for email:', credentials.email)
+          console.log('No user or missing passwordHash for:', credentials.email)
           return null
         }
 
-        // Ensure password is a string before comparing
-        const passwordStr = String(credentials.password)
-        const isPasswordValid = await bcrypt.compare(
-          passwordStr,
-          user.passwordHash
-        )
-
-        if (!isPasswordValid) {
-          console.log('Invalid password for email:', credentials.email)
+        const valid = await bcrypt.compare(credentials.password, user.passwordHash)
+        if (!valid) {
+          console.log('Invalid password for:', credentials.email)
           return null
         }
 
-        console.log('Credentials valid for:', credentials.email)
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          image: user.image,
-        }
+        return { id: user.id, name: user.name, email: user.email, image: user.image }
       }
-    }
+    })
   ],
 }
 
