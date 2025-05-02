@@ -27,7 +27,7 @@ export default defineNuxtConfig({
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt',
     '@nuxtjs/google-fonts', // Add the google fonts module
-    '@sidebase/nuxt-auth', // Add the auth module
+    '@hebilicious/authjs-nuxt', // Add the new auth module
   ],
   
   // Disable experimental app manifest (known to cause fetch 404 issues in some versions)
@@ -57,8 +57,9 @@ export default defineNuxtConfig({
   ],
 
   runtimeConfig: {
-    auth: {
-      secret: process.env.NUXT_AUTH_SECRET
+    // Add config structure expected by @hebilicious/authjs-nuxt
+    authJs: {
+      secret: process.env.NUXT_NEXTAUTH_SECRET // Use the documented env var name
     },
     google: {
       clientId: process.env.NUXT_GOOGLE_CLIENT_ID,
@@ -67,7 +68,11 @@ export default defineNuxtConfig({
     public: {
       GEMINI_API_KEY: process.env.GEMINI_API_KEY,
       FLUX_API_KEY: process.env.FLUX_API_KEY,
-      AUTH_ORIGIN: "http://188.245.189.226"
+      // Add public config structure expected by @hebilicious/authjs-nuxt
+      authJs: {
+        baseUrl: process.env.NUXT_NEXTAUTH_URL, // Use the documented env var name
+        verifyClientOnEveryRequest: true
+      }
     }
   },
 
@@ -97,11 +102,6 @@ export default defineNuxtConfig({
       tailwindcss: {},
       autoprefixer: {},
     },
-  },
-
-  auth: {
-    isEnabled: true,
-    baseURL: "http://188.245.189.226/api/auth"
   },
 
 })

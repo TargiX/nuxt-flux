@@ -1,27 +1,29 @@
-// Import auth handler without TypeScript
+// Import from virtual module and types
 import { NuxtAuthHandler } from '#auth'
+import type { AuthConfig, Profile, User } from "@auth/core/types"
+
 import bcrypt from 'bcrypt'
 import prisma from '~/server/utils/db'
 
-export default NuxtAuthHandler({
-  secret: useRuntimeConfig().auth.secret,
+const runtimeConfig = useRuntimeConfig()
 
-  pages: {
-    signIn: '/login',
-  },
-
+// Define AuthConfig according to documentation
+export const authOptions: AuthConfig = {
+  secret: runtimeConfig.authJs.secret, // Use the new config path
+  // pages: { // Keep pages commented out unless needed
+  //   signIn: '/login',
+  // },
   providers: [
-    // Google provider defined inline
+    // Google provider definition (should be compatible)
     {
       id: 'google',
       name: 'Google',
       type: 'oauth',
       authorization: { params: { scope: 'openid email profile' } },
-      idToken: true,
       wellKnown: 'https://accounts.google.com/.well-known/openid-configuration',
-      clientId: useRuntimeConfig().google.clientId,
-      clientSecret: useRuntimeConfig().google.clientSecret,
-      profile(profile) {
+      clientId: runtimeConfig.google.clientId,
+      clientSecret: runtimeConfig.google.clientSecret,
+      profile(profile: Record<string, any> & { sub: string, picture: string }) {
         return {
           id: profile.sub,
           name: profile.name,
@@ -31,7 +33,7 @@ export default NuxtAuthHandler({
       },
     },
     
-    // Credentials provider for email/password login
+    // Credentials provider definition (should be compatible)
     {
       id: 'credentials',
       name: 'Credentials',
@@ -40,7 +42,7 @@ export default NuxtAuthHandler({
         email: { label: "Email", type: "text" },
         password: { label: "Password", type: "password" }
       },
-      async authorize(credentials) {
+      async authorize(credentials: Partial<Record<string, unknown>> | undefined, req: Request): Promise<User | null> {
         if (!credentials?.email || !credentials?.password) {
           console.error('Credentials missing')
           return null
@@ -75,4 +77,9 @@ export default NuxtAuthHandler({
       }
     }
   ],
-}) 
+}
+
+// Export the handler, passing options and runtime config
+export default NuxtAuthHandler(authOptions)
+
+/* Removing all old commented out code */ 

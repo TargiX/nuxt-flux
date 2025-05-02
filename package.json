@@ -13,7 +13,9 @@
     "format": "prettier --write \"**/*.{js,ts,vue,scss,html,md,json}\" --ignore-path .gitignore"
   },
   "dependencies": {
+    "@auth/core": "^0.39.0",
     "@google/generative-ai": "0.8.0",
+    "@hebilicious/authjs-nuxt": "^0.3.5",
     "@heroicons/vue": "^2.2.0",
     "@nuxtjs/tailwindcss": "^6.14.0",
     "@pinia/nuxt": "^0.5.5",
@@ -24,7 +26,6 @@
     "d3": "^7.9.0",
     "d3-force": "^3.0.0",
     "gsap": "^3.12.7",
-    "next-auth": "^4.24.11",
     "nuxt": "^3.17.0",
     "pinia": "^2.3.1",
     "primeicons": "^7.0.0",
@@ -41,7 +42,6 @@
   "devDependencies": {
     "@nuxtjs/google-fonts": "^3.2.0",
     "@primevue/nuxt-module": "^4.3.3",
-    "@sidebase/nuxt-auth": "^0.9.4",
     "@types/bcrypt": "^5.0.2",
     "@types/d3": "^7.4.3",
     "@types/uuid": "^10.0.0",
