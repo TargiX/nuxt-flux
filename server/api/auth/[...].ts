@@ -7,6 +7,13 @@ import prisma from '~/server/utils/db'
 
 const runtimeConfig = useRuntimeConfig()
 
+// --- Debugging --- 
+console.log("[Auth Handler] Reading runtimeConfig.authJs.secret:", runtimeConfig.authJs?.secret ? 'SECRET_FOUND' : 'SECRET_MISSING_OR_UNDEFINED');
+if (!runtimeConfig.authJs?.secret) {
+  console.error("[Auth Handler] FATAL: runtimeConfig.authJs.secret is MISSING!");
+}
+// --- End Debugging ---
+
 // Define AuthConfig according to documentation
 export const authOptions: AuthConfig = {
   secret: runtimeConfig.authJs.secret, // Use the new config path
