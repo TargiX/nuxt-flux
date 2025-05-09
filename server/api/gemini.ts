@@ -21,7 +21,6 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Missing prompt text in request body' })
   }
 
-  // 3) Initialize the Generative AI client
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
   const model = genAI.getGenerativeModel({
     model: modelName,
