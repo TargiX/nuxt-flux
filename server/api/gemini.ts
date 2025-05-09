@@ -9,7 +9,8 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 500, statusMessage: 'Missing Gemini API Key configuration' })
   }
 
-  // 2) Get parameters from the request body
+  // 2) Get parameters from the request bod
+
   const {
     prompt,
     temperature = 0.7, // Default value
