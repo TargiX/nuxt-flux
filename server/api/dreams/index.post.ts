@@ -1,13 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '~/server/utils/db';
 import { defineEventHandler, readBody, createError } from 'h3';
 import { z } from 'zod';
 import logger from '~/utils/logger';
-
-// TODO: Consider the Prisma Client lifecycle recommendation (global singleton)
-// const prisma = new PrismaClient(); 
-// globalThis.prisma ||= new PrismaClient()
-// For now, keeping the module-scope instance:
-const prisma = new PrismaClient();
 
 // --- Zod Schema Definition ---
 const BaseTagSchema = z.object({

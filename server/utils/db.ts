@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '~/generated/prisma'
 
 // Simplify for potential build issue diagnosis
 // Remove the singleton logic for now

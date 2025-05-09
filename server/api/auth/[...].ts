@@ -20,6 +20,7 @@ if (!runtimeConfig.authJs?.secret) {
 // Define AuthConfig according to documentation
 export const authOptions: AuthConfig = {
   secret: runtimeConfig.authJs.secret, // Use the new config path
+  session: { strategy: 'jwt' },
   // pages: { // Keep pages commented out unless needed
   //   signIn: '/login',
   // },
@@ -44,10 +45,22 @@ export const authOptions: AuthConfig = {
           return null
         }
 
+        // Ensure password is a string
+        if (typeof credentials.password !== 'string') {
+          console.error('Password is not a string');
+          return null;
+        }
+
         const user = await prisma.user.findUnique({ where: { email: credentials.email } })
         if (!user || !user.passwordHash) {
           console.log('No user or missing passwordHash for:', credentials.email)
           return null
+        }
+
+        // Ensure passwordHash is a string
+        if (typeof user.passwordHash !== 'string') {
+          console.error('User passwordHash is not a string for email:', credentials.email);
+          return null;
         }
 
         const valid = await bcrypt.compare(credentials.password, user.passwordHash)

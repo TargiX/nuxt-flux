@@ -1,8 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '~/server/utils/db';
 import { defineEventHandler, createError } from 'h3';
-
-// Instantiate Prisma Client outside the handler for reuse
-const prisma = new PrismaClient();
 
 export default defineEventHandler(async () => {
   try {
