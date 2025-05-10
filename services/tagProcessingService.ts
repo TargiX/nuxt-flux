@@ -26,8 +26,8 @@ export function processTag(
     zone,
     alias: (isString ? text.toLowerCase().replace(/\s+/g, '-') : tagData.alias) || '',
     parentId,
-    x: level === 0 ? 300 : undefined,
-    y: level === 0 ? 200 : undefined,
+    x: undefined,
+    y: undefined,
     isLoading: false,
     children: [],
     depth: level

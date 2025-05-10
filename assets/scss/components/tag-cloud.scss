@@ -12,7 +12,7 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   /* Let top row dominate height, bottom row adjusts */
   grid-template-rows: minmax(0, 1fr) auto; 
-  gap: 1rem; /* Increased gap for better spacing */
+  gap: 0.5rem; /* Increased gap for better spacing */
   width: 100%;
   height: calc(100vh - 40px); /* Account for padding */
   max-height: calc(100vh - 40px);

@@ -15,10 +15,18 @@ interface DreamData {
   imageUrl?: string | null; // Optional
 }
 
+// Interface for D3 zoom transform (simplified)
+interface ViewportState {
+  x: number;
+  y: number;
+  k: number; // Zoom scale
+}
+
 export const useTagStore = defineStore('tags', () => {
   const tags = ref<Tag[]>([]);
   const zones = ref<string[]>(getAvailableZones());
   const focusedZone = ref<string>(zones.value[0] || 'Subject');
+  const zoneViewportStates = ref<Map<string, ViewportState>>(new Map()); // New state for viewport per zone
   
   // --- Add state for prompt and image ---
   const currentGeneratedPrompt = ref<string>('');
@@ -32,11 +40,22 @@ export const useTagStore = defineStore('tags', () => {
   tags.value = initializeTags();
   const initialTagsState = JSON.parse(JSON.stringify(tags.value)); // Store initial state for reset
 
+  // Function to save viewport state for a zone
+  function saveZoneViewport(zone: string, viewport: ViewportState) {
+    zoneViewportStates.value.set(zone, viewport);
+    console.log(`[TagStore] Viewport saved for zone ${zone}:`, viewport);
+  }
+
+  // Function to get viewport state for a zone
+  function getZoneViewport(zone: string): ViewportState | undefined {
+    return zoneViewportStates.value.get(zone);
+  }
+
   function setFocusedZone(zone: string) {
-    if (focusedZone.value !== zone) {
-      hasUnsavedChanges.value = true;
-    }
+    // Switching zones should not mark unsaved changes
     focusedZone.value = zone;
+    // TODO: Trigger viewport load for the new `zone` *after* it has changed
+    // and graph is ready for the new zone's data.
   }
 
   async function handleTagToggle(id: string) {
@@ -150,10 +169,12 @@ export const useTagStore = defineStore('tags', () => {
   // ----------------------------------------------
 
   // --- Actions to set prompt and image --- (add unsaved changes flag)
-  function setCurrentGeneratedPrompt(prompt: string) {
+  function setCurrentGeneratedPrompt(prompt: string, markDirty: boolean = true) {
     if (currentGeneratedPrompt.value !== prompt) {
         currentGeneratedPrompt.value = prompt;
-        hasUnsavedChanges.value = true;
+        if (markDirty) {
+          hasUnsavedChanges.value = true;
+        }
     }
   }
   function setCurrentImageUrl(url: string | null) {
@@ -192,8 +213,11 @@ export const useTagStore = defineStore('tags', () => {
     tags,
     zones,
     focusedZone,
-    currentGeneratedPrompt, // Expose state
-    currentImageUrl,      // Expose state
+    zoneViewportStates, // Expose the raw map (or preferably through getters/setters if more control needed)
+    saveZoneViewport,   // Expose action to save viewport
+    getZoneViewport,    // Expose action/getter to retrieve viewport
+    currentGeneratedPrompt,
+    currentImageUrl,
     setFocusedZone,
     toggleTag: handleTagToggle,
     updateTagText,

@@ -5,6 +5,8 @@
     <div class="graph-container glass-card">
       <h2 class="zone-title">{{ focusedZone }}</h2>
       <ForceGraph
+        :key="focusedZone"
+        ref="forceGraphRef"
         :width="800"
         :height="600"
         :nodes="graphNodes"
@@ -116,16 +118,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted } from 'vue';
+import { computed, ref, watch, onMounted, nextTick } from 'vue';
 import { useTagStore } from '~/store/tagStore';
 import ForceGraph from './ForceGraph.vue';
 import ZoneSelector from './ZoneSelector.vue';
 import { generateImagePrompt } from '~/services/promptGenerationService';
 import { generateImageFromPrompt } from '~/services/imageGenerationService';
 import type { Tag } from '~/types/tag';
+import type { ViewportState } from '~/composables/useZoom';
 
 const tagStore = useTagStore();
 const toast = useToast();
+
+const forceGraphRef = ref<InstanceType<typeof ForceGraph> | null>(null);
 
 const focusedZone = computed(() => tagStore.focusedZone);
 const zoneOptions = ref([...tagStore.zones]);
@@ -137,9 +142,11 @@ const selectedZone = ref(focusedZone.value);
 const isSavingDream = ref(false);
 const saveStatus = ref<string | null>(null);
 
-watch(selectedZone, (newZone) => {
-  if (newZone) {
-    switchToZone(newZone);
+// Suppress prompt regeneration on initial dream load
+const skipPrompt = ref(false);
+watch(() => tagStore.loadedDreamId, (newId, oldId) => {
+  if (newId !== oldId) {
+    skipPrompt.value = true;
   }
 });
 
@@ -176,6 +183,13 @@ watch(focusedZone, (newZone) => {
   selectedZone.value = newZone;
 });
 
+// Watch for changes in selectedZone to switch zones
+watch(selectedZone, (newZone, oldZone) => {
+  if (newZone && newZone !== oldZone) {
+    switchToZone(newZone, oldZone || tagStore.focusedZone);
+  }
+});
+
 function debounce<T extends (...args: any[]) => any>(
   func: T,
   wait: number
@@ -204,12 +218,12 @@ const triggerPromptGeneration = debounce(async () => {
     try {
       const result = await generateImagePrompt(tagsString);
       if (currentRequestId === promptRequestId) {
-        tagStore.setCurrentGeneratedPrompt(result);
+        tagStore.setCurrentGeneratedPrompt(result, false);
       }
     } catch (error: any) {
       console.error('Failed to generate prompt:', error);
       if (currentRequestId === promptRequestId) {
-        tagStore.setCurrentGeneratedPrompt('Error generating prompt.');
+        tagStore.setCurrentGeneratedPrompt('Error generating prompt.', false);
         toast.add({
           severity: 'error',
           summary: 'Prompt Generation Failed',
@@ -227,7 +241,12 @@ const triggerPromptGeneration = debounce(async () => {
   }
 }, 300);
 
+// Skip generation once after load, then resume normal behavior
 watch(generatedPrompt, () => {
+  if (skipPrompt.value) {
+    skipPrompt.value = false;
+    return;
+  }
   triggerPromptGeneration();
 });
 
@@ -250,9 +269,32 @@ async function handleNodeClick(id: string) {
   }
 }
 
-function switchToZone(zone: string) {
-  console.log(`Switching to ${zone}`);
-  tagStore.setFocusedZone(zone);
+async function switchToZone(newZone: string, oldZone?: string) {
+  const currentOldZone = oldZone || tagStore.focusedZone;
+
+  if (forceGraphRef.value && currentOldZone) {
+    const currentViewport = forceGraphRef.value.getCurrentViewport();
+    if (currentViewport) {
+      tagStore.saveZoneViewport(currentOldZone, currentViewport);
+      console.log(`Saved viewport for ${currentOldZone}:`, currentViewport);
+    }
+  }
+
+  console.log(`Switching from ${currentOldZone} to ${newZone}`);
+  tagStore.setFocusedZone(newZone);
+
+  await nextTick();
+
+  if (forceGraphRef.value) {
+    const savedViewport = tagStore.getZoneViewport(newZone);
+    if (savedViewport) {
+      console.log(`Applying saved viewport for ${newZone}:`, savedViewport);
+      forceGraphRef.value.applyViewport(savedViewport);
+    } else {
+      console.log(`No saved viewport for ${newZone}, applying default.`);
+      forceGraphRef.value.applyViewport();
+    }
+  }
 }
 
 const generateImage = async () => {
@@ -278,12 +320,6 @@ const generateImage = async () => {
     const imageUrl = await generateImageFromPrompt(promptText);
     if (currentImageRequestId === imageRequestId) {
       tagStore.setCurrentImageUrl(imageUrl);
-      // toast.add({
-      //   severity: 'success',
-      //   summary: 'Image Generated',
-      //   detail: 'Image generated successfully!',
-      //   life: 3000,
-      // });
     }
   } catch (error: any) {
     console.error('Failed to generate image:', error);

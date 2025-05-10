@@ -48,7 +48,7 @@
 import { ref, onMounted, watch, computed, onBeforeUnmount } from 'vue';
 import * as d3 from 'd3';
 import 'd3-transition'; // Ensure transition support is available
-import { useZoom } from '~/composables/useZoom';
+import { useZoom, type ViewportState } from '~/composables/useZoom';
 import { useNodeStyling } from '~/composables/useNodeStyling';
 import { useLinkStyling } from '~/composables/useLinkStyling';
 import { useForceSimulation } from '~/composables/useForceSimulation';
@@ -84,8 +84,9 @@ const {
   zoomIn: zoomInFn, 
   zoomOut: zoomOutFn, 
   resetZoom: resetZoomFn, 
-  centerOnNode, 
-  zoomBehavior 
+  centerOnNode: centerOnNodeFn,
+  getCurrentViewport: getCurrentViewportFn,
+  applyViewport: applyViewportFn,
 } = useZoom();
 
 const { applyNodeStyle, getSubjectImagePath, createNodeGradients } = useNodeStyling();
@@ -139,28 +140,35 @@ watch(
 function initializeGraph() {
   if (!container.value) return;
 
-  // Get container dimensions
   const containerRect = container.value.getBoundingClientRect();
   const width = containerRect.width;
   const height = containerRect.height;
 
-  // Get center coordinates
-  const centerX = width / 2;
-  const centerY = height / 2;
+  // Determine if loading saved positions
+  const hasSavedPositions = props.nodes.some(n => n.x !== undefined && n.y !== undefined);
 
-  // Pre-position all nodes at the center before creating the SVG
+  // Initialize node positions
   props.nodes.forEach(node => {
-    // Force all nodes to start exactly at center
-    node.x = centerX;
-    node.y = centerY;
+    if (!hasSavedPositions) {
+      // New graph: center nodes
+      node.x = width / 2;
+      node.y = height / 2;
+      // Fix parent nodes at center initially
+      if (!node.parentId) {
+        node.fx = width / 2;
+        node.fy = height / 2;
+      } else {
+        node.fx = null;
+        node.fy = null;
+      }
+    } else {
+      // Respect saved positions: reset any fixed positions
+      node.fx = null;
+      node.fy = null;
+    }
+    // Reset velocities
     node.vx = 0;
     node.vy = 0;
-    
-    // Fix parent nodes at center
-    if (!node.parentId) {
-      node.fx = centerX;
-      node.fy = centerY;
-    }
   });
 
   svg = d3.select(container.value)
@@ -170,126 +178,84 @@ function initializeGraph() {
     .attr('viewBox', `0 0 ${width} ${height}`)
     .attr('preserveAspectRatio', 'xMidYMid meet');
 
-  // Create a root group for zoom
-  const g = svg.append('g')
-    .attr('class', 'zoom-group');
-
+  const g = svg.append('g').attr('class', 'zoom-group');
   linkGroup = g.append('g').attr('class', 'links');
   nodeGroup = g.append('g').attr('class', 'nodes');
 
-  // Initialize SVG defs and gradients
   if (svg) {
-    // Prepare defs section for gradients
-    if (svg.select('defs').empty()) {
-      svg.append('defs');
-    }
-    
-    // Set up node gradients
+    if (svg.select('defs').empty()) svg.append('defs');
     createNodeGradients(svg);
-    
-    // Set up default link gradient
     createLinkGradient(svg);
   }
 
-  // Helper function to center camera view
-  function centerView() {
-    if (svg && zoomBehavior.value) {
-      // Create a transform that centers the view
-      // In D3, the transform origin is at (0,0), so we need to
-      // translate to center of the viewport
-      const scale = 1.4;
-      const tx = width / 2;
-      const ty = height / 2;
-      
-      const transform = d3.zoomIdentity
-        .translate(tx, ty)
-        .scale(scale)
-        .translate(-centerX, -centerY);
-      
-      // Apply the transform without transition the first time
-      svg.call(zoomBehavior.value.transform as any, transform);
-    }
-  }
+  initializeZoom(svg, g, width, height, 1.4);
 
-  // Initialize zoom using the composable with proper initial transform
-  initializeZoom(svg, g, 1.4);
-  
-  // Apply center view immediately before any simulation
-  centerView();
+  applyViewportFn(svg, undefined, 0);
 
-  // Create and configure the simulation using our composable
   simulation = createSimulation(props.nodes, props.links, width, height);
 
   if (simulation) {
-    // Set up the tick function for animation
     simulation.on('tick', () => {
       if (!svg || !nodeGroup || !linkGroup) return;
 
-      // Update node positions
       nodeGroup.selectAll<SVGGElement, GraphNode>('g')
         .attr('transform', d => `translate(${d.x || 0},${d.y || 0})`);
 
-      // Update link positions
       linkGroup.selectAll<SVGLineElement, GraphLink>('line')
         .attr('x1', d => (d.source as GraphNode).x || 0)
         .attr('y1', d => (d.source as GraphNode).y || 0)
         .attr('x2', d => (d.target as GraphNode).x || 0)
         .attr('y2', d => (d.target as GraphNode).y || 0);
 
-      // Update link gradients using a non-null svg reference
-      const svgEl = svg; // Capture in local variable to help TypeScript
+      const svgEl = svg;
       if (svgEl) {
         linkGroup.selectAll<SVGLineElement, GraphLink>('line').each(function(d) {
           const source = d.source as GraphNode;
           const target = d.target as GraphNode;
           
-          // Update gradient positions using our composable
           updateGradientPositions(svgEl, source, target);
         });
       }
     });
     
-    // First render nodes and links *before* starting animation
-    updateLinks();
-    updateNodes();
-    
-    // Now start the simulation with zero initial velocity for smooth appearance
-    simulation.tick(5); // Apply a few ticks immediately to stabilize
-    simulation.alpha(0.3).restart();
-    
-    // Release fixed positions after initial layout settles
-    setTimeout(() => {
-      if (simulation) {
-        simulation.nodes().forEach(node => {
-          if (!node.parentId) {
-            node.fx = null;
-            node.fy = null;
-          }
-        });
-      }
-    }, 100); // Longer delay to ensure nodes have settled before releasing
+    updateVisualElements();
+
+    // Kickstart simulation for new graphs; skip if loading saved positions
+    if (!hasSavedPositions) {
+      simulation.tick(30);
+      simulation.alpha(0.3).restart();
+      // Release fixed positions after initial spread
+      setTimeout(() => {
+        if (simulation) {
+          simulation.nodes().forEach(node => {
+            if (!node.parentId) {
+              node.fx = null;
+              node.fy = null;
+            }
+          });
+        }
+      }, 150);
+    }
+
+  } else {
+    console.error("Failed to initialize D3 simulation.");
   }
 }
 
 function updateGraph() {
   if (!svg || !simulation || !container.value) return;
   
-  // Get current container dimensions
   const containerRect = container.value.getBoundingClientRect();
   const width = containerRect.width;
   const height = containerRect.height;
   
-  // Update the viewBox to match new dimensions
   svg.attr('viewBox', `0 0 ${width} ${height}`);
   
-  // Update simulation using our composable
   simulation = updateSimulation(simulation, props.nodes, props.links, width, height);
 
-  // Update visual elements
   updateLinks();
   updateNodes();
 
-  // Release fixed positions after a short delay
   const selectedParent = props.nodes.find(n => n.selected && !n.parentId);
   setTimeout(() => {
     if (selectedParent) {
@@ -309,29 +275,24 @@ function updateLinks() {
       return `${sourceId}-${targetId}`;
     });
 
-  // Enter new links
   const linkEnter = link.enter()
     .append('line')
     .attr('stroke', 'url(#link-gradient)');
     
-  // Apply styling to all links
   applyLinkStyle(linkEnter.merge(link));
 
-  // Create unique gradients for each link
-  const svgEl = svg; // Capture in local variable to help TypeScript
+  const svgEl = svg;
   if (svgEl) {
     linkGroup.selectAll<SVGLineElement, GraphLink>('line').each(function(d) {
       const line = d3.select(this);
       const source = d.source as GraphNode;
       const target = d.target as GraphNode;
       
-      // Create unique gradient and update link to use it
       const gradientId = createUniqueGradient(svgEl, source, target);
       line.attr('stroke', `url(#${gradientId})`);
     });
   }
 
-  // Remove old links
   link.exit().remove();
 }
 
@@ -348,7 +309,6 @@ function updateNodes() {
     .attr('class', 'node')
     .call(createDragBehavior(simulation))
     .on('click', (event: MouseEvent, d: GraphNode) => {
-      // Ignore clicks on the edit input itself
       const targetEl = event.target as Element;
       if (targetEl.tagName.toLowerCase() === 'input') {
         return;
@@ -358,7 +318,7 @@ function updateNodes() {
       emit('nodeClick', d.id);
       updateNodeSelection(d.id);
       if (svg) {
-        centerOnNode(svg, d, props.width, props.height);
+        centerOnNodeFn(svg, d);
       }
     })
   
@@ -367,7 +327,6 @@ function updateNodes() {
     .attr('r', d => d.size / 2)
     .attr('class', 'node-circle');
   
-  // Add images for Subject nodes
   nodeEnter.filter(d => d.zone === 'Subject' && !d.parentId)
     .append('image')
     .attr('xlink:href', d => getSubjectImagePath(d.text))
@@ -377,13 +336,11 @@ function updateNodes() {
     .attr('height', d => d.size)
     .attr('class', 'subject-node-image')
     .on('error', function() {
-      // If image fails to load, just keep the circle visible as fallback
       d3.select(this).style('display', 'none');
     });
 
   node.exit().remove();
 
-  // Apply styling to all nodes (new and existing)
   nodeGroup.selectAll<SVGGElement, GraphNode>('g')
     .each(function(d) {
       applyNodeStyle(d3.select(this), false, svg, updateTextForNode);
@@ -393,7 +350,6 @@ function updateNodes() {
 function updateNodeSelection(id: string) {
   if (!nodeGroup || !svg) return;
 
-  // Update all nodes to reset their styles first
   nodeGroup.selectAll<SVGGElement, GraphNode>('g')
     .each(function(d) {
       applyNodeStyle(d3.select(this), false, svg, updateTextForNode);
@@ -426,19 +382,32 @@ function saveNodePositions() {
   emit('nodePositionsUpdated', updatedPositions);
 }
 
-// Callback function to handle text updates from the styling composable
 function updateTextForNode(nodeId: string, newText: string) {
   console.log('[ForceGraph] Emitting nodeTextUpdated:', { id: nodeId, text: newText });
   emit('nodeTextUpdated', { id: nodeId, text: newText });
-  // No need to update local state here, parent component (TagCloud) handles store update,
-  // which will trigger props update and graph redraw.
 }
 
-// Global variables from useNodeStyling that we need access to
-// We need to import these or manage state differently if they are required outside
-// For now, assume they are accessible or handle state appropriately if needed.
-// declare let currentlyEditingNodeId: string | null;
-// declare let activeInput: HTMLInputElement | null;
+function updateVisualElements() {
+  updateLinks();
+  updateNodes();
+}
+
+// Expose methods for parent component interaction
+interface ForceGraphExposed {
+  getCurrentViewport: () => ViewportState | null;
+  applyViewport: (state?: ViewportState, duration?: number) => void;
+  centerOnNode: (node: { x?: number | null; y?: number | null }) => void;
+}
+
+defineExpose<ForceGraphExposed>({
+  getCurrentViewport: () => getCurrentViewportFn(svg),
+  applyViewport: (state?: ViewportState, duration?: number) => {
+    applyViewportFn(svg, state, duration);
+  },
+  centerOnNode: (node: { x?: number | null; y?: number | null }) => {
+    if (svg) centerOnNodeFn(svg, node);
+  }
+});
 </script>
 
 
@@ -479,7 +448,7 @@ function updateTextForNode(nodeId: string, newText: string) {
   .node-text {
     font-weight: 500;
     text-shadow: 0 0 4px rgba(255, 255, 255, 0.9);
-    pointer-events: auto; /* Allow text clicks to register for editing */
+    pointer-events: auto;
     cursor: text;
     transition: all 0.2s ease;
   }
@@ -498,6 +467,7 @@ function updateTextForNode(nodeId: string, newText: string) {
   z-index: 10;
   pointer-events: none;
   padding: 0 0.5rem;
+  width: 100%;
 }
 
 .additional-controls,
