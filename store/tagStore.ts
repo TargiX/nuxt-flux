@@ -30,9 +30,18 @@ export const useTagStore = defineStore('tags', () => {
   let _refreshDreamsList: (() => void) | null = null; // Placeholder for refresh function
   // ------------------------------------
 
+  // Add session ID at the top with existing state
+  const sessionId = ref<string>(generateSessionId());
+  const isRequestInProgress = ref(false);
+
   // Initialize tags on store creation
   tags.value = initializeTags();
   const initialTagsState = JSON.parse(JSON.stringify(tags.value)); // Store initial state for reset
+
+  // Helper function to generate unique session ID
+  function generateSessionId() {
+    return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  }
 
   // Function to save viewport state for a zone
   function saveZoneViewport(zone: string, viewport: ViewportState) {
@@ -46,20 +55,39 @@ export const useTagStore = defineStore('tags', () => {
   }
 
   function setFocusedZone(zone: string) {
+    // Generate new session ID to invalidate any in-flight requests
+    // This ensures that ongoing tag operations from the previous zone don't affect the new zone
+    sessionId.value = generateSessionId();
+    console.log(`Session changed to ${sessionId.value} when switching to ${zone}`);
+    
     // Switching zones should not mark unsaved changes
     focusedZone.value = zone;
-    // TODO: Trigger viewport load for the new `zone` *after* it has changed
-    // and graph is ready for the new zone's data.
   }
 
   async function handleTagToggle(id: string) {
-    const originalSelectedState = tags.value.find(t => t.id === id)?.selected;
-    const { updatedTags, selectedTag } = await toggleTag(id, tags.value);
-    if (selectedTag.selected !== originalSelectedState) {
+    // Capture current session ID at the start of the request
+    const currentSessionId = sessionId.value;
+    isRequestInProgress.value = true;
+    
+    try {
+      const originalSelectedState = tags.value.find(t => t.id === id)?.selected;
+      const { updatedTags, selectedTag } = await toggleTag(id, tags.value);
+      
+      // Check if we're still in the same session before applying updates
+      if (currentSessionId !== sessionId.value) {
+        console.warn("Session changed during tag operation - discarding results");
+        return;
+      }
+      
+      if (selectedTag.selected !== originalSelectedState) {
         hasUnsavedChanges.value = true;
+      }
+      
+      tags.value = updatedTags;
+      currentImageUrl.value = null;
+    } finally {
+      isRequestInProgress.value = false;
     }
-    tags.value = updatedTags;
-    currentImageUrl.value = null;
   }
 
   function updateTagText(id: string, newText: string) {
@@ -77,8 +105,20 @@ export const useTagStore = defineStore('tags', () => {
   // --- Action to load a saved dream state ---
   function loadDreamState(dreamData: DreamData, dreamId: number | null) {
     console.log("Loading dream state for ID:", dreamId);
-    // Clear any previous viewport states to avoid applying stale views
-    zoneViewportStates.value.clear();
+    
+    // Generate new session ID to invalidate any in-flight requests
+    sessionId.value = generateSessionId();
+    
+    // Clear all previous data first to avoid leaking state
+    // Completely replace viewport map - don't set any defaults
+    zoneViewportStates.value = new Map<string, ViewportState>();
+    
+    loadedDreamId.value = null;
+    currentGeneratedPrompt.value = '';
+    currentImageUrl.value = null;
+    hasUnsavedChanges.value = false;
+    
+    // Validate data
     if (!dreamData || typeof dreamData !== 'object') {
       console.error("Invalid dream data provided to loadDreamState");
       return;
@@ -93,6 +133,9 @@ export const useTagStore = defineStore('tags', () => {
 
     // Start reconstructedTags with base tags
     const reconstructedTags: Tag[] = [...baseTags];
+
+    // Clear tags value first to prevent stale data
+    tags.value = [];
 
     // Overlay saved tag states
     dreamData.tags.forEach(savedTag => {
@@ -133,47 +176,73 @@ export const useTagStore = defineStore('tags', () => {
       }
     });
 
-    // Commit reconstructed tags to store
-    tags.value = reconstructedTags;
-
-    // Set loadedDreamId first so components keyed on it update correctly
-    loadedDreamId.value = dreamId;
-    // Restore focused zone, prompt, image
+    // Set all data synchronously in the correct order
+    loadedDreamId.value = dreamId; // Set ID first
     focusedZone.value = dreamData.focusedZone || zones.value[0];
+    tags.value = reconstructedTags;
     currentGeneratedPrompt.value = dreamData.generatedPrompt || '';
     currentImageUrl.value = dreamData.imageUrl || null;
     hasUnsavedChanges.value = false;
-    console.log("Dream state loaded.");
+    
+    console.log("Dream state loaded synchronously.");
   }
   // ------------------------------------------
+
+  // Helper function to clear session state
+  function clearSessionState() {
+    // Clear all previous data
+    zoneViewportStates.value.clear();
+    loadedDreamId.value = null;
+    currentGeneratedPrompt.value = '';
+    currentImageUrl.value = null;
+    hasUnsavedChanges.value = false;
+  }
 
   // --- Action to reset to initial/current state ---
   function resetToCurrentSession({isNewDream = false}: {isNewDream?: boolean} = {}) {
     console.log('Resetting to current session state');
     
-    // Clear all previous data first to avoid leaking state
-    zoneViewportStates.value.clear();
+    // Generate new session ID to invalidate any in-flight requests
+    sessionId.value = generateSessionId();
+    
+    // Hard reset viewport state - completely replace the map
+    zoneViewportStates.value = new Map<string, ViewportState>();
+    // Don't set any default viewport - this will force the component to use its built-in default
+    // which is properly calculated based on the SVG dimensions and initialZoomScale
+    
+    // First completely reset all state values
     loadedDreamId.value = null;
     currentGeneratedPrompt.value = '';
     currentImageUrl.value = null;
     
-    // First create a completely fresh set of tags with no carry-over
-    // This helps avoid reactivity edge cases
+    // Create completely fresh tags with no previous state
     const freshTagsData = isNewDream ? initializeTags() : JSON.parse(JSON.stringify(initialTagsState));
     
-    // Clear the current tags array to ensure clean reactivity 
+    // Explicitly remove all position data from tags
+    freshTagsData.forEach((tag: Tag) => {
+      delete tag.x;
+      delete tag.y;
+      
+      // Also reset any children
+      if (tag.children) {
+        tag.children.forEach((child: Tag) => {
+          delete child.x;
+          delete child.y;
+        });
+      }
+    });
+    
+    // First clear the tags array - must happen before setting new tags
     tags.value = [];
     
-    // Allow any reactive computations to resolve on the empty array
-    setTimeout(() => {
-      console.log(`Populating tags with fresh data (${freshTagsData.length} items)`);
-      // Then populate with freshly created tags
-      tags.value = freshTagsData;
-      
-      // Set focused zone after tags are populated
-      focusedZone.value = zones.value[0];
-      hasUnsavedChanges.value = false;
-    }, 0);
+    // Immediately set tags to fresh data - no timeout
+    tags.value = freshTagsData;
+    
+    // Set focused zone to default
+    focusedZone.value = zones.value[0];
+    hasUnsavedChanges.value = false;
+    
+    console.log(`Reset completed with ${freshTagsData.length} fresh tags`);
   }
   // ----------------------------------------------
 
@@ -239,6 +308,8 @@ export const useTagStore = defineStore('tags', () => {
     graphLinks,
     loadedDreamId,            // Expose state
     hasUnsavedChanges,         // Expose state
+    sessionId,                // Expose session ID for coordination
+    isRequestInProgress,      // Expose request status
     setDreamsListRefresher,    // Expose action
     refreshDreamsList          // Expose action
   };

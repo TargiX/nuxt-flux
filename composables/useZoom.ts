@@ -113,11 +113,32 @@ export function useZoom() {
     svg.transition().duration(750).call(zoomBehavior.value.transform as any, transform);
   }
 
+  // Function to completely reset the zoom transform to identity with optional duration
+  function hardReset(
+    svgSelection: d3.Selection<SVGSVGElement, unknown, null, undefined> | null,
+    duration: number = 0
+  ) {
+    if (!svgSelection || !zoomBehavior.value || !svgSelection.node()) {
+      return;
+    }
+    
+    // Reset to identity transform (no translation, no scale)
+    const identityTransform = d3.zoomIdentity;
+    
+    if (duration > 0) {
+      svgSelection.transition().duration(duration)
+        .call(zoomBehavior.value.transform as any, identityTransform);
+    } else {
+      svgSelection.call(zoomBehavior.value.transform as any, identityTransform);
+    }
+  }
+
   return {
     initializeZoom,
     zoomIn,
     zoomOut,
-    resetZoom, // applyViewport(svg, undefined) can also be used directly
+    resetZoom, 
+    hardReset, // Add the new hard reset function
     centerOnNode,
     getCurrentViewport,
     applyViewport,

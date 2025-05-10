@@ -99,7 +99,7 @@
             @click="generateImage" 
             severity="primary"
             :disabled="isGenerationDisabled"
-            class="flex items-center gap-2 flex-nowrap whitespace-nowrap px-8 py-1"
+            class="flex items-center gap-2 flex-nowrap whitespace-nowrap pl-7 pr-8 py-1"
           >
             <ProgressSpinner
               v-if="isGeneratingImage"
@@ -107,6 +107,7 @@
               strokeWidth="8" 
               fill="transparent"
             />
+            <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9 4.5a.75.75 0 0 1 .721.544l.813 2.846a3.75 3.75 0 0 0 2.576 2.576l2.846.813a.75.75 0 0 1 0 1.442l-2.846.813a3.75 3.75 0 0 0-2.576 2.576l-.813 2.846a.75.75 0 0 1-1.442 0l-.813-2.846a3.75 3.75 0 0 0-2.576-2.576l-2.846-.813a.75.75 0 0 1 0-1.442l2.846-.813A3.75 3.75 0 0 0 7.466 7.89l.813-2.846A.75.75 0 0 1 9 4.5Zm9-3a.75.75 0 0 1 .728.568l.258 1.036a2.63 2.63 0 0 0 1.91 1.91l1.036.258a.75.75 0 0 1 0 1.456l-1.036.258a2.63 2.63 0 0 0-1.91 1.91l-.258 1.036a.75.75 0 0 1-1.456 0l-.258-1.036a2.624 2.624 0 0 0-1.91-1.91l-1.036-.258a.75.75 0 0 1 0-1.456l1.036-.258a2.625 2.625 0 0 0 1.91-1.91l.258-1.036A.75.75 0 0 1 18 1.5ZM16.5 15a.75.75 0 0 1 .712.513l.394 1.183c.15.447.5.799.948.948l1.183.395a.75.75 0 0 1 0 1.422l-1.183.395a1.5 1.5 0 0 0-.948.948l-.395 1.183a.75.75 0 0 1-1.422 0l-.395-1.183a1.5 1.5 0 0 0-.948-.948l-1.183-.395a.75.75 0 0 1 0-1.422l1.183-.395a1.5 1.5 0 0 0 .948-.948l.395-1.183a.75.75 0 0 1 .71-.513Z" fill="currentColor"></path></svg>
             {{ isGeneratingImage ? 'Generating...' : (isImageCooldown ? 'Cooldown...' : 'Generate Image') }}
           </Button>
         </div>
@@ -148,8 +149,10 @@ const lockReset = (duration = 300) => {
   setTimeout(() => { isResetLocked.value = false }, duration);
 };
 
-// Suppress prompt regeneration on initial dream load
+// First let's add a zone change tracking flag
 const skipPrompt = ref(false);
+const isZoneSwitching = ref(false);
+
 watch(() => tagStore.loadedDreamId, (newId, oldId) => {
   if (newId !== oldId) {
     skipPrompt.value = true;
@@ -189,14 +192,18 @@ watch(focusedZone, (newZone) => {
   selectedZone.value = newZone;
 });
 
-// Watch for changes in selectedZone to switch zones
+// Check the zone watcher to add the zone switching protection
 watch(selectedZone, (newZone, oldZone) => {
   if (newZone && newZone !== oldZone) {
+    // Set flag to prevent prompt generation during zone switch
+    isZoneSwitching.value = true;
     switchToZone(newZone, oldZone || tagStore.focusedZone);
+    // Reset the flag after a delay to allow zone switch to complete
+    setTimeout(() => {
+      isZoneSwitching.value = false;
+    }, 500);
   }
 });
-
-
 
 function debounce<T extends (...args: any[]) => any>(
   func: T,
@@ -216,8 +223,13 @@ function debounce<T extends (...args: any[]) => any>(
   };
 }
 
+// Update the triggerPromptGeneration function to check for zone switching
 const triggerPromptGeneration = debounce(async () => {
-  if (isManualMode.value || isGeneratingPrompt.value) return;
+  // Skip prompt generation if we're in manual mode, already generating,
+  // or during zone switching
+  if (isManualMode.value || isGeneratingPrompt.value || isZoneSwitching.value) {
+    return;
+  }
   
   const tagsString = generatedPrompt.value;
   if (tagsString.length > 0) {
@@ -225,12 +237,13 @@ const triggerPromptGeneration = debounce(async () => {
     const currentRequestId = ++promptRequestId;
     try {
       const result = await generateImagePrompt(tagsString);
-      if (currentRequestId === promptRequestId) {
+      // Check again if zone has changed during generation
+      if (currentRequestId === promptRequestId && !isZoneSwitching.value) {
         tagStore.setCurrentGeneratedPrompt(result, false);
       }
     } catch (error: any) {
       console.error('Failed to generate prompt:', error);
-      if (currentRequestId === promptRequestId) {
+      if (currentRequestId === promptRequestId && !isZoneSwitching.value) {
         tagStore.setCurrentGeneratedPrompt('Error generating prompt.', false);
         toast.add({
           severity: 'error',
@@ -262,7 +275,17 @@ onMounted(() => {
   triggerPromptGeneration();
 });
 
+// Update the handleNodeClick function to be aware of session state
 async function handleNodeClick(id: string) {
+  // Ignore clicks if we're already processing a request
+  if (tagStore.isRequestInProgress) {
+    console.log('Ignoring node click - request already in progress');
+    return;
+  }
+  
+  // Cancel any running prompt generation by incrementing the request ID
+  promptRequestId++;
+  
   console.log('TagCloud received nodeClick:', id);
   try {
     await tagStore.toggleTag(id);
@@ -277,9 +300,50 @@ async function handleNodeClick(id: string) {
   }
 }
 
+// Modify the loadedDreamId watcher to use synchronous reset
+watch(() => tagStore.loadedDreamId, (newId, oldId) => {
+  // Reset all prompt-related state when loading a new dream or clearing to new session
+  promptRequestId++; // Cancel any pending prompt operations
+  skipPrompt.value = true; // Skip immediate regeneration
+  
+  // Reset cooldowns and generation states
+  isGeneratingPrompt.value = false;
+  isGeneratingImage.value = false;
+
+  // Directly reset viewport for new sessions - no timeouts
+  if (newId === null && forceGraphRef.value) {
+    console.log('New session detected - performing immediate viewport reset');
+    forceViewportReset();
+  }
+  
+  // Use a single timeout for optional regeneration later
+  skipPrompt.value = true;
+  setTimeout(() => {
+    skipPrompt.value = false;
+  }, 1000);
+});
+
+// Remove the problematic timeout-based forceViewportReset function
+function forceViewportReset() {
+  if (!forceGraphRef.value) return;
+  
+  console.log('Forcing complete viewport reset with default zoom level');
+  
+  // Always use resetAndCenter which applies the proper default zoom
+  forceGraphRef.value.resetAndCenter();
+}
+
+// Fix switchToZone to properly handle default viewport
 async function switchToZone(newZone: string, oldZone?: string) {
+  // Cancel any running prompt generation by incrementing the request ID
+  promptRequestId++;
+  
+  // Skip prompt generation during zone switch
+  isZoneSwitching.value = true;
+  
   const currentOldZone = oldZone || tagStore.focusedZone;
 
+  // Save viewport of the zone we're leaving
   if (forceGraphRef.value && currentOldZone) {
     const currentViewport = forceGraphRef.value.getCurrentViewport();
     if (currentViewport) {
@@ -291,18 +355,55 @@ async function switchToZone(newZone: string, oldZone?: string) {
   console.log(`Switching from ${currentOldZone} to ${newZone}`);
   tagStore.setFocusedZone(newZone);
 
+  // Wait for the zone change to be processed
   await nextTick();
 
+  // Apply the viewport for the new zone, if available
   if (forceGraphRef.value) {
-    const savedViewport = tagStore.getZoneViewport(newZone);
-    if (savedViewport) {
-      console.log(`Applying saved viewport for ${newZone}:`, savedViewport);
-      forceGraphRef.value.applyViewport(savedViewport);
-    } else {
-      console.log(`No saved viewport for ${newZone}, applying default.`);
+    try {
+      const savedViewport = tagStore.getZoneViewport(newZone);
+      if (savedViewport) {
+        console.log(`Applying saved viewport for ${newZone}:`, savedViewport);
+        // Validate the saved viewport
+        if (isValidViewport(savedViewport)) {
+          forceGraphRef.value.applyViewport(savedViewport);
+        } else {
+          console.warn(`Invalid viewport for ${newZone}, applying default`);
+          forceGraphRef.value.applyViewport();
+        }
+      } else {
+        console.log(`No saved viewport for ${newZone}, applying default.`);
+        forceGraphRef.value.applyViewport();
+      }
+    } catch (err) {
+      console.error('Error applying viewport:', err);
+      // Fallback to default viewport on error
       forceGraphRef.value.applyViewport();
     }
   }
+  
+  // Re-enable prompt generation - no timeout
+  isZoneSwitching.value = false;
+}
+
+// Add a function to validate viewport states
+function isValidViewport(viewport: ViewportState): boolean {
+  // Check for NaN or invalid values
+  if (viewport === null || viewport === undefined) return false;
+  
+  const { x, y, k } = viewport;
+  
+  // Check if properties exist and are valid numbers
+  if (typeof x !== 'number' || typeof y !== 'number' || typeof k !== 'number') {
+    return false;
+  }
+  
+  // Check for NaN, infinity, or zero scale which would break viewport
+  if (isNaN(x) || isNaN(y) || isNaN(k) || !isFinite(x) || !isFinite(y) || !isFinite(k) || k <= 0) {
+    return false;
+  }
+  
+  return true;
 }
 
 const generateImage = async () => {
@@ -361,7 +462,10 @@ function handleNodePositionsUpdated(positions: { id: string; x: number; y: numbe
   );
   
   if (validPositions.length > 0) {
-    console.log('Updating positions for', validPositions.length, 'nodes');
+    // Prevent marking dirty state just from position updates
+    // This avoids the "unsaved changes" warning when just moving nodes around
+    const originalDirtyState = tagStore.hasUnsavedChanges;
+    
     validPositions.forEach(pos => {
       const tag = tagStore.tags.find(t => t.id === pos.id);
       if (tag) {
@@ -369,6 +473,13 @@ function handleNodePositionsUpdated(positions: { id: string; x: number; y: numbe
         tag.y = pos.y;
       }
     });
+    
+    // Restore original dirty state
+    if (!originalDirtyState) {
+      setTimeout(() => {
+        tagStore.markAsSaved();
+      }, 0);
+    }
   }
 }
 
@@ -424,6 +535,23 @@ async function saveDream() {
     isSavingDream.value = false;
   }
 }
+
+// Update manual prompt values when loading dreams
+watch(() => tagStore.currentGeneratedPrompt, (newPrompt) => {
+  if (newPrompt && isManualMode.value) {
+    manualPrompt.value = newPrompt;
+  }
+});
+
+// Watch for store session changes to reset local flags
+watch(() => tagStore.sessionId, () => {
+  // Reset any local state when the store's session changes
+  promptRequestId++;
+  isZoneSwitching.value = false;
+  
+  // Simple synchronous operation - don't use timeouts that cause race conditions
+  skipPrompt.value = false;
+});
 
 </script>
 

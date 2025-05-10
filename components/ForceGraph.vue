@@ -87,6 +87,7 @@ const {
   zoomIn: zoomInFn, 
   zoomOut: zoomOutFn, 
   resetZoom: resetZoomFn, 
+  hardReset: hardResetFn,
   centerOnNode: centerOnNodeFn,
   getCurrentViewport: getCurrentViewportFn,
   applyViewport: applyViewportFn,
@@ -406,28 +407,28 @@ interface ForceGraphExposed {
 defineExpose<ForceGraphExposed>({
   getCurrentViewport: () => getCurrentViewportFn(svg),
   applyViewport: (state?: ViewportState, duration?: number) => {
-    applyViewportFn(svg, state, duration);
+    // If state is undefined, always apply the default viewport with initial zoom scale
+    if (!state) {
+      console.log("ForceGraph applying default viewport with initial zoom scale");
+    } else {
+      console.log(`ForceGraph applying viewport: custom (${state.x.toFixed(2)},${state.y.toFixed(2)},${state.k.toFixed(2)})`);
+    }
+    
+    // Apply the viewport with the specified duration (or default)
+    applyViewportFn(svg, state, duration !== undefined ? duration : 750);
   },
   centerOnNode: (node: { x?: number | null; y?: number | null }) => {
     if (svg) centerOnNodeFn(svg, node);
   },
   resetAndCenter: () => {
-    console.log("ForceGraph hard reset and center called");
-    if (!svg || !simulation) return;
+    console.log("ForceGraph resetAndCenter called - performing full reset");
+    if (!svg || !simulation || !container.value) return;
     
-    // Prevent multiple reset calls in quick succession
-    if (isResetting.value) {
-      console.log("Reset already in progress, skipping");
-      return;
-    }
-    
-    isResetting.value = true;
-    
-    // Force stop any current simulation
+    // Force stop simulation
     simulation.stop();
     
     // Get container dimensions
-    const containerRect = container.value?.getBoundingClientRect();
+    const containerRect = container.value.getBoundingClientRect();
     const width = containerRect?.width || props.width;
     const height = containerRect?.height || props.height;
     
@@ -439,32 +440,35 @@ defineExpose<ForceGraphExposed>({
          .attr('preserveAspectRatio', 'xMidYMid meet');
     }
     
-    // Reset all nodes to center to create the "expand from center" effect
+    // Reset all nodes to center
     const centerX = width / 2;
     const centerY = height / 2;
     
-    if (props.nodes.length > 0) {
-      props.nodes.forEach(node => {
-        node.x = centerX + (Math.random() - 0.5) * 10;
-        node.y = centerY + (Math.random() - 0.5) * 10;
-        node.vx = 0;
-        node.vy = 0;
-      });
-    }
+    // Force all nodes to center 
+    props.nodes.forEach(node => {
+      // Remove and reset positions
+      delete node.x;
+      delete node.y;
+      delete node.vx;
+      delete node.vy;
+      
+      node.x = centerX;
+      node.y = centerY;
+      node.vx = 0;
+      node.vy = 0;
+    });
     
-    // Hard reset zoom to default centered view
+    // Apply default viewport (force initialZoomScale use)
     applyViewportFn(svg, undefined, 0);
     
-    // Update the simulation with current nodes and links
+    // Update simulation and run ticks
     updateSimulation(simulation, props.nodes, props.links, width, height);
+    for (let i = 0; i < 50; i++) {
+      simulation.tick();
+    }
     
-    // Kickstart simulation to allow nodes to spread
+    // Restart simulation at high energy
     simulation.alpha(1).restart();
-    
-    // Clear reset flag after short delay
-    setTimeout(() => {
-      isResetting.value = false;
-    }, 500);
   }
 });
 </script>
