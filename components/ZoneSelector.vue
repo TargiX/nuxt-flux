@@ -3,6 +3,7 @@
     <SelectButton 
       :modelValue="modelValue" 
       :options="options" 
+      severity="primary"
       class="zone-buttons"
       @update:modelValue="$emit('update:modelValue', $event)"
     >
@@ -56,34 +57,46 @@ function addZoneAttributes() {
 
 }
 
+.zone-buttons {
+  button {
+    background: transparent !important;
+    &:hover {
+      color: #fff !important;
+    }
+    .zone-button-content {
+      font-size: .875rem;
+    }
+  }
+}
+
 /* Define styles for each zone */
 :deep(button[aria-pressed="true"]) {
   &[option-zone="Subject"] .p-togglebutton-content {
-    background: linear-gradient(135deg, #C4B3FF 0%, #A38BFE 50%, #65F0D5 100%);
+    background: rgb(62, 25, 164) !important;
   }
   
   &[option-zone="Attributes"] .p-togglebutton-content {
-    background: linear-gradient(135deg, #FFB5EC 0%, #FF8AE2 50%, #FFC46B 100%);
+    background: rgb(62, 25, 164) !important;
   }
   
   &[option-zone="Activity"] .p-togglebutton-content {
-    background: linear-gradient(135deg, #80F0E8 0%, #50E8DC 50%, #3A55D0 100%);
+    background: rgb(62, 25, 164) !important;
   }
   
   &[option-zone="Aesthetics"] .p-togglebutton-content {
-    background: linear-gradient(135deg, #A0E8B8 0%, #80D8A8 50%, #3548D9 100%);
+    background: rgb(62, 25, 164) !important;
   }
   
   &[option-zone="Mood"] .p-togglebutton-content {
-    background: linear-gradient(135deg, #FFD750 0%, #E0B800 50%, #E5383B 100%);
+    background: rgb(62, 25, 164) !important;
   }
   
   &[option-zone="Setting"] .p-togglebutton-content {
-    background: linear-gradient(135deg, #788BFF 0%, #4D63D0 50%, #5E3A85 100%);
+    background: rgb(62, 25, 164) !important;
   }
   
   &[option-zone="Layout"] .p-togglebutton-content {
-    background: linear-gradient(135deg, #FFD870 0%, #E5B845 50%, #FA8055 100%);
+    background: rgb(62, 25, 164) !important;
   }
   
 
@@ -91,7 +104,7 @@ function addZoneAttributes() {
 
 :deep(button[aria-pressed="true"]) {
     .zone-button-content {
-        color: #fff;
+      color: rgb(218 221 255) !important;
     }
 }
 
@@ -111,3 +124,13 @@ function addZoneAttributes() {
   }
 }
 </style> 
+
+<style>
+.zone-buttons {
+  button {
+    background: rgb(33, 22, 58) !important;
+    border: 1px solid rgb(33, 22, 58)  !important;
+    color: #bedfff !important;
+  }
+}
+</style>

@@ -132,14 +132,18 @@ export const useTagStore = defineStore('tags', () => {
   // ------------------------------------------
 
   // --- Action to reset to initial/current state ---
-  function resetToCurrentSession() {
-    console.log("Resetting to current session state");
-    // Re-initialize might be too destructive, let's just clear loaded ID for now
-    // If you want a full reset, you might need to reload initialTagsState
-    // tags.value = JSON.parse(JSON.stringify(initialTagsState));
-    // focusedZone.value = zones.value[0]; 
-    // currentGeneratedPrompt.value = '';
-    // currentImageUrl.value = null;
+  function resetToCurrentSession({isNewDream = false}: {isNewDream?: boolean} = {}) {
+    console.log('Resetting to current session state');
+    if (isNewDream) {
+      // For a new dream, start with completely blank tag list
+      tags.value = initializeTags();
+    } else {
+      // Restore predefined initial tags
+      tags.value = JSON.parse(JSON.stringify(initialTagsState));
+    }
+    focusedZone.value = zones.value[0];
+    currentGeneratedPrompt.value = '';
+    currentImageUrl.value = null;
     loadedDreamId.value = null; // Indicate current session is active
     hasUnsavedChanges.value = false; // Reset flag assumes we revert changes
   }

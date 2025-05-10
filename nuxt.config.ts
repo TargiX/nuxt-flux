@@ -73,9 +73,8 @@ export default defineNuxtConfig({
     public: {
       GEMINI_API_KEY: process.env.GEMINI_API_KEY,
       FLUX_API_KEY: process.env.FLUX_API_KEY,
-      // Add public config structure expected by @hebilicious/authjs-nuxt
       authJs: {
-        baseUrl: process.env.NUXT_NEXTAUTH_URL, // Use the documented env var name
+        baseUrl: process.env.NUXT_NEXTAUTH_URL,
         verifyClientOnEveryRequest: true
       }
     }

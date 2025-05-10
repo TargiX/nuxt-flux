@@ -2,7 +2,7 @@
   <div class="register-container">
     <Card class="register-card">
       <template #title>
-        <h2 class="title">Create Account</h2>
+        <h2 class="title text-center">Create Account</h2>
       </template>
       <template #content>
         <form @submit.prevent="handleRegister">
@@ -68,6 +68,23 @@
             <div class="form-field">
               <Button label="Create Account" type="submit" :loading="loading" class="w-full submit-button" />
             </div>
+
+            <div class="form-field social-login-divider">
+              <span class="divider-line"></span>
+              <span class="divider-text">Or sign up with</span>
+              <span class="divider-line"></span>
+            </div>
+
+            <div class="form-field">
+              <Button 
+                label="Sign up with Google" 
+                icon="pi pi-google" 
+                @click="handleGoogleSignUp" 
+                class="w-full p-button-secondary google-button" 
+                :loading="googleLoading"
+              />
+            </div>
+
           </div>
         </form>
       </template>
@@ -82,8 +99,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, watch } from 'vue'
 // No need to import PrimeVue components here - they're automatically imported
+
+// Use nuxt-auth composable
+const { signIn, status } = useAuth()
+
+// Log initial status
+console.log('Initial auth status on register page:', status.value);
 
 // Page meta
 definePageMeta({
@@ -104,6 +127,15 @@ const loading = ref(false)
 const checkingEmail = ref(false)
 const emailChecked = ref(false)
 const emailError = ref<string | null>(null)
+const googleLoading = ref(false)
+
+// Watch for authentication status changes
+watch(status, (newStatus) => {
+  console.log('Auth status changed on register page to:', newStatus)
+  if (newStatus === 'authenticated') {
+    navigateTo('/');
+  }
+}, { immediate: true });
 
 // Password validation state
 const passwordChecks = reactive({
@@ -247,7 +279,7 @@ const handleRegister = async () => {
       
       // Redirect to login after a short delay
       setTimeout(() => {
-        navigateTo('/login')
+        navigateTo('/')
       }, 2000)
     }
   } catch (err) {
@@ -258,6 +290,24 @@ const handleRegister = async () => {
     loading.value = false
   }
 }
+
+// Handle Google Sign-Up (which is the same as Sign-In for Google)
+const handleGoogleSignUp = async () => {
+  googleLoading.value = true;
+  errorMsg.value = null; // Clear previous errors
+  successMsg.value = null; // Clear previous success messages
+  try {
+    await signIn('google');
+    // If redirect occurs, this part might not be reached.
+    // Nuxt-auth and page guards handle post-login flow.
+  } catch (err: any) {
+    console.error('Google Sign-Up Invocation Error:', err);
+    const message = err.message || 'An error occurred while trying to sign up with Google.';
+    errorMsg.value = message;
+  } finally {
+    googleLoading.value = false;
+  }
+};
 </script>
 
 <style scoped lang="scss">
@@ -267,26 +317,40 @@ const handleRegister = async () => {
   align-items: center;
   min-height: calc(100vh - 100px);
   padding: 2rem;
+  z-index: 2;
 }
 
 .register-card {
-  width: 100%;
-  max-width: 450px;
+  position: relative;
+  z-index: 0;
+  overflow: hidden;
+  background-color: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.3);
+  width: 440px;
+  padding: 2rem;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -50%;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    z-index: -1;
+  }
 
   :deep(.p-card-title) {
     padding: 0;
   }
-
   :deep(.p-card-content) {
     padding-top: 0;
   }
+}
 
-  .title {
-    font-size: 1.75rem;
-    font-weight: 600;
-    margin: 0 0 1rem;
-    color: #1e293b;
-  }
+.title {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin: 0 0 1rem;
+  color: #d7e2f1;
 }
 
 .form-container {
@@ -298,123 +362,171 @@ const handleRegister = async () => {
 .form-field {
   display: flex;
   flex-direction: column;
-  
-  label {
-    font-weight: 500;
-    margin-bottom: 0.5rem;
-    color: #374151;
-  }
+}
 
-  :deep(.p-password) {
-    width: 100%;
-    
-    input {
-      width: 100%;
-    }
-    
-    .p-password-input {
-      width: 100%;
-    }
-    
-    .p-inputtext {
-      width: 100%;
-    }
-  }
+label {
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  color: #e9f1fb;
+}
 
-  .field-help {
-    margin-top: 0.5rem;
-    color: #6b7280;
-    font-size: 0.875rem;
-  }
+.input,
+:deep(.p-inputtext),
+:deep(.p-password-input),
+:deep(.p-password input) {
+  width: 100%;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.15);
+  color: #e9f1fb;
+  border: 1px solid rgba(255,255,255,0.25);
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 2px 0 rgba(16, 30, 54, 0.03);
+}
+
+.input:focus,
+:deep(.p-inputtext:focus),
+:deep(.p-password-input:focus),
+:deep(.p-password input:focus) {
+  outline: none;
+  border-color: #3caaff;
+  background: rgba(255,255,255,0.22);
+}
+
+.field-help {
+  margin-top: 0.5rem;
+  color: #b6bdcb;
+  font-size: 0.875rem;
+}
+.field-help.error {
+  color: #ef4444;
 }
 
 .password-requirements {
   margin-top: 0.75rem;
   padding: 0.75rem;
-  background-color: #f8fafc;
+  background-color: rgba(40, 54, 75, 0.25);
   border-radius: 0.375rem;
   font-size: 0.875rem;
-  
-  .requirement {
-    display: flex;
-    align-items: center;
-    margin-bottom: 0.375rem;
-    color: #64748b;
-    
-    &:last-child {
-      margin-bottom: 0;
-    }
-    
-    &.met {
-      color: #16a34a;
-    }
-    
-    i {
-      margin-right: 0.5rem;
-      font-size: 1rem;
-    }
-    
-    &:not(.met) i {
-      color: #ef4444;
-    }
-  }
+  color: #b6bdcb;
+}
+.password-requirements .requirement {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.375rem;
+  color: #b6bdcb;
+}
+.password-requirements .requirement:last-child {
+  margin-bottom: 0;
+}
+.password-requirements .requirement.met {
+  color: #38e38a;
+}
+.password-requirements .requirement i {
+  margin-right: 0.5rem;
+  font-size: 1rem;
+}
+.password-requirements .requirement:not(.met) i {
+  color: #ef4444;
 }
 
-.submit-button {
+.submit-button,
+.btn-primary {
   margin-top: 0.5rem;
   height: 2.75rem;
   font-weight: 500;
+  background: linear-gradient(90deg, #3caaff 0%, #46c3e5 100%);
+  border: none;
+  color: #fff;
+  box-shadow: 0 2px 10px 0 rgba(60,170,255,0.08);
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+.submit-button:hover,
+.btn-primary:hover {
+  background: linear-gradient(90deg, #46c3e5 0%, #3caaff 100%);
 }
 
-.sign-in-link {
-  color: #6366f1;
+.btn-secondary {
+  background: rgba(255,255,255,0.08);
+  color: #3caaff;
+  border: 1px solid #3caaff;
+  border-radius: 6px;
   font-weight: 500;
-  transition: color 0.2s;
-  
-  &:hover {
-    color: #4f46e5;
-    text-decoration: underline;
-  }
+  transition: background 0.2s, color 0.2s;
+}
+.btn-secondary:hover {
+  background: #3caaff;
+  color: #fff;
 }
 
 .email-input-container {
   position: relative;
   width: 100%;
-  
-  :deep(.p-inputtext) {
-    width: 100%;
-  }
 }
-
+.email-input-container :deep(.p-inputtext) {
+  width: 100%;
+}
 .email-status-icon {
   position: absolute;
   right: 1rem;
   top: 50%;
   transform: translateY(-50%);
   font-size: 1.25rem;
-  
-  &.checking {
-    color: #6b7280;
-    animation: spin 1s linear infinite;
-  }
-  
-  &.available {
-    color: #10b981; // green
-  }
-  
-  &.taken {
-    color: #ef4444; // red
-  }
 }
-
+.email-status-icon.checking {
+  color: #b6bdcb;
+  animation: spin 1s linear infinite;
+}
+.email-status-icon.available {
+  color: #38e38a;
+}
+.email-status-icon.taken {
+  color: #ef4444;
+}
 @keyframes spin {
   0% { transform: translateY(-50%) rotate(0deg); }
   100% { transform: translateY(-50%) rotate(360deg); }
 }
 
-.field-help {
-  &.error {
-    color: #ef4444;
-  }
+.social-login-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 0rem 0;
+  color: #b6bdcb;
 }
-</style> 
+.social-login-divider .divider-line {
+  flex-grow: 1;
+  height: 1px;
+  background-color: #29374a;
+}
+.social-login-divider .divider-text {
+  padding: 0 1rem;
+  font-size: 0.875rem;
+  color: #b6bdcb;
+}
+
+.google-button {
+  // Optional: Add specific styling for Google button if p-button-secondary isn't enough
+}
+
+.footer-text {
+  color: #929dac;
+  margin-top: 1.5rem;
+  font-size: 1rem;
+  text-align: center;
+}
+
+.sign-in-link {
+  color: #3caaff;
+  font-weight: 500;
+  transition: color 0.2s;
+  margin-left: 0.25rem;
+}
+.sign-in-link:hover {
+  color: #46c3e5;
+  text-decoration: underline;
+}
+</style>

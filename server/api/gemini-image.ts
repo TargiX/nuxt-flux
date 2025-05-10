@@ -64,7 +64,24 @@ export default defineEventHandler(async (event) => {
 
     // 6) Parse the response to find the image data
     if (response && response.candidates && response.candidates.length > 0) {
-      const parts = response.candidates[0].content.parts;
+      const firstCandidate = response.candidates[0];
+      if (!firstCandidate.content) {
+        console.error('Gemini API Error: First candidate has no content property.', firstCandidate);
+        throw createError({
+          statusCode: 500,
+          statusMessage: 'Gemini Image API Error: Response candidate is missing content property.',
+        });
+      }
+
+      const parts = firstCandidate.content.parts;
+      if (!parts) {
+        console.error('Gemini API Error: First candidate content has no parts property.', firstCandidate.content);
+        throw createError({
+          statusCode: 500,
+          statusMessage: 'Gemini Image API Error: Response candidate content is missing parts property.',
+        });
+      }
+
       for (const part of parts) {
         if (part.inlineData) {
           // Return the base64 image string directly

@@ -59,7 +59,7 @@
             v-model="isManualMode" 
           />
         </div>
-      <div class="prompt-box w-full">
+      <div class="prompt-box w-full max-h-[100px] overflow-y-auto">
     
         
         <Textarea
@@ -68,7 +68,7 @@
           class="manual-prompt-input text-[var(--text-color)] h-[calc(100%-10px)] w-full p-2"
           placeholder="Enter your prompt..."
         ></Textarea>
-        <p class="text-[#474565]" v-else>{{ tagStore.currentGeneratedPrompt }}</p>
+        <p class="text-white-palette" v-else>{{ tagStore.currentGeneratedPrompt }}</p>
         
      
       </div>
@@ -278,12 +278,12 @@ const generateImage = async () => {
     const imageUrl = await generateImageFromPrompt(promptText);
     if (currentImageRequestId === imageRequestId) {
       tagStore.setCurrentImageUrl(imageUrl);
-      toast.add({
-        severity: 'success',
-        summary: 'Image Generated',
-        detail: 'Image generated successfully!',
-        life: 3000,
-      });
+      // toast.add({
+      //   severity: 'success',
+      //   summary: 'Image Generated',
+      //   detail: 'Image generated successfully!',
+      //   life: 3000,
+      // });
     }
   } catch (error: any) {
     console.error('Failed to generate image:', error);

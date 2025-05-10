@@ -279,7 +279,7 @@ export function useNodeStyling() {
           .attr('text-anchor', 'middle')
           .attr('dominant-baseline', 'hanging')
           .attr('font-size', '10px')
-          .attr('fill', 'rgba(0, 0, 0, 0.8)')
+          .attr('fill', 'rgba(255, 255, 255, 0.8)')
           .attr('font-weight', d.selected ? '600' : '500')
           .attr('text-shadow', '0 0 4px rgba(255, 255, 255, 0.9)')
           .style('cursor', 'text')

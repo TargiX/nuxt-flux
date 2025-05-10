@@ -36,7 +36,7 @@
     margin-bottom: 0.75rem; 
     color: v.$text-color;
     flex-shrink: 0;
-    font-size: 1.2rem;
+    font-size: 1rem;
     font-weight: 500;
   }
   
@@ -123,6 +123,7 @@
   .prompt-box {
      /* Styles seem okay, ensure flex-grow: 1 allows it to expand/shrink */
      flex-grow: 1; 
+     font-size: .875rem;
      min-height: 100px; /* Give it some base height */
   }
 
