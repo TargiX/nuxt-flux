@@ -90,8 +90,9 @@
               class="w-4 h-4 progress-spinner" 
               strokeWidth="8" 
               fill="transparent"
+              :style="{ color: saveStatus === 'Saved!' ? 'green' : 'white' }"
             />
-            {{ isSavingDream ? 'Saving...' : 'Save' }}
+            {{ isSavingDream ? 'Saving...'  :  saveStatus ? 'Saved' : 'Save' }}
           </Button>
           <Button 
             @click="generateImage" 
@@ -109,7 +110,6 @@
           </Button>
         </div>
       </div>
-      <div v-if="saveStatus" class="save-status text-xs mt-1" :class="{ 'text-green-400': saveStatus === 'Saved!', 'text-red-400': saveStatus.startsWith('Error') }">{{ saveStatus }}</div>
     </div>
 
   </div>
@@ -338,18 +338,11 @@ async function saveDream() {
     imageUrl: tagStore.currentImageUrl
   };
 
-  const title = dreamData.tags
-    .filter((t: Tag) => t.selected)
-    .slice(0, 3)
-    .map((t: Tag) => t.text)
-    .join(', ') || 'Untitled Dream';
-
   try {
     const response = await $fetch<{ id: number }>('/api/dreams', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        title: title,
         data: dreamData,
       })
     });

@@ -3,7 +3,7 @@
     <!-- D3 SVG will be appended here -->
     
     <!-- Controls container -->
-    <div class="controls-overlay absolute bottom-4 left-4 right-4 justify-between items-center">
+    <div class="controls-overlay absolute bottom-4 justify-between items-center">
       <!-- Slot for additional controls like zone selector -->
           <!-- Existing Zoom controls -->
       <div class="zoom-controls flex justify-end flex-col gap-2 w-7 ml-auto mb-5">

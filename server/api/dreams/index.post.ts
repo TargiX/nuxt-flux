@@ -1,7 +1,9 @@
 import prisma from '~/server/utils/db';
-import { defineEventHandler, readBody, createError } from 'h3';
+import { defineEventHandler, readBody, createError, H3Event } from 'h3';
 import { z } from 'zod';
 import logger from '~/utils/logger';
+import { getServerSession } from '#auth';
+import { authOptions } from '~/server/api/auth/[...]';
 
 // --- Zod Schema Definition ---
 const BaseTagSchema = z.object({
@@ -34,7 +36,7 @@ const DreamDataSchema = z.object({
 });
 // ---------------------------
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async (event: H3Event) => {
   // --- Rate Limiting Placeholder --- 
   // TODO: Implement rate limiting logic here.
   // Example: Check user's save count within a time window.
@@ -47,17 +49,15 @@ export default defineEventHandler(async (event) => {
   // ----------------------------------
 
   // --- Authentication Check --- 
-  // Assuming authentication middleware adds user info to context
-  // Example: event.context.auth = { userId: 'some-user-id' }
-  const userId = event.context.auth?.userId as string | undefined;
-
-  if (!userId) {
-      logger.error('Authentication Error: Missing userId in request context.');
-      throw createError({
-          statusCode: 401,
-          statusMessage: 'Unauthorized: User authentication required.',
-      });
+  const session = await getServerSession(event, authOptions);
+  if (!session || !session.user || !session.user.id) {
+    logger.error('Authentication Error: Missing user session or user ID.');
+    throw createError({
+      statusCode: 401,
+      statusMessage: 'Unauthorized: User authentication required.',
+    });
   }
+  const userId = session.user.id as string; // Use ID from session
   // ----------------------------
 
   try {
@@ -86,10 +86,23 @@ export default defineEventHandler(async (event) => {
     const validatedData = validationResult.data;
     // ----------------------
 
-    logger.debug(`[POST /api/dreams] Saving dream for user ${userId}`);
+    // Determine the title for the dream
+    let dreamTitle = title; // Use provided title by default
+    if (!dreamTitle && validatedData.generatedPrompt) {
+      const words = validatedData.generatedPrompt.split(/\s+/).slice(0, 6); // Get first 6 words
+      dreamTitle = words.join(' ');
+      if (validatedData.generatedPrompt.split(/\s+/).length > 6) {
+        dreamTitle += '...'; // Add ellipsis if prompt was longer
+      }
+    }
+    if (!dreamTitle) {
+      dreamTitle = 'Untitled Dream'; // Fallback if no prompt and no title
+    }
+
+    logger.debug(`[POST /api/dreams] Saving dream for user ${userId} with title: ${dreamTitle}`);
     const dream = await prisma.dream.create({
       data: {
-        title, 
+        title: dreamTitle, 
         // Prisma expects 'JsonValue', validatedData should be compatible
         data: validatedData as any, // Cast needed as Prisma Json type is broad
         userId: userId, // Associate dream with the authenticated user
