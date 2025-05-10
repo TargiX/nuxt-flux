@@ -45,21 +45,21 @@
           <ul class="dreams-list">
             <li 
               class="dream-item new-dream-item"
-              v-if="tagStore.hasUnsavedChanges || tagStore.loadedDreamId !== null"
-              @click.stop="handleAddNewDream"
+              v-if="tagStore.hasUnsavedChanges || tagStore.loadedDreamId !== null" 
+              @click.stop="handleAddNewDream" 
             >
               <i class="pi pi-plus-circle mr-2 text-xs"></i>
               <span>New Dream</span>
             </li>
             <li 
               class="dream-item unsaved" 
-              v-if="tagStore.loadedDreamId === null"
+              v-if="tagStore.loadedDreamId === null" 
               :class="{ 'active-dream': tagStore.loadedDreamId === null }" 
               @click="loadDream(null)"
             >
               <i class="pi pi-pencil mr-2 text-xs"></i>
               <span>
-                  Unsaved Session
+                Current Session 
                 <span v-if="tagStore.hasUnsavedChanges && tagStore.loadedDreamId === null" class="unsaved-indicator">*</span>
               </span>
             </li>
@@ -79,24 +79,26 @@
               :class="{ 'active-dream': tagStore.loadedDreamId === dream.id }" 
               @click="loadDream(dream)"
             >
-              <template v-if="editingDreamId === dream.id">
-                <InputText 
-                  v-model="editingTitle" 
-                  class="inline-edit-title-input"
-                  @keyup.enter="saveDreamTitle(dream)" 
-                  @keyup.esc="cancelEditDreamTitle" 
-                  @blur="saveDreamTitle(dream)" 
-                  autofocus 
-                />
-              </template>
-              <template v-else>
-                <span class="dream-title">{{ dream.title || 'Untitled Dream' }}</span>
-                <span v-if="tagStore.hasUnsavedChanges && tagStore.loadedDreamId === dream.id" class="unsaved-indicator">*</span>
-              </template>
-              <Button 
+            <!-- Inline editing for dream title -->
+            <template v-if="editingDreamId === dream.id">
+              <InputText 
+                ref="titleInputRef" 
+                v-model="editingTitle" 
+                class="inline-edit-title-input"
+                @keyup.enter="saveDreamTitle(dream)" 
+                @keyup.esc="cancelEditDreamTitle" 
+                @blur="saveDreamTitle(dream)" 
+                autofocus 
+              />
+            </template>
+            <template v-else>
+              <span class="dream-title">{{ dream.title || 'Untitled Dream' }}</span>
+              <span v-if="tagStore.hasUnsavedChanges && tagStore.loadedDreamId === dream.id" class="unsaved-indicator">*</span>
+            </template>
+            <Button 
                 icon="pi pi-ellipsis-v" 
                 class="p-button-text p-button-sm p-button-rounded dream-actions-button"
-                @click.stop="toggleDreamActionMenu($event, dream)"
+                @click.stop="toggleDreamActionMenu($event, dream, dreamActionMenu)" 
                 aria-haspopup="true"
                 aria-controls="dream_action_menu"
               />
@@ -156,234 +158,61 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue';
-import type { Dream } from '~/types/dream';
-import { useTagStore } from '~/store/tagStore'; // Import the store
-// import Toast from 'primevue/toast'; // Removed duplicate import
-import { useConfirm } from "primevue/useconfirm";
-import ConfirmDialog from 'primevue/confirmdialog';
-import Menu from 'primevue/menu'; // Import Menu
-import InputText from 'primevue/inputtext'; // Import InputText
-import { useToast } from 'primevue/usetoast'; // Import useToast
+import { ref, watch, nextTick } from 'vue'; // Removed watch, onMounted as they are in composable
+// import type { Dream } from '~/types/dream'; // Type usage is now within composable
+import { useTagStore } from '~/store/tagStore'; 
+// PrimeVue components used in the template still need to be imported here.
+import Toast from 'primevue/toast'; 
+// ConfirmDialog is in app.vue, useConfirm is handled by composable
+import Menu from 'primevue/menu'; 
+import InputText from 'primevue/inputtext'; 
+// useToast is handled by composable
 
-const { status, session, signIn, signOut } = useAuth();
-const tagStore = useTagStore(); // Initialize the store
-const confirm = useConfirm(); // Initialize confirmation service
-const toast = useToast(); // Initialize toast service
+import { useDreamManagement } from '~/composables/useDreamManagement';
 
-// --- Refs for Dream Actions Menu ---
+const { status, session, signIn, signOut } = useAuth(); // Keep auth related logic
+const tagStore = useTagStore(); // Still needed for direct template bindings if any (e.g., active-dream class)
+
+// Initialize dream management logic from composable
+const {
+  isDreamsOpen,
+  savedDreams,
+  pending,
+  error,
+  menuItems,
+  editingDreamId,
+  editingTitle,
+  // refreshDreamsListAPI, // Not directly called from template, store has the reference
+  handleAddNewDream,
+  loadDream,
+  toggleDreamActionMenu,
+  // startEditingDreamTitle, // Called by menu item command within composable
+  saveDreamTitle,
+  cancelEditDreamTitle,
+} = useDreamManagement();
+
+// Ref for the Menu component instance - this needs to stay in the component that renders the Menu
 const dreamActionMenu = ref();
-const selectedDreamForMenu = ref<Dream | null>(null);
-const menuItems = ref([
-  {
-    label: 'Rename',
-    icon: 'pi pi-pencil',
-    command: () => {
-      if (selectedDreamForMenu.value) {
-        startEditingDreamTitle(selectedDreamForMenu.value);
-      }
-    }
-  },
-  // Add other actions like 'Delete' here later
-]);
+const titleInputRef = ref<any>(null); // Ref for the InputText component
 
-function toggleDreamActionMenu(event: MouseEvent, dream: Dream) {
-  selectedDreamForMenu.value = dream;
-  dreamActionMenu.value.toggle(event);
-}
-
-// Placeholder for editing logic (Step 2.3)
-const editingDreamId = ref<number | null>(null);
-const editingTitle = ref('');
-
-function startEditingDreamTitle(dream: Dream) {
-  editingDreamId.value = dream.id;
-  editingTitle.value = dream.title || '';
-  // We will replace the span with an input in the template
-}
-
-async function saveDreamTitle(dream: Dream) {
-  if (editingDreamId.value === null || !dream) return;
-  const originalTitle = dream.title;
-  const newTitle = editingTitle.value.trim();
-
-  if (!newTitle) {
-    toast.add({ severity: 'warn', summary: 'Validation', detail: 'Title cannot be empty.', life: 3000 });
-    // Optionally, revert to originalTitle in the input or just cancel edit
-    editingTitle.value = originalTitle || ''; // Revert input to original if empty
-    // Do not close edit mode, let user correct or cancel
-    return; 
-  }
-
-  if (newTitle === originalTitle) {
-    editingDreamId.value = null; // No change, just close edit mode
-    editingTitle.value = '';
-    return;
-  }
-
-  try {
-    const { data: updatedDream, error } = await useFetch(`/api/dreams/${dream.id}`, {
-      method: 'PUT',
-      body: { title: newTitle },
-      watch: false // We will manually refresh or update
-    });
-
-    if (error.value) {
-      console.error('Error updating dream title:', error.value);
-      toast.add({ severity: 'error', summary: 'Error', detail: error.value.data?.message || 'Could not update title.', life: 3000 });
-      // Optionally, revert title in UI or keep input open for retry
-      // For now, we keep the input open with the attempted new title.
-    } else if (updatedDream.value) {
-      toast.add({ severity: 'success', summary: 'Success', detail: 'Dream title updated!', life: 3000 });
-      // Update the local list directly for immediate feedback
-      const dreamInList = savedDreams.value?.find(d => d.id === dream.id);
-      if (dreamInList) {
-        dreamInList.title = (updatedDream.value as Dream).title;
-      }
-      // It might still be good to call the store's refresh to ensure full consistency
-      // if other parts of the app depend on the raw `savedDreams` fetch.
-      // However, direct update is faster for UI.
-      // Consider if tagStore.refreshDreamsList() is needed or if direct update is sufficient.
-      // For now, let's assume direct update + the existing refresh mechanism for savedDreams is enough.
-      // If not, uncomment: tagStore.refreshDreamsList(); 
-    }
-  } catch (err) { // Catch for network errors or other unexpected issues with useFetch itself
-    console.error('Network or fetch setup error updating dream title:', err);
-    toast.add({ severity: 'error', summary: 'Network Error', detail: 'Could not reach server to update title.', life: 3000 });
-  }
-  
-  // Close edit mode regardless of success/failure for this attempt
-  // User can re-try if it failed.
-  editingDreamId.value = null;
-  editingTitle.value = '';
-}
-
-function cancelEditDreamTitle() {
-  editingDreamId.value = null;
-  editingTitle.value = '';
-}
-// --------------------------------
-
-// State for dreams list - Initialize from localStorage
-const isDreamsOpen = ref(false); 
-
-// Fetch saved dreams
-const { data: savedDreams, pending, error, refresh } = useFetch<Dream[]>('/api/dreams', { 
-  lazy: true, 
-  default: () => [],
-  watch: [status] // Restore watch for status
-});
-
-// --- Inject refresh function into the store ---
-onMounted(() => {
-  // Ensure refresh is available before setting it
-  if (refresh) {
-    tagStore.setDreamsListRefresher(refresh);
-  }
-  const storedState = localStorage.getItem('dreamsListOpen');
-  isDreamsOpen.value = storedState === 'true';
-});
-// ---------------------------------------------
-
-// Watch for changes and save to localStorage
-watch(isDreamsOpen, (newValue) => {
-  localStorage.setItem('dreamsListOpen', String(newValue));
-});
-
-// --- Function to handle creating a new dream ---
-function handleAddNewDream() {
-  if (tagStore.hasUnsavedChanges) {
-    console.log('Unsaved changes detected');
-    confirm.require({
-      message: 'You have unsaved changes. Do you want to save them before starting a new dream?',
-      header: 'Unsaved Changes',
-      icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Save & Start New',
-      rejectLabel: 'Start New Without Saving',
-      accept: async () => {
-        console.log('Save & Start New selected');
-        // Assuming a save function exists or will be implemented in the store
-        // await tagStore.saveCurrentDream(); 
-        console.warn('Programmatic saving before new dream not implemented yet. Starting new without saving.');
-        tagStore.resetToCurrentSession({isNewDream: true});
-        // Ensure the dreams list stays open or opens if it was closed by an action
-        isDreamsOpen.value = true; 
-      },
-      reject: () => {
-        console.log('Start New Without Saving selected');
-        tagStore.resetToCurrentSession({isNewDream: true});
-        isDreamsOpen.value = true;
-      }
-    });
-  } else {
-    // No unsaved changes, proceed directly
-    tagStore.resetToCurrentSession({isNewDream: true});
-    isDreamsOpen.value = true;
-  }
-}
-// ---------------------------------------------
-
-// --- Updated Function to Load Dream State with Confirmation ---
-function loadDream(dream: Dream | null) {
-  const targetDreamId = dream ? dream.id : null;
-  console.log('Loading Dream ID:', targetDreamId);
-  // Check if we are trying to load a *different* dream and if there are unsaved changes
-  if (tagStore.hasUnsavedChanges && tagStore.loadedDreamId !== targetDreamId) {
-    confirm.require({
-      message: 'You have unsaved changes. Do you want to save them before loading the new dream?',
-      header: 'Unsaved Changes',
-      icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Save & Load',
-      rejectLabel: 'Load Without Saving',
-      accept: async () => {
-        // User wants to save first
-        console.log('Save & Load selected');
-        // Find the save button in TagCloud and click it programmatically? - This is tricky.
-        // **Alternative/Better:** Need a dedicated save action in the store.
-        // await tagStore.saveCurrentDream(); // Assuming this action exists
-        console.warn('Programmatic saving before load not implemented yet. Loading without saving.');
-        proceedWithLoad(dream);
-      },
-      reject: () => {
-        // User wants to discard changes
-        console.log('Load Without Saving selected');
-        proceedWithLoad(dream);
-      }
-      // Implicit cancel: If the user closes the dialog, nothing happens.
-    });
-  } else {
-    // No unsaved changes, or loading the same dream again: proceed directly
-    proceedWithLoad(dream);
-  }
-}
-
-// Helper function to actually load the state
-function proceedWithLoad(dream: Dream | null) {
-   const targetDreamId = dream ? dream.id : null;
-   
-   if (targetDreamId !== tagStore.loadedDreamId) { // Only load if it's different
-        if (dream && dream.data) {
-            console.log(`Loading Dream ID: ${dream.id}`);
-            tagStore.loadDreamState(dream.data, dream.id); 
-        } else if (dream === null) {
-            console.log("Resetting to Current Session");
-            tagStore.resetToCurrentSession(); // Use the reset action
-        } else {
-            console.error("Attempted to load invalid dream data", dream);
+// Watch for editingDreamId to change, then focus the input
+watch(editingDreamId, (newId) => {
+  if (newId !== null) {
+    nextTick(() => {
+      // PrimeVue InputText might have the focus method on the component itself
+      // or on its underlying input element ($el). Check PrimeVue docs if direct .focus() fails.
+      if (titleInputRef.value) {
+        if (typeof titleInputRef.value.focus === 'function') {
+          titleInputRef.value.focus(); 
+        } else if (titleInputRef.value.$el && typeof titleInputRef.value.$el.focus === 'function') {
+          titleInputRef.value.$el.focus();
         }
-    } else {
-        console.log("Clicked already active dream. Closing list.");
-    }
-}
-// ---------------------------------
+      }
+    });
+  }
+});
 
-// Optional: Log fetched data for debugging
-watch(savedDreams, (newDreams) => {
-  console.log('Fetched Dreams:', newDreams);
-});
-watch(error, (newError) => {
-  if (newError) console.error('Error fetching dreams:', newError);
-});
+// Any other component-specific logic for default.vue that was not moved...
 
 </script>
 
