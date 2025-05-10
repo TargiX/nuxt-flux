@@ -34,8 +34,11 @@ interface GraphData {
 }
 
 export function computeGraphData(tags: Tag[], focusedZone: string): GraphData {
-  // Get visible nodes
-  const zoneTags = tags.filter(t => t.zone === focusedZone);
+  // Validate tags first
+  const validTags = tags.filter(tag => tag && typeof tag.id === 'string');
+  
+  // Get visible nodes for the current zone
+  const zoneTags = validTags.filter(t => t.zone === focusedZone);
   const topLevel = zoneTags.filter(t => !t.parentId);
   
   if (!topLevel.some(t => t.selected)) {

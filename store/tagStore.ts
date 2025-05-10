@@ -6,6 +6,7 @@ import type { Tag } from '~/types/tag';
 import { initializeTags, getAvailableZones } from '~/services/tagProcessingService';
 import { toggleTag } from '~/services/tagSelectionService';
 import { computeGraphData } from '~/services/graphLayoutService';
+import type { ViewportState } from '~/composables/useZoom';
 
 // Interface for the saved dream data structure (subset of what's saved)
 interface DreamData {
@@ -13,13 +14,6 @@ interface DreamData {
   tags: Tag[];
   generatedPrompt?: string; // Optional
   imageUrl?: string | null; // Optional
-}
-
-// Interface for D3 zoom transform (simplified)
-interface ViewportState {
-  x: number;
-  y: number;
-  k: number; // Zoom scale
 }
 
 export const useTagStore = defineStore('tags', () => {
@@ -83,6 +77,8 @@ export const useTagStore = defineStore('tags', () => {
   // --- Action to load a saved dream state ---
   function loadDreamState(dreamData: DreamData, dreamId: number | null) {
     console.log("Loading dream state for ID:", dreamId);
+    // Clear any previous viewport states to avoid applying stale views
+    zoneViewportStates.value.clear();
     if (!dreamData || typeof dreamData !== 'object') {
       console.error("Invalid dream data provided to loadDreamState");
       return;
@@ -140,11 +136,12 @@ export const useTagStore = defineStore('tags', () => {
     // Commit reconstructed tags to store
     tags.value = reconstructedTags;
 
+    // Set loadedDreamId first so components keyed on it update correctly
+    loadedDreamId.value = dreamId;
     // Restore focused zone, prompt, image
     focusedZone.value = dreamData.focusedZone || zones.value[0];
     currentGeneratedPrompt.value = dreamData.generatedPrompt || '';
     currentImageUrl.value = dreamData.imageUrl || null;
-    loadedDreamId.value = dreamId;
     hasUnsavedChanges.value = false;
     console.log("Dream state loaded.");
   }
@@ -153,18 +150,30 @@ export const useTagStore = defineStore('tags', () => {
   // --- Action to reset to initial/current state ---
   function resetToCurrentSession({isNewDream = false}: {isNewDream?: boolean} = {}) {
     console.log('Resetting to current session state');
-    if (isNewDream) {
-      // For a new dream, start with completely blank tag list
-      tags.value = initializeTags();
-    } else {
-      // Restore predefined initial tags
-      tags.value = JSON.parse(JSON.stringify(initialTagsState));
-    }
-    focusedZone.value = zones.value[0];
+    
+    // Clear all previous data first to avoid leaking state
+    zoneViewportStates.value.clear();
+    loadedDreamId.value = null;
     currentGeneratedPrompt.value = '';
     currentImageUrl.value = null;
-    loadedDreamId.value = null; // Indicate current session is active
-    hasUnsavedChanges.value = false; // Reset flag assumes we revert changes
+    
+    // First create a completely fresh set of tags with no carry-over
+    // This helps avoid reactivity edge cases
+    const freshTagsData = isNewDream ? initializeTags() : JSON.parse(JSON.stringify(initialTagsState));
+    
+    // Clear the current tags array to ensure clean reactivity 
+    tags.value = [];
+    
+    // Allow any reactive computations to resolve on the empty array
+    setTimeout(() => {
+      console.log(`Populating tags with fresh data (${freshTagsData.length} items)`);
+      // Then populate with freshly created tags
+      tags.value = freshTagsData;
+      
+      // Set focused zone after tags are populated
+      focusedZone.value = zones.value[0];
+      hasUnsavedChanges.value = false;
+    }, 0);
   }
   // ----------------------------------------------
 

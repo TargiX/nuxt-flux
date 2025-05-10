@@ -5,7 +5,6 @@
     <div class="graph-container glass-card">
       <h2 class="zone-title">{{ focusedZone }}</h2>
       <ForceGraph
-        :key="focusedZone"
         ref="forceGraphRef"
         :width="800"
         :height="600"
@@ -142,6 +141,13 @@ const selectedZone = ref(focusedZone.value);
 const isSavingDream = ref(false);
 const saveStatus = ref<string | null>(null);
 
+// Reset lock to prevent multiple resets firing in succession
+const isResetLocked = ref(false);
+const lockReset = (duration = 300) => {
+  isResetLocked.value = true;
+  setTimeout(() => { isResetLocked.value = false }, duration);
+};
+
 // Suppress prompt regeneration on initial dream load
 const skipPrompt = ref(false);
 watch(() => tagStore.loadedDreamId, (newId, oldId) => {
@@ -189,6 +195,8 @@ watch(selectedZone, (newZone, oldZone) => {
     switchToZone(newZone, oldZone || tagStore.focusedZone);
   }
 });
+
+
 
 function debounce<T extends (...args: any[]) => any>(
   func: T,
@@ -344,14 +352,24 @@ const generateImage = async () => {
 };
 
 function handleNodePositionsUpdated(positions: { id: string; x: number; y: number }[]) {
-  console.log('Received updated positions:', positions);
-  positions.forEach(pos => {
-    const tag = tagStore.tags.find(t => t.id === pos.id);
-    if (tag) {
-      tag.x = pos.x;
-      tag.y = pos.y;
-    }
-  });
+  // Only process valid positions
+  const validPositions = positions.filter(pos => 
+    pos && typeof pos.id === 'string' && 
+    typeof pos.x === 'number' && 
+    typeof pos.y === 'number' && 
+    !isNaN(pos.x) && !isNaN(pos.y)
+  );
+  
+  if (validPositions.length > 0) {
+    console.log('Updating positions for', validPositions.length, 'nodes');
+    validPositions.forEach(pos => {
+      const tag = tagStore.tags.find(t => t.id === pos.id);
+      if (tag) {
+        tag.x = pos.x;
+        tag.y = pos.y;
+      }
+    });
+  }
 }
 
 function handleNodeTextUpdated({ id, text }: { id: string; text: string }) {

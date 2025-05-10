@@ -55,36 +55,77 @@ export function useForceSimulation() {
   ) => {
     simulation.stop();
 
-    const selectedParent = nodes.find(n => n.selected && !n.parentId);
-    const parentX = selectedParent ? (selectedParent.x || width / 2) : width / 2;
-    const parentY = selectedParent ? (selectedParent.y || height / 2) : height / 2;
+    
+    // Validate nodes and fix invalid coordinates
+    const validNodes = nodes.filter(n => n && typeof n.id === 'string');
+    
+    // Use centerX/centerY for consistency
+    const centerX = width / 2;
+    const centerY = height / 2;
+
+    const selectedParent = validNodes.find(n => n.selected && !n.parentId);
+    const parentX = selectedParent && typeof selectedParent.x === 'number' && !isNaN(selectedParent.x) 
+      ? selectedParent.x 
+      : centerX;
+    const parentY = selectedParent && typeof selectedParent.y === 'number' && !isNaN(selectedParent.y)
+      ? selectedParent.y
+      : centerY;
 
     // Update node positions and fix selected nodes
-    nodes.forEach(node => {
+    validNodes.forEach(node => {
+      // Force clear invalid positions or initialize if missing
+      const hasValidX = typeof node.x === 'number' && !isNaN(node.x);
+      const hasValidY = typeof node.y === 'number' && !isNaN(node.y);
+      
+      if (!hasValidX) node.x = centerX + (Math.random() - 0.5) * 10;
+      if (!hasValidY) node.y = centerY + (Math.random() - 0.5) * 10;
+      
+      // Reset velocities
+      node.vx = 0;
+      node.vy = 0;
+       
       if (node.selected && !node.parentId) {
-        node.fx = node.x || parentX;
-        node.fy = node.y || parentY;
+        // Pin selected top-level nodes
+        node.fx = node.x;
+        node.fy = node.y;
       } else if (node.parentId) {
-        const parent = nodes.find(n => n.id === node.parentId);
-        if (parent && (!node.x || !node.y)) {
-          node.x = parent.x || parentX;
-          node.y = parent.y || parentY;
-          node.vx = 0;
-          node.vy = 0;
+        // Position child nodes near their parent
+        const parent = validNodes.find(n => n.id === node.parentId);
+        if (parent) {
+          const parentPosX = typeof parent.x === 'number' && !isNaN(parent.x) ? parent.x : centerX;
+          const parentPosY = typeof parent.y === 'number' && !isNaN(parent.y) ? parent.y : centerY;
+          
+          // Small random offset from parent for initial positioning
+          if (!hasValidX || !hasValidY) {
+            node.x = parentPosX + (Math.random() - 0.5) * 30;
+            node.y = parentPosY + (Math.random() - 0.5) * 30;
+          }
         }
+        // Let child nodes move freely
+        node.fx = null;
+        node.fy = null;
       } else {
+        // Free top-level unselected nodes
         node.fx = null;
         node.fy = null;
       }
     });
 
-    // Update simulation nodes
-    simulation.nodes(nodes);
+    // Update simulation nodes with valid nodes only
+    simulation.nodes(validNodes);
     
     // Update link force
     const linkForceTyped = simulation.force<d3.ForceLink<GraphNode, GraphLink>>('link');
     if (linkForceTyped) {
-      linkForceTyped.links(links);
+      // Filter links to only include valid references
+      const validLinks = links.filter(link => {
+        const sourceId = typeof link.source === 'string' ? link.source : (link.source as GraphNode)?.id;
+        const targetId = typeof link.target === 'string' ? link.target : (link.target as GraphNode)?.id;
+        
+        return validNodes.some(n => n.id === sourceId) && validNodes.some(n => n.id === targetId);
+      });
+      
+      linkForceTyped.links(validLinks);
       linkForceTyped
         .distance(link => {
           const target = link.target as GraphNode;
@@ -112,6 +153,12 @@ export function useForceSimulation() {
     const collisionForce = simulation.force('collision') as d3.ForceCollide<GraphNode>;
     if (collisionForce) {
       collisionForce.radius((d: SimulationNodeDatum) => ((d as GraphNode).selected ? (d as GraphNode).size : (d as GraphNode).size / 2) + 20);
+    }
+
+    // Update center force
+    const centerForce = simulation.force('center') as d3.ForceCenter<GraphNode>;
+    if (centerForce) {
+      centerForce.x(centerX).y(centerY);
     }
 
     // Restart simulation

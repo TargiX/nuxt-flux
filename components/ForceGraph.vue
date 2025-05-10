@@ -45,7 +45,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, computed, onBeforeUnmount } from 'vue';
+import { ref, onMounted, watch, computed, onBeforeUnmount, nextTick } from 'vue';
 import * as d3 from 'd3';
 import 'd3-transition'; // Ensure transition support is available
 import { useZoom, type ViewportState } from '~/composables/useZoom';
@@ -67,6 +67,9 @@ let svg: d3.Selection<SVGSVGElement, unknown, null, undefined> | null = null;
 let linkGroup: d3.Selection<SVGGElement, unknown, null, undefined> | null = null;
 let nodeGroup: d3.Selection<SVGGElement, unknown, null, undefined> | null = null;
 let simulation: d3.Simulation<GraphNode, GraphLink> | null = null;
+
+// Add this ref to track reset state
+const isResetting = ref(false);
 
 // Compute responsive container style
 const containerStyle = computed(() => {
@@ -397,6 +400,7 @@ interface ForceGraphExposed {
   getCurrentViewport: () => ViewportState | null;
   applyViewport: (state?: ViewportState, duration?: number) => void;
   centerOnNode: (node: { x?: number | null; y?: number | null }) => void;
+  resetAndCenter: () => void;
 }
 
 defineExpose<ForceGraphExposed>({
@@ -406,6 +410,61 @@ defineExpose<ForceGraphExposed>({
   },
   centerOnNode: (node: { x?: number | null; y?: number | null }) => {
     if (svg) centerOnNodeFn(svg, node);
+  },
+  resetAndCenter: () => {
+    console.log("ForceGraph hard reset and center called");
+    if (!svg || !simulation) return;
+    
+    // Prevent multiple reset calls in quick succession
+    if (isResetting.value) {
+      console.log("Reset already in progress, skipping");
+      return;
+    }
+    
+    isResetting.value = true;
+    
+    // Force stop any current simulation
+    simulation.stop();
+    
+    // Get container dimensions
+    const containerRect = container.value?.getBoundingClientRect();
+    const width = containerRect?.width || props.width;
+    const height = containerRect?.height || props.height;
+    
+    // Ensure SVG viewBox is correctly set for the container size
+    if (svg && width && height) {
+      svg.attr('viewBox', `0 0 ${width} ${height}`)
+         .attr('width', '100%')
+         .attr('height', '100%')
+         .attr('preserveAspectRatio', 'xMidYMid meet');
+    }
+    
+    // Reset all nodes to center to create the "expand from center" effect
+    const centerX = width / 2;
+    const centerY = height / 2;
+    
+    if (props.nodes.length > 0) {
+      props.nodes.forEach(node => {
+        node.x = centerX + (Math.random() - 0.5) * 10;
+        node.y = centerY + (Math.random() - 0.5) * 10;
+        node.vx = 0;
+        node.vy = 0;
+      });
+    }
+    
+    // Hard reset zoom to default centered view
+    applyViewportFn(svg, undefined, 0);
+    
+    // Update the simulation with current nodes and links
+    updateSimulation(simulation, props.nodes, props.links, width, height);
+    
+    // Kickstart simulation to allow nodes to spread
+    simulation.alpha(1).restart();
+    
+    // Clear reset flag after short delay
+    setTimeout(() => {
+      isResetting.value = false;
+    }, 500);
   }
 });
 </script>
