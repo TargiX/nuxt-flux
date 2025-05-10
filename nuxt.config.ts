@@ -88,6 +88,13 @@ export default defineNuxtConfig({
         },
       },
     },
+    optimizeDeps: {
+      include: ['cookie-es'],
+      exclude: ['cookie']
+    },
+    resolve: {
+      alias: { 'cookie': 'cookie-es' }
+    }
   },
 
   typescript: {
