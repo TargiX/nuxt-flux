@@ -1,5 +1,7 @@
 import Aura from '@primeuix/themes/aura';
 import { definePreset } from '@primeuix/themes';
+import Components from 'unplugin-vue-components/vite';
+import { PrimeVueResolver } from '@primevue/auto-import-resolver';
 
 
 const MyPreset = definePreset(Aura, {
@@ -94,7 +96,14 @@ export default defineNuxtConfig({
     },
     resolve: {
       alias: { 'cookie': 'cookie-es' }
-    }
+    },
+    plugins: [
+      Components({
+        resolvers: [
+          PrimeVueResolver()
+        ]
+      })
+    ]
   },
 
   typescript: {

@@ -39,12 +39,6 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-// Remove PrimeVue component imports - rely on @primevue/nuxt-module auto-import
-// import InputText from 'primevue/inputtext';
-// import Password from 'primevue/password';
-// import Button from 'primevue/button';
-// import Card from 'primevue/card';
-// import Message from 'primevue/message';
 
 // Use nuxt-auth composable
 const { signIn } = useAuth()

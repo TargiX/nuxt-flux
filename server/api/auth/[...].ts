@@ -21,6 +21,27 @@ if (!runtimeConfig.authJs?.secret) {
 export const authOptions: AuthConfig = {
   secret: runtimeConfig.authJs.secret, // Use the new config path
   session: { strategy: 'jwt' },
+  callbacks: {
+    async jwt({ token, user, account }) {
+      if (account && user && typeof user.id === 'string') { // Check user.id type explicitly
+        token.id = user.id; // user.id from Prisma is string
+        if (account.access_token) {
+            token.accessToken = account.access_token;
+        }
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      // Assign properties to session if they exist on the token
+      if (typeof token.id === 'string' && session.user) {
+        (session.user as { id?: string }).id = token.id;
+      }
+      if (typeof token.accessToken === 'string') {
+        (session as { accessToken?: string }).accessToken = token.accessToken;
+      }
+      return session;
+    },
+  },
   // pages: { // Keep pages commented out unless needed
   //   signIn: '/login',
   // },
@@ -40,17 +61,13 @@ export const authOptions: AuthConfig = {
         password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          console.error('Credentials missing')
-          return null
-        }
-
-        // Ensure password is a string
-        if (typeof credentials.password !== 'string') {
-          console.error('Password is not a string');
+        if (!credentials?.email || typeof credentials.email !== 'string' || 
+            !credentials?.password || typeof credentials.password !== 'string') {
+          console.error('Credentials missing or not strings');
           return null;
         }
 
+        // At this point, credentials.email and credentials.password are known to be strings
         const user = await prisma.user.findUnique({ where: { email: credentials.email } })
         if (!user || !user.passwordHash) {
           console.log('No user or missing passwordHash for:', credentials.email)

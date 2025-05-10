@@ -1,0 +1,42 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  // The default output (node_modules/@prisma/client) will be used
+  output   = "../generated/prisma/client" // Define a custom output path
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Define the User model
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime? // Used by Email provider
+  passwordHash  String? // Added field for storing the hashed password
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Optional: Add relations if you plan to link users to other models
+  // posts Post[]
+  dreams Dream[] // Add relation to Dream model
+}
+
+// Add the Dream model
+model Dream {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  title     String? // Optional title for the dream
+  data      Json // Store the graph state or other relevant data as JSON
+  userId    String // Foreign key to the User model
+  user      User     @relation(fields: [userId], references: [id]) // Relation field
+}

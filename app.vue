@@ -82,12 +82,12 @@
       
       <!-- User section at bottom -->
       <div class="user-section">
-        <div v-if="status === 'authenticated' && authData?.user" class="user-profile">
+        <div v-if="status === 'authenticated' && session?.user" class="user-profile">
           <div class="user-avatar">
-             <img v-if="authData.user.image" :src="authData.user.image" alt="User Avatar" class="avatar-image" />
+             <img v-if="session.user.image" :src="session.user.image" alt="User Avatar" class="avatar-image" />
              <i v-else class="pi pi-user"></i>
           </div>
-          <span class="user-name">{{ authData.user.name || 'User' }}</span>
+          <span class="user-name">{{ session.user.name || 'User' }}</span>
           <Button 
             icon="pi pi-sign-out" 
             @click="signOut()" 
@@ -129,14 +129,10 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue';
-import Button from 'primevue/button';
-import ConfirmDialog from 'primevue/confirmdialog'; // Import ConfirmDialog
-import Toast from 'primevue/toast'; // Import Toast component
-import { useConfirm } from "primevue/useconfirm"; // Import useConfirm
 import type { Dream } from '~/types/dream';
 import { useTagStore } from '~/store/tagStore'; // Import the store
 
-const { status, data: authData, signIn, signOut } = useAuth();
+const { status, session, signIn, signOut } = useAuth();
 const tagStore = useTagStore(); // Initialize the store
 const confirm = useConfirm(); // Initialize confirmation service
 

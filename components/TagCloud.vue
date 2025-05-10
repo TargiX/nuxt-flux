@@ -122,7 +122,6 @@ import ForceGraph from './ForceGraph.vue';
 import ZoneSelector from './ZoneSelector.vue';
 import { generateImagePrompt } from '~/services/promptGenerationService';
 import { generateImageFromPrompt } from '~/services/imageGenerationService';
-import { useToast } from "primevue/usetoast";
 import type { Tag } from '~/types/tag';
 
 const tagStore = useTagStore();
