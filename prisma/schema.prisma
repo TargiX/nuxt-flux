@@ -29,6 +29,7 @@ model User {
   // Optional: Add relations if you plan to link users to other models
   // posts Post[]
   dreams Dream[] // Add relation to Dream model
+  generatedImages GeneratedImage[] // Add relation to GeneratedImage model
 }
 
 // Add the Dream model
@@ -39,4 +40,22 @@ model Dream {
   data      Json    // Store the graph state or other relevant data as JSON
   userId    String  // Foreign key to the User model
   user      User     @relation(fields: [userId], references: [id]) // Relation field
+  generatedImages GeneratedImage[] // Add relation to GeneratedImage model
+}
+
+// Define the GeneratedImage model
+model GeneratedImage {
+  id          Int      @id @default(autoincrement())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  imageUrl    String
+  promptText  String?
+  graphState  Json?    // To store the full graph/dream state at the time of generation
+  dreamId     Int
+  dream       Dream    @relation(fields: [dreamId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([dreamId])
+  @@index([userId])
 }

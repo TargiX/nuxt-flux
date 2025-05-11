@@ -23,6 +23,11 @@ export type User = $Result.DefaultSelection<Prisma.$UserPayload>
  * 
  */
 export type Dream = $Result.DefaultSelection<Prisma.$DreamPayload>
+/**
+ * Model GeneratedImage
+ * 
+ */
+export type GeneratedImage = $Result.DefaultSelection<Prisma.$GeneratedImagePayload>
 
 /**
  * ##  Prisma Client ʲˢ
@@ -168,6 +173,16 @@ export class PrismaClient<
     * ```
     */
   get dream(): Prisma.DreamDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.generatedImage`: Exposes CRUD operations for the **GeneratedImage** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more GeneratedImages
+    * const generatedImages = await prisma.generatedImage.findMany()
+    * ```
+    */
+  get generatedImage(): Prisma.GeneratedImageDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -609,7 +624,8 @@ export namespace Prisma {
 
   export const ModelName: {
     User: 'User',
-    Dream: 'Dream'
+    Dream: 'Dream',
+    GeneratedImage: 'GeneratedImage'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -628,7 +644,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "user" | "dream"
+      modelProps: "user" | "dream" | "generatedImage"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -780,6 +796,80 @@ export namespace Prisma {
           }
         }
       }
+      GeneratedImage: {
+        payload: Prisma.$GeneratedImagePayload<ExtArgs>
+        fields: Prisma.GeneratedImageFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.GeneratedImageFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GeneratedImagePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.GeneratedImageFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GeneratedImagePayload>
+          }
+          findFirst: {
+            args: Prisma.GeneratedImageFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GeneratedImagePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.GeneratedImageFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GeneratedImagePayload>
+          }
+          findMany: {
+            args: Prisma.GeneratedImageFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GeneratedImagePayload>[]
+          }
+          create: {
+            args: Prisma.GeneratedImageCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GeneratedImagePayload>
+          }
+          createMany: {
+            args: Prisma.GeneratedImageCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.GeneratedImageCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GeneratedImagePayload>[]
+          }
+          delete: {
+            args: Prisma.GeneratedImageDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GeneratedImagePayload>
+          }
+          update: {
+            args: Prisma.GeneratedImageUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GeneratedImagePayload>
+          }
+          deleteMany: {
+            args: Prisma.GeneratedImageDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.GeneratedImageUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.GeneratedImageUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GeneratedImagePayload>[]
+          }
+          upsert: {
+            args: Prisma.GeneratedImageUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GeneratedImagePayload>
+          }
+          aggregate: {
+            args: Prisma.GeneratedImageAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateGeneratedImage>
+          }
+          groupBy: {
+            args: Prisma.GeneratedImageGroupByArgs<ExtArgs>
+            result: $Utils.Optional<GeneratedImageGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.GeneratedImageCountArgs<ExtArgs>
+            result: $Utils.Optional<GeneratedImageCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -866,6 +956,7 @@ export namespace Prisma {
   export type GlobalOmitConfig = {
     user?: UserOmit
     dream?: DreamOmit
+    generatedImage?: GeneratedImageOmit
   }
 
   /* Types for Logging */
@@ -961,10 +1052,12 @@ export namespace Prisma {
 
   export type UserCountOutputType = {
     dreams: number
+    generatedImages: number
   }
 
   export type UserCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     dreams?: boolean | UserCountOutputTypeCountDreamsArgs
+    generatedImages?: boolean | UserCountOutputTypeCountGeneratedImagesArgs
   }
 
   // Custom InputTypes
@@ -983,6 +1076,44 @@ export namespace Prisma {
    */
   export type UserCountOutputTypeCountDreamsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: DreamWhereInput
+  }
+
+  /**
+   * UserCountOutputType without action
+   */
+  export type UserCountOutputTypeCountGeneratedImagesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: GeneratedImageWhereInput
+  }
+
+
+  /**
+   * Count Type DreamCountOutputType
+   */
+
+  export type DreamCountOutputType = {
+    generatedImages: number
+  }
+
+  export type DreamCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    generatedImages?: boolean | DreamCountOutputTypeCountGeneratedImagesArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * DreamCountOutputType without action
+   */
+  export type DreamCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the DreamCountOutputType
+     */
+    select?: DreamCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * DreamCountOutputType without action
+   */
+  export type DreamCountOutputTypeCountGeneratedImagesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: GeneratedImageWhereInput
   }
 
 
@@ -1179,6 +1310,7 @@ export namespace Prisma {
     createdAt?: boolean
     updatedAt?: boolean
     dreams?: boolean | User$dreamsArgs<ExtArgs>
+    generatedImages?: boolean | User$generatedImagesArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["user"]>
 
@@ -1218,6 +1350,7 @@ export namespace Prisma {
   export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "email" | "emailVerified" | "passwordHash" | "image" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
   export type UserInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     dreams?: boolean | User$dreamsArgs<ExtArgs>
+    generatedImages?: boolean | User$generatedImagesArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type UserIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
@@ -1227,6 +1360,7 @@ export namespace Prisma {
     name: "User"
     objects: {
       dreams: Prisma.$DreamPayload<ExtArgs>[]
+      generatedImages: Prisma.$GeneratedImagePayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -1632,6 +1766,7 @@ export namespace Prisma {
   export interface Prisma__UserClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     dreams<T extends User$dreamsArgs<ExtArgs> = {}>(args?: Subset<T, User$dreamsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$DreamPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    generatedImages<T extends User$generatedImagesArgs<ExtArgs> = {}>(args?: Subset<T, User$generatedImagesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GeneratedImagePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2081,6 +2216,30 @@ export namespace Prisma {
   }
 
   /**
+   * User.generatedImages
+   */
+  export type User$generatedImagesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GeneratedImage
+     */
+    select?: GeneratedImageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GeneratedImage
+     */
+    omit?: GeneratedImageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GeneratedImageInclude<ExtArgs> | null
+    where?: GeneratedImageWhereInput
+    orderBy?: GeneratedImageOrderByWithRelationInput | GeneratedImageOrderByWithRelationInput[]
+    cursor?: GeneratedImageWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: GeneratedImageScalarFieldEnum | GeneratedImageScalarFieldEnum[]
+  }
+
+  /**
    * User without action
    */
   export type UserDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -2294,6 +2453,8 @@ export namespace Prisma {
     data?: boolean
     userId?: boolean
     user?: boolean | UserDefaultArgs<ExtArgs>
+    generatedImages?: boolean | Dream$generatedImagesArgs<ExtArgs>
+    _count?: boolean | DreamCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["dream"]>
 
   export type DreamSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
@@ -2325,6 +2486,8 @@ export namespace Prisma {
   export type DreamOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "createdAt" | "title" | "data" | "userId", ExtArgs["result"]["dream"]>
   export type DreamInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     user?: boolean | UserDefaultArgs<ExtArgs>
+    generatedImages?: boolean | Dream$generatedImagesArgs<ExtArgs>
+    _count?: boolean | DreamCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type DreamIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     user?: boolean | UserDefaultArgs<ExtArgs>
@@ -2337,6 +2500,7 @@ export namespace Prisma {
     name: "Dream"
     objects: {
       user: Prisma.$UserPayload<ExtArgs>
+      generatedImages: Prisma.$GeneratedImagePayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: number
@@ -2739,6 +2903,7 @@ export namespace Prisma {
   export interface Prisma__DreamClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     user<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    generatedImages<T extends Dream$generatedImagesArgs<ExtArgs> = {}>(args?: Subset<T, Dream$generatedImagesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GeneratedImagePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -3169,6 +3334,30 @@ export namespace Prisma {
   }
 
   /**
+   * Dream.generatedImages
+   */
+  export type Dream$generatedImagesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GeneratedImage
+     */
+    select?: GeneratedImageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GeneratedImage
+     */
+    omit?: GeneratedImageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GeneratedImageInclude<ExtArgs> | null
+    where?: GeneratedImageWhereInput
+    orderBy?: GeneratedImageOrderByWithRelationInput | GeneratedImageOrderByWithRelationInput[]
+    cursor?: GeneratedImageWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: GeneratedImageScalarFieldEnum | GeneratedImageScalarFieldEnum[]
+  }
+
+  /**
    * Dream without action
    */
   export type DreamDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -3184,6 +3373,1145 @@ export namespace Prisma {
      * Choose, which related nodes to fetch as well
      */
     include?: DreamInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model GeneratedImage
+   */
+
+  export type AggregateGeneratedImage = {
+    _count: GeneratedImageCountAggregateOutputType | null
+    _avg: GeneratedImageAvgAggregateOutputType | null
+    _sum: GeneratedImageSumAggregateOutputType | null
+    _min: GeneratedImageMinAggregateOutputType | null
+    _max: GeneratedImageMaxAggregateOutputType | null
+  }
+
+  export type GeneratedImageAvgAggregateOutputType = {
+    id: number | null
+    dreamId: number | null
+  }
+
+  export type GeneratedImageSumAggregateOutputType = {
+    id: number | null
+    dreamId: number | null
+  }
+
+  export type GeneratedImageMinAggregateOutputType = {
+    id: number | null
+    createdAt: Date | null
+    updatedAt: Date | null
+    imageUrl: string | null
+    promptText: string | null
+    dreamId: number | null
+    userId: string | null
+  }
+
+  export type GeneratedImageMaxAggregateOutputType = {
+    id: number | null
+    createdAt: Date | null
+    updatedAt: Date | null
+    imageUrl: string | null
+    promptText: string | null
+    dreamId: number | null
+    userId: string | null
+  }
+
+  export type GeneratedImageCountAggregateOutputType = {
+    id: number
+    createdAt: number
+    updatedAt: number
+    imageUrl: number
+    promptText: number
+    graphState: number
+    dreamId: number
+    userId: number
+    _all: number
+  }
+
+
+  export type GeneratedImageAvgAggregateInputType = {
+    id?: true
+    dreamId?: true
+  }
+
+  export type GeneratedImageSumAggregateInputType = {
+    id?: true
+    dreamId?: true
+  }
+
+  export type GeneratedImageMinAggregateInputType = {
+    id?: true
+    createdAt?: true
+    updatedAt?: true
+    imageUrl?: true
+    promptText?: true
+    dreamId?: true
+    userId?: true
+  }
+
+  export type GeneratedImageMaxAggregateInputType = {
+    id?: true
+    createdAt?: true
+    updatedAt?: true
+    imageUrl?: true
+    promptText?: true
+    dreamId?: true
+    userId?: true
+  }
+
+  export type GeneratedImageCountAggregateInputType = {
+    id?: true
+    createdAt?: true
+    updatedAt?: true
+    imageUrl?: true
+    promptText?: true
+    graphState?: true
+    dreamId?: true
+    userId?: true
+    _all?: true
+  }
+
+  export type GeneratedImageAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which GeneratedImage to aggregate.
+     */
+    where?: GeneratedImageWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GeneratedImages to fetch.
+     */
+    orderBy?: GeneratedImageOrderByWithRelationInput | GeneratedImageOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: GeneratedImageWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GeneratedImages from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GeneratedImages.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned GeneratedImages
+    **/
+    _count?: true | GeneratedImageCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: GeneratedImageAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: GeneratedImageSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: GeneratedImageMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: GeneratedImageMaxAggregateInputType
+  }
+
+  export type GetGeneratedImageAggregateType<T extends GeneratedImageAggregateArgs> = {
+        [P in keyof T & keyof AggregateGeneratedImage]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateGeneratedImage[P]>
+      : GetScalarType<T[P], AggregateGeneratedImage[P]>
+  }
+
+
+
+
+  export type GeneratedImageGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: GeneratedImageWhereInput
+    orderBy?: GeneratedImageOrderByWithAggregationInput | GeneratedImageOrderByWithAggregationInput[]
+    by: GeneratedImageScalarFieldEnum[] | GeneratedImageScalarFieldEnum
+    having?: GeneratedImageScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: GeneratedImageCountAggregateInputType | true
+    _avg?: GeneratedImageAvgAggregateInputType
+    _sum?: GeneratedImageSumAggregateInputType
+    _min?: GeneratedImageMinAggregateInputType
+    _max?: GeneratedImageMaxAggregateInputType
+  }
+
+  export type GeneratedImageGroupByOutputType = {
+    id: number
+    createdAt: Date
+    updatedAt: Date
+    imageUrl: string
+    promptText: string | null
+    graphState: JsonValue | null
+    dreamId: number
+    userId: string
+    _count: GeneratedImageCountAggregateOutputType | null
+    _avg: GeneratedImageAvgAggregateOutputType | null
+    _sum: GeneratedImageSumAggregateOutputType | null
+    _min: GeneratedImageMinAggregateOutputType | null
+    _max: GeneratedImageMaxAggregateOutputType | null
+  }
+
+  type GetGeneratedImageGroupByPayload<T extends GeneratedImageGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<GeneratedImageGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof GeneratedImageGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], GeneratedImageGroupByOutputType[P]>
+            : GetScalarType<T[P], GeneratedImageGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type GeneratedImageSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    imageUrl?: boolean
+    promptText?: boolean
+    graphState?: boolean
+    dreamId?: boolean
+    userId?: boolean
+    dream?: boolean | DreamDefaultArgs<ExtArgs>
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["generatedImage"]>
+
+  export type GeneratedImageSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    imageUrl?: boolean
+    promptText?: boolean
+    graphState?: boolean
+    dreamId?: boolean
+    userId?: boolean
+    dream?: boolean | DreamDefaultArgs<ExtArgs>
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["generatedImage"]>
+
+  export type GeneratedImageSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    imageUrl?: boolean
+    promptText?: boolean
+    graphState?: boolean
+    dreamId?: boolean
+    userId?: boolean
+    dream?: boolean | DreamDefaultArgs<ExtArgs>
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["generatedImage"]>
+
+  export type GeneratedImageSelectScalar = {
+    id?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    imageUrl?: boolean
+    promptText?: boolean
+    graphState?: boolean
+    dreamId?: boolean
+    userId?: boolean
+  }
+
+  export type GeneratedImageOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "createdAt" | "updatedAt" | "imageUrl" | "promptText" | "graphState" | "dreamId" | "userId", ExtArgs["result"]["generatedImage"]>
+  export type GeneratedImageInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    dream?: boolean | DreamDefaultArgs<ExtArgs>
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type GeneratedImageIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    dream?: boolean | DreamDefaultArgs<ExtArgs>
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type GeneratedImageIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    dream?: boolean | DreamDefaultArgs<ExtArgs>
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+
+  export type $GeneratedImagePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "GeneratedImage"
+    objects: {
+      dream: Prisma.$DreamPayload<ExtArgs>
+      user: Prisma.$UserPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: number
+      createdAt: Date
+      updatedAt: Date
+      imageUrl: string
+      promptText: string | null
+      graphState: Prisma.JsonValue | null
+      dreamId: number
+      userId: string
+    }, ExtArgs["result"]["generatedImage"]>
+    composites: {}
+  }
+
+  type GeneratedImageGetPayload<S extends boolean | null | undefined | GeneratedImageDefaultArgs> = $Result.GetResult<Prisma.$GeneratedImagePayload, S>
+
+  type GeneratedImageCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<GeneratedImageFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: GeneratedImageCountAggregateInputType | true
+    }
+
+  export interface GeneratedImageDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['GeneratedImage'], meta: { name: 'GeneratedImage' } }
+    /**
+     * Find zero or one GeneratedImage that matches the filter.
+     * @param {GeneratedImageFindUniqueArgs} args - Arguments to find a GeneratedImage
+     * @example
+     * // Get one GeneratedImage
+     * const generatedImage = await prisma.generatedImage.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends GeneratedImageFindUniqueArgs>(args: SelectSubset<T, GeneratedImageFindUniqueArgs<ExtArgs>>): Prisma__GeneratedImageClient<$Result.GetResult<Prisma.$GeneratedImagePayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one GeneratedImage that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {GeneratedImageFindUniqueOrThrowArgs} args - Arguments to find a GeneratedImage
+     * @example
+     * // Get one GeneratedImage
+     * const generatedImage = await prisma.generatedImage.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends GeneratedImageFindUniqueOrThrowArgs>(args: SelectSubset<T, GeneratedImageFindUniqueOrThrowArgs<ExtArgs>>): Prisma__GeneratedImageClient<$Result.GetResult<Prisma.$GeneratedImagePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first GeneratedImage that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GeneratedImageFindFirstArgs} args - Arguments to find a GeneratedImage
+     * @example
+     * // Get one GeneratedImage
+     * const generatedImage = await prisma.generatedImage.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends GeneratedImageFindFirstArgs>(args?: SelectSubset<T, GeneratedImageFindFirstArgs<ExtArgs>>): Prisma__GeneratedImageClient<$Result.GetResult<Prisma.$GeneratedImagePayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first GeneratedImage that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GeneratedImageFindFirstOrThrowArgs} args - Arguments to find a GeneratedImage
+     * @example
+     * // Get one GeneratedImage
+     * const generatedImage = await prisma.generatedImage.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends GeneratedImageFindFirstOrThrowArgs>(args?: SelectSubset<T, GeneratedImageFindFirstOrThrowArgs<ExtArgs>>): Prisma__GeneratedImageClient<$Result.GetResult<Prisma.$GeneratedImagePayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more GeneratedImages that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GeneratedImageFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all GeneratedImages
+     * const generatedImages = await prisma.generatedImage.findMany()
+     * 
+     * // Get first 10 GeneratedImages
+     * const generatedImages = await prisma.generatedImage.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const generatedImageWithIdOnly = await prisma.generatedImage.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends GeneratedImageFindManyArgs>(args?: SelectSubset<T, GeneratedImageFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GeneratedImagePayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a GeneratedImage.
+     * @param {GeneratedImageCreateArgs} args - Arguments to create a GeneratedImage.
+     * @example
+     * // Create one GeneratedImage
+     * const GeneratedImage = await prisma.generatedImage.create({
+     *   data: {
+     *     // ... data to create a GeneratedImage
+     *   }
+     * })
+     * 
+     */
+    create<T extends GeneratedImageCreateArgs>(args: SelectSubset<T, GeneratedImageCreateArgs<ExtArgs>>): Prisma__GeneratedImageClient<$Result.GetResult<Prisma.$GeneratedImagePayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many GeneratedImages.
+     * @param {GeneratedImageCreateManyArgs} args - Arguments to create many GeneratedImages.
+     * @example
+     * // Create many GeneratedImages
+     * const generatedImage = await prisma.generatedImage.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends GeneratedImageCreateManyArgs>(args?: SelectSubset<T, GeneratedImageCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many GeneratedImages and returns the data saved in the database.
+     * @param {GeneratedImageCreateManyAndReturnArgs} args - Arguments to create many GeneratedImages.
+     * @example
+     * // Create many GeneratedImages
+     * const generatedImage = await prisma.generatedImage.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many GeneratedImages and only return the `id`
+     * const generatedImageWithIdOnly = await prisma.generatedImage.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends GeneratedImageCreateManyAndReturnArgs>(args?: SelectSubset<T, GeneratedImageCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GeneratedImagePayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a GeneratedImage.
+     * @param {GeneratedImageDeleteArgs} args - Arguments to delete one GeneratedImage.
+     * @example
+     * // Delete one GeneratedImage
+     * const GeneratedImage = await prisma.generatedImage.delete({
+     *   where: {
+     *     // ... filter to delete one GeneratedImage
+     *   }
+     * })
+     * 
+     */
+    delete<T extends GeneratedImageDeleteArgs>(args: SelectSubset<T, GeneratedImageDeleteArgs<ExtArgs>>): Prisma__GeneratedImageClient<$Result.GetResult<Prisma.$GeneratedImagePayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one GeneratedImage.
+     * @param {GeneratedImageUpdateArgs} args - Arguments to update one GeneratedImage.
+     * @example
+     * // Update one GeneratedImage
+     * const generatedImage = await prisma.generatedImage.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends GeneratedImageUpdateArgs>(args: SelectSubset<T, GeneratedImageUpdateArgs<ExtArgs>>): Prisma__GeneratedImageClient<$Result.GetResult<Prisma.$GeneratedImagePayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more GeneratedImages.
+     * @param {GeneratedImageDeleteManyArgs} args - Arguments to filter GeneratedImages to delete.
+     * @example
+     * // Delete a few GeneratedImages
+     * const { count } = await prisma.generatedImage.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends GeneratedImageDeleteManyArgs>(args?: SelectSubset<T, GeneratedImageDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more GeneratedImages.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GeneratedImageUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many GeneratedImages
+     * const generatedImage = await prisma.generatedImage.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends GeneratedImageUpdateManyArgs>(args: SelectSubset<T, GeneratedImageUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more GeneratedImages and returns the data updated in the database.
+     * @param {GeneratedImageUpdateManyAndReturnArgs} args - Arguments to update many GeneratedImages.
+     * @example
+     * // Update many GeneratedImages
+     * const generatedImage = await prisma.generatedImage.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more GeneratedImages and only return the `id`
+     * const generatedImageWithIdOnly = await prisma.generatedImage.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends GeneratedImageUpdateManyAndReturnArgs>(args: SelectSubset<T, GeneratedImageUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GeneratedImagePayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one GeneratedImage.
+     * @param {GeneratedImageUpsertArgs} args - Arguments to update or create a GeneratedImage.
+     * @example
+     * // Update or create a GeneratedImage
+     * const generatedImage = await prisma.generatedImage.upsert({
+     *   create: {
+     *     // ... data to create a GeneratedImage
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the GeneratedImage we want to update
+     *   }
+     * })
+     */
+    upsert<T extends GeneratedImageUpsertArgs>(args: SelectSubset<T, GeneratedImageUpsertArgs<ExtArgs>>): Prisma__GeneratedImageClient<$Result.GetResult<Prisma.$GeneratedImagePayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of GeneratedImages.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GeneratedImageCountArgs} args - Arguments to filter GeneratedImages to count.
+     * @example
+     * // Count the number of GeneratedImages
+     * const count = await prisma.generatedImage.count({
+     *   where: {
+     *     // ... the filter for the GeneratedImages we want to count
+     *   }
+     * })
+    **/
+    count<T extends GeneratedImageCountArgs>(
+      args?: Subset<T, GeneratedImageCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], GeneratedImageCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a GeneratedImage.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GeneratedImageAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends GeneratedImageAggregateArgs>(args: Subset<T, GeneratedImageAggregateArgs>): Prisma.PrismaPromise<GetGeneratedImageAggregateType<T>>
+
+    /**
+     * Group by GeneratedImage.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GeneratedImageGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends GeneratedImageGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: GeneratedImageGroupByArgs['orderBy'] }
+        : { orderBy?: GeneratedImageGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, GeneratedImageGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetGeneratedImageGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the GeneratedImage model
+   */
+  readonly fields: GeneratedImageFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for GeneratedImage.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__GeneratedImageClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    dream<T extends DreamDefaultArgs<ExtArgs> = {}>(args?: Subset<T, DreamDefaultArgs<ExtArgs>>): Prisma__DreamClient<$Result.GetResult<Prisma.$DreamPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    user<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the GeneratedImage model
+   */
+  interface GeneratedImageFieldRefs {
+    readonly id: FieldRef<"GeneratedImage", 'Int'>
+    readonly createdAt: FieldRef<"GeneratedImage", 'DateTime'>
+    readonly updatedAt: FieldRef<"GeneratedImage", 'DateTime'>
+    readonly imageUrl: FieldRef<"GeneratedImage", 'String'>
+    readonly promptText: FieldRef<"GeneratedImage", 'String'>
+    readonly graphState: FieldRef<"GeneratedImage", 'Json'>
+    readonly dreamId: FieldRef<"GeneratedImage", 'Int'>
+    readonly userId: FieldRef<"GeneratedImage", 'String'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * GeneratedImage findUnique
+   */
+  export type GeneratedImageFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GeneratedImage
+     */
+    select?: GeneratedImageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GeneratedImage
+     */
+    omit?: GeneratedImageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GeneratedImageInclude<ExtArgs> | null
+    /**
+     * Filter, which GeneratedImage to fetch.
+     */
+    where: GeneratedImageWhereUniqueInput
+  }
+
+  /**
+   * GeneratedImage findUniqueOrThrow
+   */
+  export type GeneratedImageFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GeneratedImage
+     */
+    select?: GeneratedImageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GeneratedImage
+     */
+    omit?: GeneratedImageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GeneratedImageInclude<ExtArgs> | null
+    /**
+     * Filter, which GeneratedImage to fetch.
+     */
+    where: GeneratedImageWhereUniqueInput
+  }
+
+  /**
+   * GeneratedImage findFirst
+   */
+  export type GeneratedImageFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GeneratedImage
+     */
+    select?: GeneratedImageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GeneratedImage
+     */
+    omit?: GeneratedImageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GeneratedImageInclude<ExtArgs> | null
+    /**
+     * Filter, which GeneratedImage to fetch.
+     */
+    where?: GeneratedImageWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GeneratedImages to fetch.
+     */
+    orderBy?: GeneratedImageOrderByWithRelationInput | GeneratedImageOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for GeneratedImages.
+     */
+    cursor?: GeneratedImageWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GeneratedImages from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GeneratedImages.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of GeneratedImages.
+     */
+    distinct?: GeneratedImageScalarFieldEnum | GeneratedImageScalarFieldEnum[]
+  }
+
+  /**
+   * GeneratedImage findFirstOrThrow
+   */
+  export type GeneratedImageFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GeneratedImage
+     */
+    select?: GeneratedImageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GeneratedImage
+     */
+    omit?: GeneratedImageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GeneratedImageInclude<ExtArgs> | null
+    /**
+     * Filter, which GeneratedImage to fetch.
+     */
+    where?: GeneratedImageWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GeneratedImages to fetch.
+     */
+    orderBy?: GeneratedImageOrderByWithRelationInput | GeneratedImageOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for GeneratedImages.
+     */
+    cursor?: GeneratedImageWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GeneratedImages from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GeneratedImages.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of GeneratedImages.
+     */
+    distinct?: GeneratedImageScalarFieldEnum | GeneratedImageScalarFieldEnum[]
+  }
+
+  /**
+   * GeneratedImage findMany
+   */
+  export type GeneratedImageFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GeneratedImage
+     */
+    select?: GeneratedImageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GeneratedImage
+     */
+    omit?: GeneratedImageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GeneratedImageInclude<ExtArgs> | null
+    /**
+     * Filter, which GeneratedImages to fetch.
+     */
+    where?: GeneratedImageWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GeneratedImages to fetch.
+     */
+    orderBy?: GeneratedImageOrderByWithRelationInput | GeneratedImageOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing GeneratedImages.
+     */
+    cursor?: GeneratedImageWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GeneratedImages from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GeneratedImages.
+     */
+    skip?: number
+    distinct?: GeneratedImageScalarFieldEnum | GeneratedImageScalarFieldEnum[]
+  }
+
+  /**
+   * GeneratedImage create
+   */
+  export type GeneratedImageCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GeneratedImage
+     */
+    select?: GeneratedImageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GeneratedImage
+     */
+    omit?: GeneratedImageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GeneratedImageInclude<ExtArgs> | null
+    /**
+     * The data needed to create a GeneratedImage.
+     */
+    data: XOR<GeneratedImageCreateInput, GeneratedImageUncheckedCreateInput>
+  }
+
+  /**
+   * GeneratedImage createMany
+   */
+  export type GeneratedImageCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many GeneratedImages.
+     */
+    data: GeneratedImageCreateManyInput | GeneratedImageCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * GeneratedImage createManyAndReturn
+   */
+  export type GeneratedImageCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GeneratedImage
+     */
+    select?: GeneratedImageSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the GeneratedImage
+     */
+    omit?: GeneratedImageOmit<ExtArgs> | null
+    /**
+     * The data used to create many GeneratedImages.
+     */
+    data: GeneratedImageCreateManyInput | GeneratedImageCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GeneratedImageIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * GeneratedImage update
+   */
+  export type GeneratedImageUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GeneratedImage
+     */
+    select?: GeneratedImageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GeneratedImage
+     */
+    omit?: GeneratedImageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GeneratedImageInclude<ExtArgs> | null
+    /**
+     * The data needed to update a GeneratedImage.
+     */
+    data: XOR<GeneratedImageUpdateInput, GeneratedImageUncheckedUpdateInput>
+    /**
+     * Choose, which GeneratedImage to update.
+     */
+    where: GeneratedImageWhereUniqueInput
+  }
+
+  /**
+   * GeneratedImage updateMany
+   */
+  export type GeneratedImageUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update GeneratedImages.
+     */
+    data: XOR<GeneratedImageUpdateManyMutationInput, GeneratedImageUncheckedUpdateManyInput>
+    /**
+     * Filter which GeneratedImages to update
+     */
+    where?: GeneratedImageWhereInput
+    /**
+     * Limit how many GeneratedImages to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * GeneratedImage updateManyAndReturn
+   */
+  export type GeneratedImageUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GeneratedImage
+     */
+    select?: GeneratedImageSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the GeneratedImage
+     */
+    omit?: GeneratedImageOmit<ExtArgs> | null
+    /**
+     * The data used to update GeneratedImages.
+     */
+    data: XOR<GeneratedImageUpdateManyMutationInput, GeneratedImageUncheckedUpdateManyInput>
+    /**
+     * Filter which GeneratedImages to update
+     */
+    where?: GeneratedImageWhereInput
+    /**
+     * Limit how many GeneratedImages to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GeneratedImageIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * GeneratedImage upsert
+   */
+  export type GeneratedImageUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GeneratedImage
+     */
+    select?: GeneratedImageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GeneratedImage
+     */
+    omit?: GeneratedImageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GeneratedImageInclude<ExtArgs> | null
+    /**
+     * The filter to search for the GeneratedImage to update in case it exists.
+     */
+    where: GeneratedImageWhereUniqueInput
+    /**
+     * In case the GeneratedImage found by the `where` argument doesn't exist, create a new GeneratedImage with this data.
+     */
+    create: XOR<GeneratedImageCreateInput, GeneratedImageUncheckedCreateInput>
+    /**
+     * In case the GeneratedImage was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<GeneratedImageUpdateInput, GeneratedImageUncheckedUpdateInput>
+  }
+
+  /**
+   * GeneratedImage delete
+   */
+  export type GeneratedImageDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GeneratedImage
+     */
+    select?: GeneratedImageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GeneratedImage
+     */
+    omit?: GeneratedImageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GeneratedImageInclude<ExtArgs> | null
+    /**
+     * Filter which GeneratedImage to delete.
+     */
+    where: GeneratedImageWhereUniqueInput
+  }
+
+  /**
+   * GeneratedImage deleteMany
+   */
+  export type GeneratedImageDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which GeneratedImages to delete
+     */
+    where?: GeneratedImageWhereInput
+    /**
+     * Limit how many GeneratedImages to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * GeneratedImage without action
+   */
+  export type GeneratedImageDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GeneratedImage
+     */
+    select?: GeneratedImageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GeneratedImage
+     */
+    omit?: GeneratedImageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GeneratedImageInclude<ExtArgs> | null
   }
 
 
@@ -3226,6 +4554,20 @@ export namespace Prisma {
   export type DreamScalarFieldEnum = (typeof DreamScalarFieldEnum)[keyof typeof DreamScalarFieldEnum]
 
 
+  export const GeneratedImageScalarFieldEnum: {
+    id: 'id',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt',
+    imageUrl: 'imageUrl',
+    promptText: 'promptText',
+    graphState: 'graphState',
+    dreamId: 'dreamId',
+    userId: 'userId'
+  };
+
+  export type GeneratedImageScalarFieldEnum = (typeof GeneratedImageScalarFieldEnum)[keyof typeof GeneratedImageScalarFieldEnum]
+
+
   export const SortOrder: {
     asc: 'asc',
     desc: 'desc'
@@ -3239,6 +4581,14 @@ export namespace Prisma {
   };
 
   export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
+
+
+  export const NullableJsonNullValueInput: {
+    DbNull: typeof DbNull,
+    JsonNull: typeof JsonNull
+  };
+
+  export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
 
 
   export const QueryMode: {
@@ -3357,6 +4707,7 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"User"> | Date | string
     updatedAt?: DateTimeFilter<"User"> | Date | string
     dreams?: DreamListRelationFilter
+    generatedImages?: GeneratedImageListRelationFilter
   }
 
   export type UserOrderByWithRelationInput = {
@@ -3369,6 +4720,7 @@ export namespace Prisma {
     createdAt?: SortOrder
     updatedAt?: SortOrder
     dreams?: DreamOrderByRelationAggregateInput
+    generatedImages?: GeneratedImageOrderByRelationAggregateInput
   }
 
   export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -3384,6 +4736,7 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"User"> | Date | string
     updatedAt?: DateTimeFilter<"User"> | Date | string
     dreams?: DreamListRelationFilter
+    generatedImages?: GeneratedImageListRelationFilter
   }, "id" | "email">
 
   export type UserOrderByWithAggregationInput = {
@@ -3424,6 +4777,7 @@ export namespace Prisma {
     data?: JsonFilter<"Dream">
     userId?: StringFilter<"Dream"> | string
     user?: XOR<UserScalarRelationFilter, UserWhereInput>
+    generatedImages?: GeneratedImageListRelationFilter
   }
 
   export type DreamOrderByWithRelationInput = {
@@ -3433,6 +4787,7 @@ export namespace Prisma {
     data?: SortOrder
     userId?: SortOrder
     user?: UserOrderByWithRelationInput
+    generatedImages?: GeneratedImageOrderByRelationAggregateInput
   }
 
   export type DreamWhereUniqueInput = Prisma.AtLeast<{
@@ -3445,6 +4800,7 @@ export namespace Prisma {
     data?: JsonFilter<"Dream">
     userId?: StringFilter<"Dream"> | string
     user?: XOR<UserScalarRelationFilter, UserWhereInput>
+    generatedImages?: GeneratedImageListRelationFilter
   }, "id">
 
   export type DreamOrderByWithAggregationInput = {
@@ -3471,6 +4827,81 @@ export namespace Prisma {
     userId?: StringWithAggregatesFilter<"Dream"> | string
   }
 
+  export type GeneratedImageWhereInput = {
+    AND?: GeneratedImageWhereInput | GeneratedImageWhereInput[]
+    OR?: GeneratedImageWhereInput[]
+    NOT?: GeneratedImageWhereInput | GeneratedImageWhereInput[]
+    id?: IntFilter<"GeneratedImage"> | number
+    createdAt?: DateTimeFilter<"GeneratedImage"> | Date | string
+    updatedAt?: DateTimeFilter<"GeneratedImage"> | Date | string
+    imageUrl?: StringFilter<"GeneratedImage"> | string
+    promptText?: StringNullableFilter<"GeneratedImage"> | string | null
+    graphState?: JsonNullableFilter<"GeneratedImage">
+    dreamId?: IntFilter<"GeneratedImage"> | number
+    userId?: StringFilter<"GeneratedImage"> | string
+    dream?: XOR<DreamScalarRelationFilter, DreamWhereInput>
+    user?: XOR<UserScalarRelationFilter, UserWhereInput>
+  }
+
+  export type GeneratedImageOrderByWithRelationInput = {
+    id?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    imageUrl?: SortOrder
+    promptText?: SortOrderInput | SortOrder
+    graphState?: SortOrderInput | SortOrder
+    dreamId?: SortOrder
+    userId?: SortOrder
+    dream?: DreamOrderByWithRelationInput
+    user?: UserOrderByWithRelationInput
+  }
+
+  export type GeneratedImageWhereUniqueInput = Prisma.AtLeast<{
+    id?: number
+    AND?: GeneratedImageWhereInput | GeneratedImageWhereInput[]
+    OR?: GeneratedImageWhereInput[]
+    NOT?: GeneratedImageWhereInput | GeneratedImageWhereInput[]
+    createdAt?: DateTimeFilter<"GeneratedImage"> | Date | string
+    updatedAt?: DateTimeFilter<"GeneratedImage"> | Date | string
+    imageUrl?: StringFilter<"GeneratedImage"> | string
+    promptText?: StringNullableFilter<"GeneratedImage"> | string | null
+    graphState?: JsonNullableFilter<"GeneratedImage">
+    dreamId?: IntFilter<"GeneratedImage"> | number
+    userId?: StringFilter<"GeneratedImage"> | string
+    dream?: XOR<DreamScalarRelationFilter, DreamWhereInput>
+    user?: XOR<UserScalarRelationFilter, UserWhereInput>
+  }, "id">
+
+  export type GeneratedImageOrderByWithAggregationInput = {
+    id?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    imageUrl?: SortOrder
+    promptText?: SortOrderInput | SortOrder
+    graphState?: SortOrderInput | SortOrder
+    dreamId?: SortOrder
+    userId?: SortOrder
+    _count?: GeneratedImageCountOrderByAggregateInput
+    _avg?: GeneratedImageAvgOrderByAggregateInput
+    _max?: GeneratedImageMaxOrderByAggregateInput
+    _min?: GeneratedImageMinOrderByAggregateInput
+    _sum?: GeneratedImageSumOrderByAggregateInput
+  }
+
+  export type GeneratedImageScalarWhereWithAggregatesInput = {
+    AND?: GeneratedImageScalarWhereWithAggregatesInput | GeneratedImageScalarWhereWithAggregatesInput[]
+    OR?: GeneratedImageScalarWhereWithAggregatesInput[]
+    NOT?: GeneratedImageScalarWhereWithAggregatesInput | GeneratedImageScalarWhereWithAggregatesInput[]
+    id?: IntWithAggregatesFilter<"GeneratedImage"> | number
+    createdAt?: DateTimeWithAggregatesFilter<"GeneratedImage"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"GeneratedImage"> | Date | string
+    imageUrl?: StringWithAggregatesFilter<"GeneratedImage"> | string
+    promptText?: StringNullableWithAggregatesFilter<"GeneratedImage"> | string | null
+    graphState?: JsonNullableWithAggregatesFilter<"GeneratedImage">
+    dreamId?: IntWithAggregatesFilter<"GeneratedImage"> | number
+    userId?: StringWithAggregatesFilter<"GeneratedImage"> | string
+  }
+
   export type UserCreateInput = {
     id?: string
     name?: string | null
@@ -3481,6 +4912,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     dreams?: DreamCreateNestedManyWithoutUserInput
+    generatedImages?: GeneratedImageCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateInput = {
@@ -3493,6 +4925,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     dreams?: DreamUncheckedCreateNestedManyWithoutUserInput
+    generatedImages?: GeneratedImageUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserUpdateInput = {
@@ -3505,6 +4938,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     dreams?: DreamUpdateManyWithoutUserNestedInput
+    generatedImages?: GeneratedImageUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateInput = {
@@ -3517,6 +4951,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     dreams?: DreamUncheckedUpdateManyWithoutUserNestedInput
+    generatedImages?: GeneratedImageUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type UserCreateManyInput = {
@@ -3557,6 +4992,7 @@ export namespace Prisma {
     title?: string | null
     data: JsonNullValueInput | InputJsonValue
     user: UserCreateNestedOneWithoutDreamsInput
+    generatedImages?: GeneratedImageCreateNestedManyWithoutDreamInput
   }
 
   export type DreamUncheckedCreateInput = {
@@ -3565,6 +5001,7 @@ export namespace Prisma {
     title?: string | null
     data: JsonNullValueInput | InputJsonValue
     userId: string
+    generatedImages?: GeneratedImageUncheckedCreateNestedManyWithoutDreamInput
   }
 
   export type DreamUpdateInput = {
@@ -3572,6 +5009,7 @@ export namespace Prisma {
     title?: NullableStringFieldUpdateOperationsInput | string | null
     data?: JsonNullValueInput | InputJsonValue
     user?: UserUpdateOneRequiredWithoutDreamsNestedInput
+    generatedImages?: GeneratedImageUpdateManyWithoutDreamNestedInput
   }
 
   export type DreamUncheckedUpdateInput = {
@@ -3580,6 +5018,7 @@ export namespace Prisma {
     title?: NullableStringFieldUpdateOperationsInput | string | null
     data?: JsonNullValueInput | InputJsonValue
     userId?: StringFieldUpdateOperationsInput | string
+    generatedImages?: GeneratedImageUncheckedUpdateManyWithoutDreamNestedInput
   }
 
   export type DreamCreateManyInput = {
@@ -3601,6 +5040,78 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     title?: NullableStringFieldUpdateOperationsInput | string | null
     data?: JsonNullValueInput | InputJsonValue
+    userId?: StringFieldUpdateOperationsInput | string
+  }
+
+  export type GeneratedImageCreateInput = {
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    imageUrl: string
+    promptText?: string | null
+    graphState?: NullableJsonNullValueInput | InputJsonValue
+    dream: DreamCreateNestedOneWithoutGeneratedImagesInput
+    user: UserCreateNestedOneWithoutGeneratedImagesInput
+  }
+
+  export type GeneratedImageUncheckedCreateInput = {
+    id?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    imageUrl: string
+    promptText?: string | null
+    graphState?: NullableJsonNullValueInput | InputJsonValue
+    dreamId: number
+    userId: string
+  }
+
+  export type GeneratedImageUpdateInput = {
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    imageUrl?: StringFieldUpdateOperationsInput | string
+    promptText?: NullableStringFieldUpdateOperationsInput | string | null
+    graphState?: NullableJsonNullValueInput | InputJsonValue
+    dream?: DreamUpdateOneRequiredWithoutGeneratedImagesNestedInput
+    user?: UserUpdateOneRequiredWithoutGeneratedImagesNestedInput
+  }
+
+  export type GeneratedImageUncheckedUpdateInput = {
+    id?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    imageUrl?: StringFieldUpdateOperationsInput | string
+    promptText?: NullableStringFieldUpdateOperationsInput | string | null
+    graphState?: NullableJsonNullValueInput | InputJsonValue
+    dreamId?: IntFieldUpdateOperationsInput | number
+    userId?: StringFieldUpdateOperationsInput | string
+  }
+
+  export type GeneratedImageCreateManyInput = {
+    id?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    imageUrl: string
+    promptText?: string | null
+    graphState?: NullableJsonNullValueInput | InputJsonValue
+    dreamId: number
+    userId: string
+  }
+
+  export type GeneratedImageUpdateManyMutationInput = {
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    imageUrl?: StringFieldUpdateOperationsInput | string
+    promptText?: NullableStringFieldUpdateOperationsInput | string | null
+    graphState?: NullableJsonNullValueInput | InputJsonValue
+  }
+
+  export type GeneratedImageUncheckedUpdateManyInput = {
+    id?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    imageUrl?: StringFieldUpdateOperationsInput | string
+    promptText?: NullableStringFieldUpdateOperationsInput | string | null
+    graphState?: NullableJsonNullValueInput | InputJsonValue
+    dreamId?: IntFieldUpdateOperationsInput | number
     userId?: StringFieldUpdateOperationsInput | string
   }
 
@@ -3662,12 +5173,22 @@ export namespace Prisma {
     none?: DreamWhereInput
   }
 
+  export type GeneratedImageListRelationFilter = {
+    every?: GeneratedImageWhereInput
+    some?: GeneratedImageWhereInput
+    none?: GeneratedImageWhereInput
+  }
+
   export type SortOrderInput = {
     sort: SortOrder
     nulls?: NullsOrder
   }
 
   export type DreamOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type GeneratedImageOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -3878,6 +5399,101 @@ export namespace Prisma {
     _min?: NestedJsonFilter<$PrismaModel>
     _max?: NestedJsonFilter<$PrismaModel>
   }
+  export type JsonNullableFilter<$PrismaModel = never> =
+    | PatchUndefined<
+        Either<Required<JsonNullableFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableFilterBase<$PrismaModel>>, 'path'>>,
+        Required<JsonNullableFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<JsonNullableFilterBase<$PrismaModel>>, 'path'>>
+
+  export type JsonNullableFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+  }
+
+  export type DreamScalarRelationFilter = {
+    is?: DreamWhereInput
+    isNot?: DreamWhereInput
+  }
+
+  export type GeneratedImageCountOrderByAggregateInput = {
+    id?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    imageUrl?: SortOrder
+    promptText?: SortOrder
+    graphState?: SortOrder
+    dreamId?: SortOrder
+    userId?: SortOrder
+  }
+
+  export type GeneratedImageAvgOrderByAggregateInput = {
+    id?: SortOrder
+    dreamId?: SortOrder
+  }
+
+  export type GeneratedImageMaxOrderByAggregateInput = {
+    id?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    imageUrl?: SortOrder
+    promptText?: SortOrder
+    dreamId?: SortOrder
+    userId?: SortOrder
+  }
+
+  export type GeneratedImageMinOrderByAggregateInput = {
+    id?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    imageUrl?: SortOrder
+    promptText?: SortOrder
+    dreamId?: SortOrder
+    userId?: SortOrder
+  }
+
+  export type GeneratedImageSumOrderByAggregateInput = {
+    id?: SortOrder
+    dreamId?: SortOrder
+  }
+  export type JsonNullableWithAggregatesFilter<$PrismaModel = never> =
+    | PatchUndefined<
+        Either<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>,
+        Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>
+
+  export type JsonNullableWithAggregatesFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedJsonNullableFilter<$PrismaModel>
+    _max?: NestedJsonNullableFilter<$PrismaModel>
+  }
 
   export type DreamCreateNestedManyWithoutUserInput = {
     create?: XOR<DreamCreateWithoutUserInput, DreamUncheckedCreateWithoutUserInput> | DreamCreateWithoutUserInput[] | DreamUncheckedCreateWithoutUserInput[]
@@ -3886,11 +5502,25 @@ export namespace Prisma {
     connect?: DreamWhereUniqueInput | DreamWhereUniqueInput[]
   }
 
+  export type GeneratedImageCreateNestedManyWithoutUserInput = {
+    create?: XOR<GeneratedImageCreateWithoutUserInput, GeneratedImageUncheckedCreateWithoutUserInput> | GeneratedImageCreateWithoutUserInput[] | GeneratedImageUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: GeneratedImageCreateOrConnectWithoutUserInput | GeneratedImageCreateOrConnectWithoutUserInput[]
+    createMany?: GeneratedImageCreateManyUserInputEnvelope
+    connect?: GeneratedImageWhereUniqueInput | GeneratedImageWhereUniqueInput[]
+  }
+
   export type DreamUncheckedCreateNestedManyWithoutUserInput = {
     create?: XOR<DreamCreateWithoutUserInput, DreamUncheckedCreateWithoutUserInput> | DreamCreateWithoutUserInput[] | DreamUncheckedCreateWithoutUserInput[]
     connectOrCreate?: DreamCreateOrConnectWithoutUserInput | DreamCreateOrConnectWithoutUserInput[]
     createMany?: DreamCreateManyUserInputEnvelope
     connect?: DreamWhereUniqueInput | DreamWhereUniqueInput[]
+  }
+
+  export type GeneratedImageUncheckedCreateNestedManyWithoutUserInput = {
+    create?: XOR<GeneratedImageCreateWithoutUserInput, GeneratedImageUncheckedCreateWithoutUserInput> | GeneratedImageCreateWithoutUserInput[] | GeneratedImageUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: GeneratedImageCreateOrConnectWithoutUserInput | GeneratedImageCreateOrConnectWithoutUserInput[]
+    createMany?: GeneratedImageCreateManyUserInputEnvelope
+    connect?: GeneratedImageWhereUniqueInput | GeneratedImageWhereUniqueInput[]
   }
 
   export type StringFieldUpdateOperationsInput = {
@@ -3923,6 +5553,20 @@ export namespace Prisma {
     deleteMany?: DreamScalarWhereInput | DreamScalarWhereInput[]
   }
 
+  export type GeneratedImageUpdateManyWithoutUserNestedInput = {
+    create?: XOR<GeneratedImageCreateWithoutUserInput, GeneratedImageUncheckedCreateWithoutUserInput> | GeneratedImageCreateWithoutUserInput[] | GeneratedImageUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: GeneratedImageCreateOrConnectWithoutUserInput | GeneratedImageCreateOrConnectWithoutUserInput[]
+    upsert?: GeneratedImageUpsertWithWhereUniqueWithoutUserInput | GeneratedImageUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: GeneratedImageCreateManyUserInputEnvelope
+    set?: GeneratedImageWhereUniqueInput | GeneratedImageWhereUniqueInput[]
+    disconnect?: GeneratedImageWhereUniqueInput | GeneratedImageWhereUniqueInput[]
+    delete?: GeneratedImageWhereUniqueInput | GeneratedImageWhereUniqueInput[]
+    connect?: GeneratedImageWhereUniqueInput | GeneratedImageWhereUniqueInput[]
+    update?: GeneratedImageUpdateWithWhereUniqueWithoutUserInput | GeneratedImageUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: GeneratedImageUpdateManyWithWhereWithoutUserInput | GeneratedImageUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: GeneratedImageScalarWhereInput | GeneratedImageScalarWhereInput[]
+  }
+
   export type DreamUncheckedUpdateManyWithoutUserNestedInput = {
     create?: XOR<DreamCreateWithoutUserInput, DreamUncheckedCreateWithoutUserInput> | DreamCreateWithoutUserInput[] | DreamUncheckedCreateWithoutUserInput[]
     connectOrCreate?: DreamCreateOrConnectWithoutUserInput | DreamCreateOrConnectWithoutUserInput[]
@@ -3937,10 +5581,38 @@ export namespace Prisma {
     deleteMany?: DreamScalarWhereInput | DreamScalarWhereInput[]
   }
 
+  export type GeneratedImageUncheckedUpdateManyWithoutUserNestedInput = {
+    create?: XOR<GeneratedImageCreateWithoutUserInput, GeneratedImageUncheckedCreateWithoutUserInput> | GeneratedImageCreateWithoutUserInput[] | GeneratedImageUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: GeneratedImageCreateOrConnectWithoutUserInput | GeneratedImageCreateOrConnectWithoutUserInput[]
+    upsert?: GeneratedImageUpsertWithWhereUniqueWithoutUserInput | GeneratedImageUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: GeneratedImageCreateManyUserInputEnvelope
+    set?: GeneratedImageWhereUniqueInput | GeneratedImageWhereUniqueInput[]
+    disconnect?: GeneratedImageWhereUniqueInput | GeneratedImageWhereUniqueInput[]
+    delete?: GeneratedImageWhereUniqueInput | GeneratedImageWhereUniqueInput[]
+    connect?: GeneratedImageWhereUniqueInput | GeneratedImageWhereUniqueInput[]
+    update?: GeneratedImageUpdateWithWhereUniqueWithoutUserInput | GeneratedImageUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: GeneratedImageUpdateManyWithWhereWithoutUserInput | GeneratedImageUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: GeneratedImageScalarWhereInput | GeneratedImageScalarWhereInput[]
+  }
+
   export type UserCreateNestedOneWithoutDreamsInput = {
     create?: XOR<UserCreateWithoutDreamsInput, UserUncheckedCreateWithoutDreamsInput>
     connectOrCreate?: UserCreateOrConnectWithoutDreamsInput
     connect?: UserWhereUniqueInput
+  }
+
+  export type GeneratedImageCreateNestedManyWithoutDreamInput = {
+    create?: XOR<GeneratedImageCreateWithoutDreamInput, GeneratedImageUncheckedCreateWithoutDreamInput> | GeneratedImageCreateWithoutDreamInput[] | GeneratedImageUncheckedCreateWithoutDreamInput[]
+    connectOrCreate?: GeneratedImageCreateOrConnectWithoutDreamInput | GeneratedImageCreateOrConnectWithoutDreamInput[]
+    createMany?: GeneratedImageCreateManyDreamInputEnvelope
+    connect?: GeneratedImageWhereUniqueInput | GeneratedImageWhereUniqueInput[]
+  }
+
+  export type GeneratedImageUncheckedCreateNestedManyWithoutDreamInput = {
+    create?: XOR<GeneratedImageCreateWithoutDreamInput, GeneratedImageUncheckedCreateWithoutDreamInput> | GeneratedImageCreateWithoutDreamInput[] | GeneratedImageUncheckedCreateWithoutDreamInput[]
+    connectOrCreate?: GeneratedImageCreateOrConnectWithoutDreamInput | GeneratedImageCreateOrConnectWithoutDreamInput[]
+    createMany?: GeneratedImageCreateManyDreamInputEnvelope
+    connect?: GeneratedImageWhereUniqueInput | GeneratedImageWhereUniqueInput[]
   }
 
   export type UserUpdateOneRequiredWithoutDreamsNestedInput = {
@@ -3951,12 +5623,68 @@ export namespace Prisma {
     update?: XOR<XOR<UserUpdateToOneWithWhereWithoutDreamsInput, UserUpdateWithoutDreamsInput>, UserUncheckedUpdateWithoutDreamsInput>
   }
 
+  export type GeneratedImageUpdateManyWithoutDreamNestedInput = {
+    create?: XOR<GeneratedImageCreateWithoutDreamInput, GeneratedImageUncheckedCreateWithoutDreamInput> | GeneratedImageCreateWithoutDreamInput[] | GeneratedImageUncheckedCreateWithoutDreamInput[]
+    connectOrCreate?: GeneratedImageCreateOrConnectWithoutDreamInput | GeneratedImageCreateOrConnectWithoutDreamInput[]
+    upsert?: GeneratedImageUpsertWithWhereUniqueWithoutDreamInput | GeneratedImageUpsertWithWhereUniqueWithoutDreamInput[]
+    createMany?: GeneratedImageCreateManyDreamInputEnvelope
+    set?: GeneratedImageWhereUniqueInput | GeneratedImageWhereUniqueInput[]
+    disconnect?: GeneratedImageWhereUniqueInput | GeneratedImageWhereUniqueInput[]
+    delete?: GeneratedImageWhereUniqueInput | GeneratedImageWhereUniqueInput[]
+    connect?: GeneratedImageWhereUniqueInput | GeneratedImageWhereUniqueInput[]
+    update?: GeneratedImageUpdateWithWhereUniqueWithoutDreamInput | GeneratedImageUpdateWithWhereUniqueWithoutDreamInput[]
+    updateMany?: GeneratedImageUpdateManyWithWhereWithoutDreamInput | GeneratedImageUpdateManyWithWhereWithoutDreamInput[]
+    deleteMany?: GeneratedImageScalarWhereInput | GeneratedImageScalarWhereInput[]
+  }
+
   export type IntFieldUpdateOperationsInput = {
     set?: number
     increment?: number
     decrement?: number
     multiply?: number
     divide?: number
+  }
+
+  export type GeneratedImageUncheckedUpdateManyWithoutDreamNestedInput = {
+    create?: XOR<GeneratedImageCreateWithoutDreamInput, GeneratedImageUncheckedCreateWithoutDreamInput> | GeneratedImageCreateWithoutDreamInput[] | GeneratedImageUncheckedCreateWithoutDreamInput[]
+    connectOrCreate?: GeneratedImageCreateOrConnectWithoutDreamInput | GeneratedImageCreateOrConnectWithoutDreamInput[]
+    upsert?: GeneratedImageUpsertWithWhereUniqueWithoutDreamInput | GeneratedImageUpsertWithWhereUniqueWithoutDreamInput[]
+    createMany?: GeneratedImageCreateManyDreamInputEnvelope
+    set?: GeneratedImageWhereUniqueInput | GeneratedImageWhereUniqueInput[]
+    disconnect?: GeneratedImageWhereUniqueInput | GeneratedImageWhereUniqueInput[]
+    delete?: GeneratedImageWhereUniqueInput | GeneratedImageWhereUniqueInput[]
+    connect?: GeneratedImageWhereUniqueInput | GeneratedImageWhereUniqueInput[]
+    update?: GeneratedImageUpdateWithWhereUniqueWithoutDreamInput | GeneratedImageUpdateWithWhereUniqueWithoutDreamInput[]
+    updateMany?: GeneratedImageUpdateManyWithWhereWithoutDreamInput | GeneratedImageUpdateManyWithWhereWithoutDreamInput[]
+    deleteMany?: GeneratedImageScalarWhereInput | GeneratedImageScalarWhereInput[]
+  }
+
+  export type DreamCreateNestedOneWithoutGeneratedImagesInput = {
+    create?: XOR<DreamCreateWithoutGeneratedImagesInput, DreamUncheckedCreateWithoutGeneratedImagesInput>
+    connectOrCreate?: DreamCreateOrConnectWithoutGeneratedImagesInput
+    connect?: DreamWhereUniqueInput
+  }
+
+  export type UserCreateNestedOneWithoutGeneratedImagesInput = {
+    create?: XOR<UserCreateWithoutGeneratedImagesInput, UserUncheckedCreateWithoutGeneratedImagesInput>
+    connectOrCreate?: UserCreateOrConnectWithoutGeneratedImagesInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type DreamUpdateOneRequiredWithoutGeneratedImagesNestedInput = {
+    create?: XOR<DreamCreateWithoutGeneratedImagesInput, DreamUncheckedCreateWithoutGeneratedImagesInput>
+    connectOrCreate?: DreamCreateOrConnectWithoutGeneratedImagesInput
+    upsert?: DreamUpsertWithoutGeneratedImagesInput
+    connect?: DreamWhereUniqueInput
+    update?: XOR<XOR<DreamUpdateToOneWithWhereWithoutGeneratedImagesInput, DreamUpdateWithoutGeneratedImagesInput>, DreamUncheckedUpdateWithoutGeneratedImagesInput>
+  }
+
+  export type UserUpdateOneRequiredWithoutGeneratedImagesNestedInput = {
+    create?: XOR<UserCreateWithoutGeneratedImagesInput, UserUncheckedCreateWithoutGeneratedImagesInput>
+    connectOrCreate?: UserCreateOrConnectWithoutGeneratedImagesInput
+    upsert?: UserUpsertWithoutGeneratedImagesInput
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutGeneratedImagesInput, UserUpdateWithoutGeneratedImagesInput>, UserUncheckedUpdateWithoutGeneratedImagesInput>
   }
 
   export type NestedStringFilter<$PrismaModel = never> = {
@@ -4142,11 +5870,35 @@ export namespace Prisma {
     gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
   }
+  export type NestedJsonNullableFilter<$PrismaModel = never> =
+    | PatchUndefined<
+        Either<Required<NestedJsonNullableFilterBase<$PrismaModel>>, Exclude<keyof Required<NestedJsonNullableFilterBase<$PrismaModel>>, 'path'>>,
+        Required<NestedJsonNullableFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<NestedJsonNullableFilterBase<$PrismaModel>>, 'path'>>
+
+  export type NestedJsonNullableFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+  }
 
   export type DreamCreateWithoutUserInput = {
     createdAt?: Date | string
     title?: string | null
     data: JsonNullValueInput | InputJsonValue
+    generatedImages?: GeneratedImageCreateNestedManyWithoutDreamInput
   }
 
   export type DreamUncheckedCreateWithoutUserInput = {
@@ -4154,6 +5906,7 @@ export namespace Prisma {
     createdAt?: Date | string
     title?: string | null
     data: JsonNullValueInput | InputJsonValue
+    generatedImages?: GeneratedImageUncheckedCreateNestedManyWithoutDreamInput
   }
 
   export type DreamCreateOrConnectWithoutUserInput = {
@@ -4163,6 +5916,35 @@ export namespace Prisma {
 
   export type DreamCreateManyUserInputEnvelope = {
     data: DreamCreateManyUserInput | DreamCreateManyUserInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type GeneratedImageCreateWithoutUserInput = {
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    imageUrl: string
+    promptText?: string | null
+    graphState?: NullableJsonNullValueInput | InputJsonValue
+    dream: DreamCreateNestedOneWithoutGeneratedImagesInput
+  }
+
+  export type GeneratedImageUncheckedCreateWithoutUserInput = {
+    id?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    imageUrl: string
+    promptText?: string | null
+    graphState?: NullableJsonNullValueInput | InputJsonValue
+    dreamId: number
+  }
+
+  export type GeneratedImageCreateOrConnectWithoutUserInput = {
+    where: GeneratedImageWhereUniqueInput
+    create: XOR<GeneratedImageCreateWithoutUserInput, GeneratedImageUncheckedCreateWithoutUserInput>
+  }
+
+  export type GeneratedImageCreateManyUserInputEnvelope = {
+    data: GeneratedImageCreateManyUserInput | GeneratedImageCreateManyUserInput[]
     skipDuplicates?: boolean
   }
 
@@ -4193,6 +5975,36 @@ export namespace Prisma {
     userId?: StringFilter<"Dream"> | string
   }
 
+  export type GeneratedImageUpsertWithWhereUniqueWithoutUserInput = {
+    where: GeneratedImageWhereUniqueInput
+    update: XOR<GeneratedImageUpdateWithoutUserInput, GeneratedImageUncheckedUpdateWithoutUserInput>
+    create: XOR<GeneratedImageCreateWithoutUserInput, GeneratedImageUncheckedCreateWithoutUserInput>
+  }
+
+  export type GeneratedImageUpdateWithWhereUniqueWithoutUserInput = {
+    where: GeneratedImageWhereUniqueInput
+    data: XOR<GeneratedImageUpdateWithoutUserInput, GeneratedImageUncheckedUpdateWithoutUserInput>
+  }
+
+  export type GeneratedImageUpdateManyWithWhereWithoutUserInput = {
+    where: GeneratedImageScalarWhereInput
+    data: XOR<GeneratedImageUpdateManyMutationInput, GeneratedImageUncheckedUpdateManyWithoutUserInput>
+  }
+
+  export type GeneratedImageScalarWhereInput = {
+    AND?: GeneratedImageScalarWhereInput | GeneratedImageScalarWhereInput[]
+    OR?: GeneratedImageScalarWhereInput[]
+    NOT?: GeneratedImageScalarWhereInput | GeneratedImageScalarWhereInput[]
+    id?: IntFilter<"GeneratedImage"> | number
+    createdAt?: DateTimeFilter<"GeneratedImage"> | Date | string
+    updatedAt?: DateTimeFilter<"GeneratedImage"> | Date | string
+    imageUrl?: StringFilter<"GeneratedImage"> | string
+    promptText?: StringNullableFilter<"GeneratedImage"> | string | null
+    graphState?: JsonNullableFilter<"GeneratedImage">
+    dreamId?: IntFilter<"GeneratedImage"> | number
+    userId?: StringFilter<"GeneratedImage"> | string
+  }
+
   export type UserCreateWithoutDreamsInput = {
     id?: string
     name?: string | null
@@ -4202,6 +6014,7 @@ export namespace Prisma {
     image?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    generatedImages?: GeneratedImageCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutDreamsInput = {
@@ -4213,11 +6026,41 @@ export namespace Prisma {
     image?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    generatedImages?: GeneratedImageUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutDreamsInput = {
     where: UserWhereUniqueInput
     create: XOR<UserCreateWithoutDreamsInput, UserUncheckedCreateWithoutDreamsInput>
+  }
+
+  export type GeneratedImageCreateWithoutDreamInput = {
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    imageUrl: string
+    promptText?: string | null
+    graphState?: NullableJsonNullValueInput | InputJsonValue
+    user: UserCreateNestedOneWithoutGeneratedImagesInput
+  }
+
+  export type GeneratedImageUncheckedCreateWithoutDreamInput = {
+    id?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    imageUrl: string
+    promptText?: string | null
+    graphState?: NullableJsonNullValueInput | InputJsonValue
+    userId: string
+  }
+
+  export type GeneratedImageCreateOrConnectWithoutDreamInput = {
+    where: GeneratedImageWhereUniqueInput
+    create: XOR<GeneratedImageCreateWithoutDreamInput, GeneratedImageUncheckedCreateWithoutDreamInput>
+  }
+
+  export type GeneratedImageCreateManyDreamInputEnvelope = {
+    data: GeneratedImageCreateManyDreamInput | GeneratedImageCreateManyDreamInput[]
+    skipDuplicates?: boolean
   }
 
   export type UserUpsertWithoutDreamsInput = {
@@ -4240,6 +6083,7 @@ export namespace Prisma {
     image?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    generatedImages?: GeneratedImageUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutDreamsInput = {
@@ -4251,6 +6095,133 @@ export namespace Prisma {
     image?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    generatedImages?: GeneratedImageUncheckedUpdateManyWithoutUserNestedInput
+  }
+
+  export type GeneratedImageUpsertWithWhereUniqueWithoutDreamInput = {
+    where: GeneratedImageWhereUniqueInput
+    update: XOR<GeneratedImageUpdateWithoutDreamInput, GeneratedImageUncheckedUpdateWithoutDreamInput>
+    create: XOR<GeneratedImageCreateWithoutDreamInput, GeneratedImageUncheckedCreateWithoutDreamInput>
+  }
+
+  export type GeneratedImageUpdateWithWhereUniqueWithoutDreamInput = {
+    where: GeneratedImageWhereUniqueInput
+    data: XOR<GeneratedImageUpdateWithoutDreamInput, GeneratedImageUncheckedUpdateWithoutDreamInput>
+  }
+
+  export type GeneratedImageUpdateManyWithWhereWithoutDreamInput = {
+    where: GeneratedImageScalarWhereInput
+    data: XOR<GeneratedImageUpdateManyMutationInput, GeneratedImageUncheckedUpdateManyWithoutDreamInput>
+  }
+
+  export type DreamCreateWithoutGeneratedImagesInput = {
+    createdAt?: Date | string
+    title?: string | null
+    data: JsonNullValueInput | InputJsonValue
+    user: UserCreateNestedOneWithoutDreamsInput
+  }
+
+  export type DreamUncheckedCreateWithoutGeneratedImagesInput = {
+    id?: number
+    createdAt?: Date | string
+    title?: string | null
+    data: JsonNullValueInput | InputJsonValue
+    userId: string
+  }
+
+  export type DreamCreateOrConnectWithoutGeneratedImagesInput = {
+    where: DreamWhereUniqueInput
+    create: XOR<DreamCreateWithoutGeneratedImagesInput, DreamUncheckedCreateWithoutGeneratedImagesInput>
+  }
+
+  export type UserCreateWithoutGeneratedImagesInput = {
+    id?: string
+    name?: string | null
+    email?: string | null
+    emailVerified?: Date | string | null
+    passwordHash?: string | null
+    image?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    dreams?: DreamCreateNestedManyWithoutUserInput
+  }
+
+  export type UserUncheckedCreateWithoutGeneratedImagesInput = {
+    id?: string
+    name?: string | null
+    email?: string | null
+    emailVerified?: Date | string | null
+    passwordHash?: string | null
+    image?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    dreams?: DreamUncheckedCreateNestedManyWithoutUserInput
+  }
+
+  export type UserCreateOrConnectWithoutGeneratedImagesInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutGeneratedImagesInput, UserUncheckedCreateWithoutGeneratedImagesInput>
+  }
+
+  export type DreamUpsertWithoutGeneratedImagesInput = {
+    update: XOR<DreamUpdateWithoutGeneratedImagesInput, DreamUncheckedUpdateWithoutGeneratedImagesInput>
+    create: XOR<DreamCreateWithoutGeneratedImagesInput, DreamUncheckedCreateWithoutGeneratedImagesInput>
+    where?: DreamWhereInput
+  }
+
+  export type DreamUpdateToOneWithWhereWithoutGeneratedImagesInput = {
+    where?: DreamWhereInput
+    data: XOR<DreamUpdateWithoutGeneratedImagesInput, DreamUncheckedUpdateWithoutGeneratedImagesInput>
+  }
+
+  export type DreamUpdateWithoutGeneratedImagesInput = {
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    title?: NullableStringFieldUpdateOperationsInput | string | null
+    data?: JsonNullValueInput | InputJsonValue
+    user?: UserUpdateOneRequiredWithoutDreamsNestedInput
+  }
+
+  export type DreamUncheckedUpdateWithoutGeneratedImagesInput = {
+    id?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    title?: NullableStringFieldUpdateOperationsInput | string | null
+    data?: JsonNullValueInput | InputJsonValue
+    userId?: StringFieldUpdateOperationsInput | string
+  }
+
+  export type UserUpsertWithoutGeneratedImagesInput = {
+    update: XOR<UserUpdateWithoutGeneratedImagesInput, UserUncheckedUpdateWithoutGeneratedImagesInput>
+    create: XOR<UserCreateWithoutGeneratedImagesInput, UserUncheckedCreateWithoutGeneratedImagesInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutGeneratedImagesInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutGeneratedImagesInput, UserUncheckedUpdateWithoutGeneratedImagesInput>
+  }
+
+  export type UserUpdateWithoutGeneratedImagesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    emailVerified?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    passwordHash?: NullableStringFieldUpdateOperationsInput | string | null
+    image?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    dreams?: DreamUpdateManyWithoutUserNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutGeneratedImagesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    emailVerified?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    passwordHash?: NullableStringFieldUpdateOperationsInput | string | null
+    image?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    dreams?: DreamUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type DreamCreateManyUserInput = {
@@ -4260,10 +6231,21 @@ export namespace Prisma {
     data: JsonNullValueInput | InputJsonValue
   }
 
+  export type GeneratedImageCreateManyUserInput = {
+    id?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    imageUrl: string
+    promptText?: string | null
+    graphState?: NullableJsonNullValueInput | InputJsonValue
+    dreamId: number
+  }
+
   export type DreamUpdateWithoutUserInput = {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     title?: NullableStringFieldUpdateOperationsInput | string | null
     data?: JsonNullValueInput | InputJsonValue
+    generatedImages?: GeneratedImageUpdateManyWithoutDreamNestedInput
   }
 
   export type DreamUncheckedUpdateWithoutUserInput = {
@@ -4271,6 +6253,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     title?: NullableStringFieldUpdateOperationsInput | string | null
     data?: JsonNullValueInput | InputJsonValue
+    generatedImages?: GeneratedImageUncheckedUpdateManyWithoutDreamNestedInput
   }
 
   export type DreamUncheckedUpdateManyWithoutUserInput = {
@@ -4278,6 +6261,74 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     title?: NullableStringFieldUpdateOperationsInput | string | null
     data?: JsonNullValueInput | InputJsonValue
+  }
+
+  export type GeneratedImageUpdateWithoutUserInput = {
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    imageUrl?: StringFieldUpdateOperationsInput | string
+    promptText?: NullableStringFieldUpdateOperationsInput | string | null
+    graphState?: NullableJsonNullValueInput | InputJsonValue
+    dream?: DreamUpdateOneRequiredWithoutGeneratedImagesNestedInput
+  }
+
+  export type GeneratedImageUncheckedUpdateWithoutUserInput = {
+    id?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    imageUrl?: StringFieldUpdateOperationsInput | string
+    promptText?: NullableStringFieldUpdateOperationsInput | string | null
+    graphState?: NullableJsonNullValueInput | InputJsonValue
+    dreamId?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type GeneratedImageUncheckedUpdateManyWithoutUserInput = {
+    id?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    imageUrl?: StringFieldUpdateOperationsInput | string
+    promptText?: NullableStringFieldUpdateOperationsInput | string | null
+    graphState?: NullableJsonNullValueInput | InputJsonValue
+    dreamId?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type GeneratedImageCreateManyDreamInput = {
+    id?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    imageUrl: string
+    promptText?: string | null
+    graphState?: NullableJsonNullValueInput | InputJsonValue
+    userId: string
+  }
+
+  export type GeneratedImageUpdateWithoutDreamInput = {
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    imageUrl?: StringFieldUpdateOperationsInput | string
+    promptText?: NullableStringFieldUpdateOperationsInput | string | null
+    graphState?: NullableJsonNullValueInput | InputJsonValue
+    user?: UserUpdateOneRequiredWithoutGeneratedImagesNestedInput
+  }
+
+  export type GeneratedImageUncheckedUpdateWithoutDreamInput = {
+    id?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    imageUrl?: StringFieldUpdateOperationsInput | string
+    promptText?: NullableStringFieldUpdateOperationsInput | string | null
+    graphState?: NullableJsonNullValueInput | InputJsonValue
+    userId?: StringFieldUpdateOperationsInput | string
+  }
+
+  export type GeneratedImageUncheckedUpdateManyWithoutDreamInput = {
+    id?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    imageUrl?: StringFieldUpdateOperationsInput | string
+    promptText?: NullableStringFieldUpdateOperationsInput | string | null
+    graphState?: NullableJsonNullValueInput | InputJsonValue
+    userId?: StringFieldUpdateOperationsInput | string
   }
 
 

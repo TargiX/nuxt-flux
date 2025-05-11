@@ -38,16 +38,14 @@
         />
         <div v-else class="placeholder-container"></div>
       </div>
+            <!-- Image Strip moved here -->
+   
     </div>
 
-    <!-- Bottom Left: Settings Placeholder -->
-    <div class="settings-container glass-card">
-      <h2>Settings</h2>
     
-      <p>Settings placeholder...</p>
-    </div>
+   <ImageStrip :dreamId="tagStore.loadedDreamId" @image-selected="handleImageSelectedFromStrip" />
+     
 
-    <!-- Bottom Right: Prompt Area -->
     <div class="prompt-area-container glass-card">
       <div class="prompt-header flex justify-between items-start w-full">
           <h2>Generated Prompt:</h2>
@@ -114,6 +112,14 @@
       </div>
     </div>
 
+
+  
+    <!-- Bottom Right: Prompt Area -->
+    
+
+    <!-- Full-width Image Strip below the top two sections -->
+ 
+
   </div>
 </template>
 
@@ -122,8 +128,10 @@ import { computed, ref, watch, onMounted, nextTick } from 'vue';
 import { useTagStore } from '~/store/tagStore';
 import ForceGraph from './ForceGraph.vue';
 import ZoneSelector from './ZoneSelector.vue';
+import ImageStrip from './ImageStrip.vue';
 import { generateImagePrompt } from '~/services/promptGenerationService';
 import { generateImageFromPrompt } from '~/services/imageGenerationService';
+import { saveGeneratedImage } from '~/services/imageService';
 import type { Tag } from '~/types/tag';
 import type { ViewportState } from '~/composables/useZoom';
 
@@ -429,6 +437,50 @@ const generateImage = async () => {
     const imageUrl = await generateImageFromPrompt(promptText);
     if (currentImageRequestId === imageRequestId) {
       tagStore.setCurrentImageUrl(imageUrl);
+
+      if (tagStore.loadedDreamId && imageUrl) {
+        try {
+          // Construct the graphState snapshot
+          const currentGraphState = {
+            focusedZone: focusedZone.value,
+            tags: JSON.parse(JSON.stringify(tagStore.tags)), // Deep clone of tags
+            // currentGeneratedPrompt: tagStore.currentGeneratedPrompt, // The promptText is already passed separately
+            // currentImageUrl: imageUrl, // The imageUrl is already passed separately
+            // Include other relevant state if needed, e.g., viewport, zoom, specific settings
+            // For now, keeping it to focusedZone and tags.
+            // Consider also saving the viewport state of the graph at this point:
+            // graphViewport: forceGraphRef.value?.getCurrentViewport ? forceGraphRef.value.getCurrentViewport() : null
+          };
+
+          await saveGeneratedImage({
+            imageUrl,
+            promptText,
+            dreamId: tagStore.loadedDreamId,
+            graphState: currentGraphState, // Pass the captured graph state
+          });
+          toast.add({
+            severity: 'info',
+            summary: 'Image Saved',
+            detail: 'Generated image progress saved to your dream history.',
+            life: 3000,
+          });
+        } catch (saveError: any) {
+          console.error('Failed to save generated image to DB:', saveError);
+          toast.add({
+            severity: 'error',
+            summary: 'Image Save Failed',
+            detail: saveError.message || 'Could not save image progress to dream history.',
+            life: 5000,
+          });
+        }
+      } else if (!tagStore.loadedDreamId && imageUrl) {
+        toast.add({
+          severity: 'warn',
+          summary: 'Image Not Saved to Dream',
+          detail: 'Save your current session as a Dream to keep this image in its history.',
+          life: 5000,
+        });
+      }
     }
   } catch (error: any) {
     console.error('Failed to generate image:', error);
@@ -553,6 +605,48 @@ watch(() => tagStore.sessionId, () => {
   skipPrompt.value = false;
 });
 
+// Placeholder for handling image selection from the strip
+const handleImageSelectedFromStrip = (image: any) => {
+  console.log('Image selected from strip in TagCloud:', image);
+  if (image && image.imageUrl) {
+    tagStore.setCurrentImageUrl(image.imageUrl);
+    
+    // If the selected image has a graphState, load it into the store
+    if (image.graphState) {
+      console.log('Loading graph state from selected image:', image.graphState);
+      tagStore.loadStateFromImageSnapshot(image); // Pass the whole image object
+      
+      // Update manual prompt if in manual mode and promptText exists for the image
+      if (isManualMode.value && image.promptText) {
+        manualPrompt.value = image.promptText;
+      } else if (!isManualMode.value && image.promptText) {
+        // If not in manual mode, also update the store's currentGeneratedPrompt
+        // Set skipUndo to true if loadStateFromImageSnapshot doesn't handle prompt setting
+        tagStore.setCurrentGeneratedPrompt(image.promptText, true);
+      }
+
+      // After loading a snapshot, we might want to prevent immediate prompt regeneration
+      // if the loaded tags would trigger it.
+      skipPrompt.value = true; 
+      nextTick(() => {
+        // Force graph to re-render with potentially new node positions from loaded state
+        if (forceGraphRef.value) {
+          // forceGraphRef.value.updateGraph(); 
+          // Consider if a full viewport reset/centering is needed or if loaded state includes viewport
+          // forceGraphRef.value.resetAndCenter(); 
+        }
+      });
+
+    } else if (image.promptText) { // Fallback if no graphState, but there is a prompt
+        if (isManualMode.value) {
+            manualPrompt.value = image.promptText;
+        } else {
+            tagStore.setCurrentGeneratedPrompt(image.promptText, true);
+        }
+    }
+  }
+};
+
 </script>
 
 <style scoped>
@@ -560,5 +654,9 @@ watch(() => tagStore.sessionId, () => {
 /* We keep this block for scoped styles as needed but don't add any until explicitly asked */
 .save-status {
   text-align: right;
+}
+
+.image-strip-wrapper {
+  margin-top: 1rem; /* Or use grid gap, depending on desired spacing */
 }
 </style>

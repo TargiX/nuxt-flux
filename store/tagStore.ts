@@ -256,11 +256,10 @@ export const useTagStore = defineStore('tags', () => {
     }
   }
   function setCurrentImageUrl(url: string | null) {
-     if (currentImageUrl.value !== url) {
-        currentImageUrl.value = url;
-        // debatable if generating image counts as unsaved change to the *dream state*
-        // hasUnsavedChanges.value = true; 
-    }
+    currentImageUrl.value = url;
+    // Setting an image directly doesn't necessarily mean unsaved changes to the dream structure itself
+    // unless this action is tied to other state modifications that should be saved.
+    // For now, let's assume changing the displayed image is a transient UI state or part of a new generation flow.
   }
   // --------------------------------------
 
@@ -287,6 +286,113 @@ export const useTagStore = defineStore('tags', () => {
   }
   // -------------------------------
 
+  // --- Action to load state from an image snapshot ---
+  function loadStateFromImageSnapshot(imageSnapshot: { 
+    imageUrl: string; 
+    promptText?: string; 
+    graphState: any; // This will be the { focusedZone, tags } object 
+  }) {
+    console.log("Loading state from image snapshot:", imageSnapshot);
+
+    if (!imageSnapshot || !imageSnapshot.graphState || typeof imageSnapshot.graphState !== 'object') {
+      console.error("Invalid image snapshot or graphState provided to loadStateFromImageSnapshot");
+      return;
+    }
+
+    const { focusedZone: snapshotFocusedZone, tags: snapshotTags } = imageSnapshot.graphState;
+
+    if (!snapshotFocusedZone || !Array.isArray(snapshotTags)) {
+      console.error("Invalid graphState structure in image snapshot");
+      return;
+    }
+
+    // Generate new session ID to invalidate any in-flight requests
+    sessionId.value = generateSessionId();
+    console.log(`Session changed to ${sessionId.value} when loading image snapshot`);
+
+    // IMPORTANT: Unlike loadDreamState, we do NOT clear loadedDreamId here.
+    // We are loading a sub-state OF THE CURRENTLY LOADED DREAM (or new session).
+    // Viewport states are also kept as they are, as this is a content change, not a dream project switch.
+
+    // Update current image and prompt from the snapshot
+    currentImageUrl.value = imageSnapshot.imageUrl;
+    currentGeneratedPrompt.value = imageSnapshot.promptText || '';
+
+    // Recreate the base predefined tags to ensure a clean slate for merging
+    const baseTags = initializeTags();
+    const tagMap = new Map<string, Tag>();
+    baseTags.forEach(t => tagMap.set(t.id, { ...t, children: [] })); // Deep clone base tags and ensure children array exists
+
+    const reconstructedTags: Tag[] = [];
+    const newTagMap = new Map<string, Tag>();
+
+    // First, process all predefined tags from the snapshot, applying their state
+    snapshotTags.forEach(savedTag => {
+      if (baseTags.some(bt => bt.id === savedTag.id)) { // Check if it's a predefined tag
+        const baseTagClone = { ...tagMap.get(savedTag.id)! }; // Get the cloned base tag
+        Object.assign(baseTagClone, {
+          selected: savedTag.selected,
+          x: savedTag.x,
+          y: savedTag.y,
+          // Ensure other relevant properties are maintained or overridden
+          text: savedTag.text, // text of predefined tags can also be edited
+          alias: savedTag.alias,
+          size: savedTag.size,
+          zone: savedTag.zone, // zone should match the predefined one
+        });
+        newTagMap.set(baseTagClone.id, baseTagClone);
+        reconstructedTags.push(baseTagClone);
+      }
+    });
+
+    // Now, process dynamic tags (those not in baseTags) and link them
+    snapshotTags.forEach(savedTag => {
+      if (!baseTags.some(bt => bt.id === savedTag.id)) { // It's a dynamic tag
+        const dynamicTag: Tag = {
+          id: savedTag.id,
+          text: savedTag.text,
+          size: savedTag.size,
+          selected: savedTag.selected,
+          zone: savedTag.zone, 
+          alias: savedTag.alias,
+          parentId: savedTag.parentId,
+          x: savedTag.x,
+          y: savedTag.y,
+          isLoading: savedTag.isLoading || false,
+          children: [], // Initialize children for dynamic tags
+          depth: savedTag.depth,
+        };
+        newTagMap.set(dynamicTag.id, dynamicTag);
+        reconstructedTags.push(dynamicTag);
+      }
+    });
+
+    // Reconstruct children relationships for all tags in newTagMap
+    newTagMap.forEach(tag => {
+      if (tag.parentId) {
+        const parent = newTagMap.get(tag.parentId);
+        if (parent) {
+          parent.children = parent.children || [];
+          if (!parent.children.some(child => child.id === tag.id)) {
+             parent.children.push(tag);
+          }
+        }
+      }
+    });
+    
+    // Set the focused zone from the snapshot
+    focusedZone.value = snapshotFocusedZone;
+    // Set the reconstructed tags
+    tags.value = reconstructedTags;
+
+    // Loading a snapshot implies a deviation from the last saved state of the *dream*
+    // or the initial state of a *new session*.
+    hasUnsavedChanges.value = true; 
+
+    console.log("State loaded from image snapshot. Focused zone:", focusedZone.value);
+  }
+  // --------------------------------------------------
+
   return {
     tags,
     zones,
@@ -311,6 +417,7 @@ export const useTagStore = defineStore('tags', () => {
     sessionId,                // Expose session ID for coordination
     isRequestInProgress,      // Expose request status
     setDreamsListRefresher,    // Expose action
-    refreshDreamsList          // Expose action
+    refreshDreamsList,         // Expose action
+    loadStateFromImageSnapshot // Expose action
   };
 });

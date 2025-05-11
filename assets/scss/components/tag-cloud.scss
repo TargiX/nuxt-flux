@@ -114,9 +114,14 @@
   }
 }
 
-.prompt-area-container {
+.image-strip-container {
   grid-row: 2 / 3; 
   grid-column: 2 / 3; 
+}
+
+.prompt-area-container {
+  grid-row: 2 / 3; 
+  grid-column: 1 / 2; 
   justify-content: flex-start; 
   overflow-y: auto; /* Allow prompt area to scroll if needed */
   

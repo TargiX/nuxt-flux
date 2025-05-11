@@ -139,12 +139,28 @@ exports.Prisma.DreamScalarFieldEnum = {
   userId: 'userId'
 };
 
+exports.Prisma.GeneratedImageScalarFieldEnum = {
+  id: 'id',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  imageUrl: 'imageUrl',
+  promptText: 'promptText',
+  graphState: 'graphState',
+  dreamId: 'dreamId',
+  userId: 'userId'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
 };
 
 exports.Prisma.JsonNullValueInput = {
+  JsonNull: Prisma.JsonNull
+};
+
+exports.Prisma.NullableJsonNullValueInput = {
+  DbNull: Prisma.DbNull,
   JsonNull: Prisma.JsonNull
 };
 
@@ -167,7 +183,8 @@ exports.Prisma.JsonNullValueFilter = {
 
 exports.Prisma.ModelName = {
   User: 'User',
-  Dream: 'Dream'
+  Dream: 'Dream',
+  GeneratedImage: 'GeneratedImage'
 };
 
 /**
