@@ -1,10 +1,11 @@
 import { PrismaClient } from '~/generated/prisma/client';
 import { getServerSession } from '#auth';
+import { authOptions } from '~/server/api/auth/[...]'; // Path from server root
 
 const prisma = new PrismaClient();
 
 export default defineEventHandler(async (event) => {
-  const session = await getServerSession(event);
+  const session = await getServerSession(event, authOptions);
   if (!session?.user?.id) {
     throw createError({
       statusCode: 401,

@@ -198,11 +198,12 @@ const config = {
     "db"
   ],
   "activeProvider": "postgresql",
+  "postinstall": false,
   "inlineDatasources": {
     "db": {
       "url": {
         "fromEnvVar": "DATABASE_URL",
-        "value": "postgresql://dreamseed:WSX2rFv67890%21@5.161.248.184:5432/dreamseed?schema=public"
+        "value": null
       }
     }
   },
