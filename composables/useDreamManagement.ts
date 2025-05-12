@@ -192,6 +192,106 @@ export function useDreamManagement() {
   }
   // --------------------------
 
+  // --- Save Dream Operations ---
+  const isSavingDream = ref(false); // Add a ref to track saving state if needed by other parts of the composable or UI
+
+  // Helper function to handle save errors (can be used by multiple save operations)
+  function handleSaveError(error: any, operation: string, toastInstance: any) { // Pass toast instance
+    console.error(`Error ${operation} dream:`, error);
+    let errorMessage = `Could not ${operation} dream due to an unknown error.`;
+    if (error.data && error.data.message) {
+      errorMessage = error.data.message;
+      if (error.data.code === 'VALIDATION_FAILED' && error.data.errors) {
+        errorMessage = error.data.errors.map((e: any) => `${e.field}: ${e.message}`).join('; ');
+      }
+    } else if (error.statusMessage) {
+      errorMessage = error.statusMessage;
+    }
+    // Use the passed toast instance
+    toastInstance.add({ severity: 'error', summary: `${operation.charAt(0).toUpperCase() + operation.slice(1)} Failed`, detail: errorMessage, life: 5000 });
+    // Note: saveStatus ref is local to TagCloud.vue, if a similar status is needed here, it should be handled within the composable's state.
+  }
+
+  // Function to perform the save (for new or save as new)
+  async function performSaveAsNew(dreamDataPayload: any, toastInstance: any, tagStoreInstance: any, title?: string) { // Pass toast and tagStore
+    isSavingDream.value = true;
+    let newDreamResponse = null;
+    try {
+      newDreamResponse = await $fetch<any>('/api/dreams', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: dreamDataPayload,
+          // title: title, // Title handling can be more complex if it's part of the payload vs. separate logic
+        })
+      });
+      console.log('New dream saved successfully via composable:', newDreamResponse);
+      toastInstance.add({ severity: 'success', summary: 'Success', detail: 'New dream saved successfully!', life: 3000 });
+      
+      // IMPORTANT: Update store to reflect this newly saved dream as the current one
+      tagStoreInstance.loadDreamState(newDreamResponse.data, newDreamResponse.id);
+      tagStoreInstance.refreshDreamsList(); // This should ideally call the refreshDreamsListAPI from this composable
+      
+      return newDreamResponse; // Return the saved dream data
+    } catch (error: any) {
+      handleSaveError(error, 'save as new', toastInstance);
+      return null; // Indicate failure
+    } finally {
+      isSavingDream.value = false;
+    }
+  }
+
+  async function initiateSaveDreamProcess(dreamDataPayload: any) {
+    if (isSavingDream.value) return; // Prevent multiple saves
+
+    const currentLoadedDreamId = tagStore.loadedDreamId; // Get current dream ID from store
+
+    if (currentLoadedDreamId !== null) {
+      confirm.require({
+        message: 'This dream already exists. How would you like to save your changes?',
+        header: 'Confirm Save Action',
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: 'Update Existing',
+        rejectLabel: 'Save as New Dream',
+        accept: async () => {
+          isSavingDream.value = true;
+          try {
+            // NOTE: The API endpoint and method for update might need adjustment.
+            // Current TagCloud.vue uses POST to /api/dreams with dreamIdToUpdate in body.
+            // A more RESTful approach would be PUT to /api/dreams/:id.
+            // Assuming the current backend handles the POST for updates.
+            const updatedDream = await $fetch<any>('/api/dreams', {
+              method: 'POST', 
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                dreamIdToUpdate: currentLoadedDreamId,
+                data: dreamDataPayload,
+              })
+            });
+            console.log('Dream updated successfully via composable:', updatedDream);
+            toast.add({ severity: 'success', summary: 'Success', detail: 'Dream updated successfully!', life: 3000 });
+            tagStore.markAsSaved();
+            if (refreshDreamsListAPI) refreshDreamsListAPI(); // Refresh using the composable's own refresher
+          } catch (error: any) {
+            handleSaveError(error, 'update', toast); // Use existing error handler
+          } finally {
+            isSavingDream.value = false;
+          }
+        },
+        reject: async () => {
+          // User chose to SAVE AS NEW dream (from an existing one)
+          // performSaveAsNew already sets isSavingDream true/false
+          await performSaveAsNew(dreamDataPayload, toast, tagStore);
+        },
+      });
+    } else {
+      // It's a NEW dream (loadedDreamId is null), save it directly
+      // performSaveAsNew already sets isSavingDream true/false
+      await performSaveAsNew(dreamDataPayload, toast, tagStore);
+    }
+  }
+  // --------------------------
+
   return {
     // State
     isDreamsOpen,
@@ -201,6 +301,7 @@ export function useDreamManagement() {
     menuItems, // For the Menu component
     editingDreamId,
     editingTitle,
+    isSavingDream, // Expose if needed externally
 
     // Functions
     refreshDreamsListAPI, // Expose the refresh function from useFetch
@@ -210,5 +311,8 @@ export function useDreamManagement() {
     startEditingDreamTitle,
     saveDreamTitle,
     cancelEditDreamTitle,
+    performSaveAsNew,     // EXPORT
+    initiateSaveDreamProcess, // EXPORT NEW FUNCTION
+    // handleSaveError is internal to the composable but used by performSaveAsNew
   };
 } 

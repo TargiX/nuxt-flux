@@ -14,6 +14,7 @@ interface DreamData {
   tags: Tag[];
   generatedPrompt?: string; // Optional
   imageUrl?: string | null; // Optional
+  zoneViewports?: Record<string, ViewportState>; // ADDED for saving/loading viewport states
 }
 
 export const useTagStore = defineStore('tags', () => {
@@ -52,6 +53,15 @@ export const useTagStore = defineStore('tags', () => {
   // Function to get viewport state for a zone
   function getZoneViewport(zone: string): ViewportState | undefined {
     return zoneViewportStates.value.get(zone);
+  }
+
+  // Getter to convert zoneViewportStates Map to a plain object for saving
+  function getAllZoneViewportsObject(): Record<string, ViewportState> {
+    const obj: Record<string, ViewportState> = {};
+    for (const [key, value] of zoneViewportStates.value.entries()) {
+      obj[key] = value;
+    }
+    return obj;
   }
 
   function setFocusedZone(zone: string) {
@@ -106,12 +116,20 @@ export const useTagStore = defineStore('tags', () => {
   function loadDreamState(dreamData: DreamData, dreamId: number | null) {
     console.log("Loading dream state for ID:", dreamId);
     
-    // Generate new session ID to invalidate any in-flight requests
     sessionId.value = generateSessionId();
     
-    // Clear all previous data first to avoid leaking state
-    // Completely replace viewport map - don't set any defaults
-    zoneViewportStates.value = new Map<string, ViewportState>();
+    zoneViewportStates.value = new Map<string, ViewportState>(); // Clear existing
+    if (dreamData.zoneViewports) {
+      for (const [zoneName, viewportState] of Object.entries(dreamData.zoneViewports)) {
+        // Simple validation for viewportState structure before setting
+        if (viewportState && typeof viewportState.x === 'number' && typeof viewportState.y === 'number' && typeof viewportState.k === 'number') {
+          zoneViewportStates.value.set(zoneName, viewportState);
+        } else {
+          console.warn(`[TagStore] Invalid viewport data for zone '${zoneName}' in loaded dream:`, viewportState);
+        }
+      }
+      console.log("[TagStore] Loaded zoneViewports from dream data:", zoneViewportStates.value);
+    }
     
     loadedDreamId.value = null;
     currentGeneratedPrompt.value = '';
@@ -418,6 +436,7 @@ export const useTagStore = defineStore('tags', () => {
     isRequestInProgress,      // Expose request status
     setDreamsListRefresher,    // Expose action
     refreshDreamsList,         // Expose action
-    loadStateFromImageSnapshot // Expose action
+    loadStateFromImageSnapshot, // Expose action
+    getAllZoneViewportsObject  // Expose new getter
   };
 });
