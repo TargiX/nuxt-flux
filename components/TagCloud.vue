@@ -93,19 +93,19 @@
             {{ isSavingDreamFromComposable ? 'Saving...'  : 'Save' }}
           </Button>
           <Button 
-            @click="generateImage" 
+            @click="handleGenerateImageClick" 
             severity="primary"
             :disabled="isGenerationDisabled"
             class="flex items-center gap-2 flex-nowrap whitespace-nowrap pl-7 pr-8 py-1"
           >
             <ProgressSpinner
-              v-if="isGeneratingImage"
+              v-if="isGeneratingImageFromComposable"
               class="w-4 h-4 progress-spinner" 
               strokeWidth="8" 
               fill="transparent"
             />
             <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9 4.5a.75.75 0 0 1 .721.544l.813 2.846a3.75 3.75 0 0 0 2.576 2.576l2.846.813a.75.75 0 0 1 0 1.442l-2.846.813a3.75 3.75 0 0 0-2.576 2.576l-.813 2.846a.75.75 0 0 1-1.442 0l-.813-2.846a3.75 3.75 0 0 0-2.576-2.576l-2.846-.813a.75.75 0 0 1 0-1.442l2.846-.813A3.75 3.75 0 0 0 7.466 7.89l.813-2.846A.75.75 0 0 1 9 4.5Zm9-3a.75.75 0 0 1 .728.568l.258 1.036a2.63 2.63 0 0 0 1.91 1.91l1.036.258a.75.75 0 0 1 0 1.456l-1.036.258a2.63 2.63 0 0 0-1.91 1.91l-.258 1.036a.75.75 0 0 1-1.456 0l-.258-1.036a2.624 2.624 0 0 0-1.91-1.91l-1.036-.258a.75.75 0 0 1 0-1.456l1.036-.258a2.625 2.625 0 0 0 1.91-1.91l.258-1.036A.75.75 0 0 1 18 1.5ZM16.5 15a.75.75 0 0 1 .712.513l.394 1.183c.15.447.5.799.948.948l1.183.395a.75.75 0 0 1 0 1.422l-1.183.395a1.5 1.5 0 0 0-.948.948l-.395 1.183a.75.75 0 0 1-1.422 0l-.395-1.183a1.5 1.5 0 0 0-.948-.948l-1.183-.395a.75.75 0 0 1 0-1.422l1.183-.395a1.5 1.5 0 0 0 .948-.948l.395-1.183a.75.75 0 0 1 .71-.513Z" fill="currentColor"></path></svg>
-            {{ isGeneratingImage ? 'Generating...' : (isImageCooldown ? 'Cooldown...' : 'Generate Image') }}
+            {{ isGeneratingImageFromComposable ? 'Generating...' : (isImageCooldownFromComposable ? 'Cooldown...' : 'Generate Image') }}
           </Button>
         </div>
       </div>
@@ -129,8 +129,7 @@ import ForceGraph from './ForceGraph.vue';
 import ZoneSelector from './ZoneSelector.vue';
 import ImageStrip from './ImageStrip.vue';
 import { generateImagePrompt } from '~/services/promptGenerationService';
-import { generateImageFromPrompt } from '~/services/imageGenerationService';
-import { saveGeneratedImage } from '~/services/imageService';
+import { useImageGeneration } from '~/composables/useImageGeneration';
 import type { Tag } from '~/types/tag';
 import type { ViewportState } from '~/composables/useZoom';
 import { useDreamManagement } from '~/composables/useDreamManagement';
@@ -143,6 +142,13 @@ const {
   isSavingDream: isSavingDreamFromComposable, 
   initiateSaveDreamProcess
 } = useDreamManagement();
+
+// Use the image generation composable
+const { 
+  isGeneratingImage: isGeneratingImageFromComposable, 
+  isImageCooldown: isImageCooldownFromComposable,
+  generateImageAndSave
+} = useImageGeneration();
 
 const forceGraphRef = ref<InstanceType<typeof ForceGraph> | null>(null);
 const imageStripRef = ref<InstanceType<typeof ImageStrip> | null>(null);
@@ -165,15 +171,19 @@ watch(() => tagStore.loadedDreamId, (newId, oldId) => {
 
 const isManualMode = ref(false)
 const manualPrompt = ref('')
-const isGeneratingImage = ref(false)
-const isImageCooldown = ref(false)
+// const isGeneratingImage = ref(false) // REMOVED - Use from composable
+// const isImageCooldown = ref(false) // REMOVED - Use from composable
 const isGeneratingPrompt = ref(false);
 
 let promptRequestId = 0
-let imageRequestId = 0
+// let imageRequestId = 0 // REMOVED - Managed by composable
 
 const isGenerationDisabled = computed(() => {
-  return !(isManualMode.value ? manualPrompt.value : tagStore.currentGeneratedPrompt) || isGeneratingImage.value || isSavingDreamFromComposable.value || isImageCooldown.value
+  // Use states from image generation composable
+  return !(isManualMode.value ? manualPrompt.value : tagStore.currentGeneratedPrompt) || 
+         isGeneratingImageFromComposable.value || 
+         isSavingDreamFromComposable.value || 
+         isImageCooldownFromComposable.value;
 })
 
 const isSavingDisabled = computed(() => {
@@ -318,7 +328,7 @@ watch(() => tagStore.loadedDreamId, (newId, oldId) => {
   
   // Reset cooldowns and generation states
   isGeneratingPrompt.value = false;
-  isGeneratingImage.value = false;
+  // isGeneratingImage.value = false; // Now handled by composable
 
   // Directly reset viewport for new sessions - no timeouts
   if (newId === null && forceGraphRef.value) {
@@ -420,99 +430,25 @@ function isValidViewport(viewport: ViewportState): boolean {
   return true;
 }
 
-const generateImage = async () => {
+// New handler for the Generate Image button
+async function handleGenerateImageClick() {
   const promptText = isManualMode.value ? manualPrompt.value : tagStore.currentGeneratedPrompt;
-  
-  if (!promptText || isGeneratingImage.value || isImageCooldown.value) {
-    if (!promptText) {
-      console.error('No prompt text available for image generation.');
-      toast.add({
-        severity: 'warn',
-        summary: 'Missing Prompt',
-        detail: 'Cannot generate image without a prompt text.',
-        life: 3000,
-      });
-    }
+  if (!promptText || isGeneratingImageFromComposable.value || isImageCooldownFromComposable.value) {
+    // Composable already handles no-prompt warning if promptText is empty when called
     return;
   }
 
-  isGeneratingImage.value = true;
-  tagStore.setCurrentImageUrl(null);
-  const currentImageRequestId = ++imageRequestId;
-  try {
-    const imageUrl = await generateImageFromPrompt(promptText);
-    if (currentImageRequestId === imageRequestId) {
-      tagStore.setCurrentImageUrl(imageUrl);
+  const imageSaved = await generateImageAndSave(
+    promptText,
+    tagStore.loadedDreamId,
+    focusedZone.value, // Pass current focusedZone value
+    tagStore.tags       // Pass current tags array (composable will clone if needed)
+  );
 
-      if (tagStore.loadedDreamId && imageUrl) {
-        try {
-          // Construct the graphState snapshot
-          const currentGraphState = {
-            focusedZone: focusedZone.value,
-            tags: JSON.parse(JSON.stringify(tagStore.tags)), // Deep clone of tags
-            // currentGeneratedPrompt: tagStore.currentGeneratedPrompt, // The promptText is already passed separately
-            // currentImageUrl: imageUrl, // The imageUrl is already passed separately
-            // Include other relevant state if needed, e.g., viewport, zoom, specific settings
-            // For now, keeping it to focusedZone and tags.
-            // Consider also saving the viewport state of the graph at this point:
-            // graphViewport: forceGraphRef.value?.getCurrentViewport ? forceGraphRef.value.getCurrentViewport() : null
-          };
-
-          await saveGeneratedImage({
-            imageUrl,
-            promptText,
-            dreamId: tagStore.loadedDreamId,
-            graphState: currentGraphState, // Pass the captured graph state
-          });
-          toast.add({
-            severity: 'info',
-            summary: 'Image Saved',
-            detail: 'Generated image progress saved to your dream history.',
-            life: 3000,
-          });
-          // Refetch images in the strip
-          if (imageStripRef.value) {
-            imageStripRef.value.refetchImages();
-          }
-        } catch (saveError: any) {
-          console.error('Failed to save generated image to DB:', saveError);
-          toast.add({
-            severity: 'error',
-            summary: 'Image Save Failed',
-            detail: saveError.message || 'Could not save image progress to dream history.',
-            life: 5000,
-          });
-        }
-      } else if (!tagStore.loadedDreamId && imageUrl) {
-        toast.add({
-          severity: 'warn',
-          summary: 'Image Not Saved to Dream',
-          detail: 'Save your current session as a Dream to keep this image in its history.',
-          life: 5000,
-        });
-      }
-    }
-  } catch (error: any) {
-    console.error('Failed to generate image:', error);
-    if (currentImageRequestId === imageRequestId) {
-      tagStore.setCurrentImageUrl(null);
-      toast.add({
-        severity: 'error',
-        summary: 'Image Generation Failed',
-        detail: error.message || 'Could not generate image. Please try again.',
-        life: 5000,
-      });
-    }
-  } finally {
-    if (currentImageRequestId === imageRequestId) {
-      isGeneratingImage.value = false;
-      isImageCooldown.value = true;
-      setTimeout(() => {
-        isImageCooldown.value = false;
-      }, 1500);
-    }
+  if (imageSaved && imageStripRef.value) {
+    imageStripRef.value.refetchImages();
   }
-};
+}
 
 function handleNodePositionsUpdated(positions: { id: string; x: number; y: number }[]) {
   // Only process valid positions
