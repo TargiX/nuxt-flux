@@ -43,7 +43,7 @@
     </div>
 
     
-   <ImageStrip :dreamId="tagStore.loadedDreamId" @image-selected="handleImageSelectedFromStrip" />
+   <ImageStrip ref="imageStripRef" :dreamId="tagStore.loadedDreamId" @image-selected="handleImageSelectedFromStrip" />
      
 
     <div class="prompt-area-container glass-card">
@@ -141,6 +141,7 @@ const toast = useToast();
 const confirm = useConfirm();
 
 const forceGraphRef = ref<InstanceType<typeof ForceGraph> | null>(null);
+const imageStripRef = ref<InstanceType<typeof ImageStrip> | null>(null);
 
 const focusedZone = computed(() => tagStore.focusedZone);
 const zoneOptions = ref([...tagStore.zones]);
@@ -160,12 +161,11 @@ const lockReset = (duration = 300) => {
 };
 
 // First let's add a zone change tracking flag
-const skipPrompt = ref(false);
 const isZoneSwitching = ref(false);
 
 watch(() => tagStore.loadedDreamId, (newId, oldId) => {
   if (newId !== oldId) {
-    skipPrompt.value = true;
+    // skipPrompt.value = true;
   }
 });
 
@@ -278,15 +278,15 @@ const triggerPromptGeneration = debounce(async () => {
 
 // Skip generation once after load, then resume normal behavior
 watch(generatedPrompt, () => {
-  if (skipPrompt.value) {
-    skipPrompt.value = false;
-    return;
-  }
-  triggerPromptGeneration();
+  // if (skipPrompt.value) {
+    // skipPrompt.value = false;
+    // return;
+  // }
+  // triggerPromptGeneration();
 });
 
 onMounted(() => {
-  triggerPromptGeneration();
+  // triggerPromptGeneration();
 });
 
 // Update the handleNodeClick function to be aware of session state
@@ -303,6 +303,8 @@ async function handleNodeClick(id: string) {
   console.log('TagCloud received nodeClick:', id);
   try {
     await tagStore.toggleTag(id);
+    // Explicitly trigger prompt generation after tags have been updated
+    triggerPromptGeneration(); 
   } catch (error: any) {
     console.error('Error toggling tag or generating related tags:', error);
     toast.add({
@@ -318,7 +320,7 @@ async function handleNodeClick(id: string) {
 watch(() => tagStore.loadedDreamId, (newId, oldId) => {
   // Reset all prompt-related state when loading a new dream or clearing to new session
   promptRequestId++; // Cancel any pending prompt operations
-  skipPrompt.value = true; // Skip immediate regeneration
+  // skipPrompt.value = true;
   
   // Reset cooldowns and generation states
   isGeneratingPrompt.value = false;
@@ -331,10 +333,14 @@ watch(() => tagStore.loadedDreamId, (newId, oldId) => {
   }
   
   // Use a single timeout for optional regeneration later
-  skipPrompt.value = true;
-  setTimeout(() => {
-    skipPrompt.value = false;
-  }, 1000);
+  // skipPrompt.value = true;
+  // setTimeout(() => {
+    // skipPrompt.value = false;
+  // }, 1000);
+  // Reset the flag in the next tick after potential state changes have settled
+  // nextTick(() => {
+    // skipPrompt.value = false;
+  // });
 });
 
 // Remove the problematic timeout-based forceViewportReset function
@@ -470,6 +476,10 @@ const generateImage = async () => {
             detail: 'Generated image progress saved to your dream history.',
             life: 3000,
           });
+          // Refetch images in the strip
+          if (imageStripRef.value) {
+            imageStripRef.value.refetchImages();
+          }
         } catch (saveError: any) {
           console.error('Failed to save generated image to DB:', saveError);
           toast.add({
@@ -544,7 +554,7 @@ function handleNodePositionsUpdated(positions: { id: string; x: number; y: numbe
 function handleNodeTextUpdated({ id, text }: { id: string; text: string }) {
   console.log('[TagCloud] Received nodeTextUpdated:', { id, text });
   tagStore.updateTagText(id, text);
-  triggerPromptGeneration();
+  triggerPromptGeneration(); // Explicitly trigger prompt generation after text update
 }
 
 async function saveDream() {
@@ -667,7 +677,7 @@ watch(() => tagStore.sessionId, () => {
   isZoneSwitching.value = false;
   
   // Simple synchronous operation - don't use timeouts that cause race conditions
-  skipPrompt.value = false;
+  // skipPrompt.value = false;
 });
 
 // Placeholder for handling image selection from the strip
@@ -676,7 +686,9 @@ const handleImageSelectedFromStrip = (image: any) => {
   if (image && image.imageUrl) {
     tagStore.setCurrentImageUrl(image.imageUrl);
     
-    // If the selected image has a graphState, load it into the store
+    // Immediately signal that the next prompt generation (if any) due to state load should be skipped
+    // skipPrompt.value = true;
+
     if (image.graphState) {
       console.log('Loading graph state from selected image:', image.graphState);
       tagStore.loadStateFromImageSnapshot(image); // Pass the whole image object
@@ -692,7 +704,7 @@ const handleImageSelectedFromStrip = (image: any) => {
 
       // After loading a snapshot, we might want to prevent immediate prompt regeneration
       // if the loaded tags would trigger it.
-      skipPrompt.value = true; 
+      // skipPrompt.value = true;
       nextTick(() => {
         // Force graph to re-render with potentially new node positions from loaded state
         if (forceGraphRef.value) {
@@ -703,6 +715,7 @@ const handleImageSelectedFromStrip = (image: any) => {
       });
 
     } else if (image.promptText) { // Fallback if no graphState, but there is a prompt
+        // skipPrompt.value = true;
         if (isManualMode.value) {
             manualPrompt.value = image.promptText;
         } else {

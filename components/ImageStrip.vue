@@ -66,6 +66,15 @@ const fetchImages = async (currentDreamId: number | null) => {
   }
 };
 
+// Expose a method to refetch images
+const refetchImages = () => {
+  fetchImages(props.dreamId);
+};
+
+defineExpose({
+  refetchImages,
+});
+
 watch(() => props.dreamId, (newDreamId) => {
   fetchImages(newDreamId);
 }, { immediate: true });
