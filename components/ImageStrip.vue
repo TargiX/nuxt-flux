@@ -1,6 +1,6 @@
 <template>
   <div class="image-strip-container glass-card" v-if="props.dreamId">
-    <h3 class="strip-title">Dream Image History</h3>
+    <h2 class="strip-title">Dream Image History</h2>
     <div v-if="pending" class="loading-message">
       <ProgressSpinner style="width: 30px; height: 30px" strokeWidth="6" />
       <p>Loading images...</p>
@@ -21,7 +21,7 @@
     </div>
   </div>
   <div v-else class="image-strip-container glass-card">
-    <h3 class="strip-title">Dream Image History</h3>
+    <h2 class="strip-title">Dream Image History</h2>
     <div class="empty-strip-message">
       <p>Save your session as a Dream to see image history.</p>
     </div>
@@ -78,12 +78,7 @@ const selectImage = (image: DreamImage) => {
 <style scoped>
 
 
-.strip-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: 0.75rem;
-  color: var(--text-color-secondary);
-}
+
 
 .image-scroll-area {
   display: flex;
@@ -100,8 +95,8 @@ const selectImage = (image: DreamImage) => {
 
 .image-thumbnail-item {
   flex-shrink: 0;
-  width: 100px;
-  height: 100px;
+  width: 120px;
+  height: 120px;
   border-radius: 6px;
   overflow: hidden;
   cursor: pointer;

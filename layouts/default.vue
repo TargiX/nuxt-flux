@@ -66,18 +66,19 @@
             <li v-if="pending" class="dream-item loading">
               <i class="pi pi-spin pi-spinner mr-2"></i> Loading...
             </li>
-            <li v-if="error" class="dream-item error">
+            <li v-else-if="error" class="dream-item error">
               <i class="pi pi-exclamation-triangle mr-2 text-red-400"></i> Error loading dreams
             </li>
-             <li v-if="!pending && !error && (!savedDreams || savedDreams.length === 0)" class="dream-item empty">
+             <li v-else-if="!pending && !error && (!savedDreams || savedDreams.length === 0)" class="dream-item empty">
                 <i class="pi pi-info-circle mr-2"></i> No saved dreams yet.
              </li>
-            <li 
-              v-for="dream in savedDreams" 
-              :key="dream.id" 
-              class="dream-item saved" 
-              :class="{ 'active-dream': tagStore.loadedDreamId === dream.id }" 
-              @click="loadDream(dream)"
+             <template v-else>
+              <li 
+                v-for="dream in savedDreams" 
+                :key="dream.id" 
+                class="dream-item saved" 
+                :class="{ 'active-dream': tagStore.loadedDreamId === dream.id }" 
+                @click="loadDream(dream)"
             >
             <!-- Inline editing for dream title -->
             <template v-if="editingDreamId === dream.id">
@@ -103,6 +104,7 @@
                 aria-controls="dream_action_menu"
               />
             </li>
+            </template>
           </ul>
           <Menu ref="dreamActionMenu" id="dream_action_menu" :model="menuItems" :popup="true" />
         </div>

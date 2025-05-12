@@ -61,9 +61,10 @@ export default defineEventHandler(async (event: H3Event) => {
   // ----------------------------
 
   try {
-    const body = await readBody<{ title?: string; data: unknown }>(event);
+    // Updated to include optional dreamIdToUpdate
+    const body = await readBody<{ title?: string; data: unknown; dreamIdToUpdate?: number }>(event);
     logger.debug('[POST /api/dreams] Request Body:', body);
-    const { title, data } = body;
+    const { title, data, dreamIdToUpdate } = body;
 
     // --- Zod Validation --- 
     const validationResult = DreamDataSchema.safeParse(data);
@@ -99,16 +100,49 @@ export default defineEventHandler(async (event: H3Event) => {
       dreamTitle = 'Untitled Dream'; // Fallback if no prompt and no title
     }
 
-    logger.debug(`[POST /api/dreams] Saving dream for user ${userId} with title: ${dreamTitle}`);
-    const dream = await prisma.dream.create({
-      data: {
-        title: dreamTitle, 
-        // Prisma expects 'JsonValue', validatedData should be compatible
-        data: validatedData as any, // Cast needed as Prisma Json type is broad
-        userId: userId, // Associate dream with the authenticated user
-      },
-    });
-    logger.info(`[POST /api/dreams] Saved dream ID: ${dream.id} for user ${userId}`);
+    let dream;
+    if (dreamIdToUpdate) {
+      logger.debug(`[POST /api/dreams] Attempting to update dream ID: ${dreamIdToUpdate} for user ${userId} with title: ${dreamTitle}`);
+      const existingDream = await prisma.dream.findUnique({
+        where: {
+          id: dreamIdToUpdate,
+        },
+      });
+
+      if (!existingDream || existingDream.userId !== userId) {
+        logger.warn(`[POST /api/dreams] Dream not found or user mismatch for update. Dream ID: ${dreamIdToUpdate}, User ID: ${userId}`);
+        throw createError({
+          statusCode: 404, // Or 403 if you prefer for auth mismatch
+          statusMessage: 'Dream not found or not authorized to update this dream.',
+          data: { code: 'DREAM_UPDATE_NOT_FOUND_OR_FORBIDDEN' },
+        });
+      }
+
+      dream = await prisma.dream.update({
+        where: {
+          id: dreamIdToUpdate,
+          // Redundant userId check here, but good for safety / if logic changes
+          // userId: userId, 
+        },
+        data: {
+          title: dreamTitle,
+          data: validatedData as any, // Prisma expects 'JsonValue'
+          // userId should not change during an update by the same user
+        },
+      });
+      logger.info(`[POST /api/dreams] Updated dream ID: ${dream.id} for user ${userId}`);
+
+    } else {
+      logger.debug(`[POST /api/dreams] Saving new dream for user ${userId} with title: ${dreamTitle}`);
+      dream = await prisma.dream.create({
+        data: {
+          title: dreamTitle, 
+          data: validatedData as any, // Prisma expects 'JsonValue'
+          userId: userId, 
+        },
+      });
+      logger.info(`[POST /api/dreams] Saved new dream ID: ${dream.id} for user ${userId}`);
+    }
 
     return dream;
 

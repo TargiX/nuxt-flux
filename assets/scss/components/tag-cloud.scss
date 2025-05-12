@@ -20,6 +20,17 @@
 }
 
 /* General styles for all containers within the grid */
+
+ h2 {
+    text-align: left;
+    align-self: flex-start;
+    margin-bottom: 0.75rem; 
+    color: v.$text-color;
+    flex-shrink: 0;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
 .graph-container,
 .image-preview-container,
 .settings-container,
@@ -30,15 +41,7 @@
   justify-content: flex-start; 
   min-height: 220px; 
   
-  h2 {
-    text-align: left;
-    align-self: flex-start;
-    margin-bottom: 0.75rem; 
-    color: v.$text-color;
-    flex-shrink: 0;
-    font-size: 1rem;
-    font-weight: 500;
-  }
+
   
   .zone-title {
     margin-bottom: 1rem;
@@ -166,7 +169,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
+  height: 45px;
   font-size: 1.5rem;
 }
 

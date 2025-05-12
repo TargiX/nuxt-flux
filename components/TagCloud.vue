@@ -134,9 +134,11 @@ import { generateImageFromPrompt } from '~/services/imageGenerationService';
 import { saveGeneratedImage } from '~/services/imageService';
 import type { Tag } from '~/types/tag';
 import type { ViewportState } from '~/composables/useZoom';
+import { useConfirm } from "primevue/useconfirm";
 
 const tagStore = useTagStore();
 const toast = useToast();
+const confirm = useConfirm();
 
 const forceGraphRef = ref<InstanceType<typeof ForceGraph> | null>(null);
 
@@ -181,7 +183,11 @@ const isGenerationDisabled = computed(() => {
 })
 
 const isSavingDisabled = computed(() => {
-  return isSavingDream.value || tagStore.tags.filter(t => t.selected).length === 0
+  // Disabled if currently saving, or if no tags are selected (for new dream), 
+  // or if there are no unsaved changes (for existing or new).
+  return isSavingDream.value || 
+         (tagStore.tags.filter(t => t.selected).length === 0 && tagStore.loadedDreamId === null) || 
+         !tagStore.hasUnsavedChanges;
 })
 
 const generatedPrompt = computed(() => {
@@ -542,50 +548,109 @@ function handleNodeTextUpdated({ id, text }: { id: string; text: string }) {
 }
 
 async function saveDream() {
-  if (isSavingDream.value) return;
-  
-  isSavingDream.value = true;
-  saveStatus.value = null;
+  if (isSavingDisabled.value || isSavingDream.value) return;
 
   const plainTags = JSON.parse(JSON.stringify(tagStore.tags));
-  const dreamData = {
+  const dreamDataPayload = {
     focusedZone: focusedZone.value,
     tags: plainTags,
     generatedPrompt: tagStore.currentGeneratedPrompt,
     imageUrl: tagStore.currentImageUrl
   };
 
+  // If it's an existing dream, ask user how to proceed
+  if (tagStore.loadedDreamId !== null) {
+    confirm.require({
+      message: 'This dream already exists. How would you like to save your changes?',
+      header: 'Confirm Save Action',
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Update Existing',
+      rejectLabel: 'Save as New Dream',
+      accept: async () => {
+        // User chose to UPDATE EXISTING dream
+        isSavingDream.value = true;
+        saveStatus.value = null;
+        try {
+          const updatedDream = await $fetch<any>('/api/dreams', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              dreamIdToUpdate: tagStore.loadedDreamId, // Pass the ID to update
+              // title: can be re-derived on backend or passed if editable in UI here
+              data: dreamDataPayload,
+            })
+          });
+          console.log('Dream updated successfully:', updatedDream);
+          saveStatus.value = 'Updated!';
+          toast.add({ severity: 'success', summary: 'Success', detail: 'Dream updated successfully!', life: 3000 });
+          tagStore.markAsSaved();
+          tagStore.refreshDreamsList(); // Refresh list to reflect potential title changes
+          setTimeout(() => { saveStatus.value = null; }, 3000);
+        } catch (error: any) {
+          handleSaveError(error, 'update');
+        } finally {
+          isSavingDream.value = false;
+        }
+      },
+      reject: async () => {
+        // User chose to SAVE AS NEW dream (from an existing one)
+        await performSaveAsNew(dreamDataPayload);
+      },
+      // Optional: handle dialog dismissal if needed
+      // onHide: () => { logger.debug('Save dialog dismissed'); }
+    });
+  } else {
+    // It's a NEW dream (loadedDreamId is null), save it directly
+    await performSaveAsNew(dreamDataPayload);
+  }
+}
+
+// Helper function to actually perform the save (for new or save as new)
+async function performSaveAsNew(dreamDataPayload: any, title?: string) {
+  isSavingDream.value = true;
+  saveStatus.value = null;
   try {
-    const response = await $fetch<{ id: number }>('/api/dreams', {
+    const newDream = await $fetch<any>('/api/dreams', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        data: dreamData,
+        // title: title, // if title is provided, e.g., from an input field for new dreams
+        data: dreamDataPayload,
       })
     });
-    console.log('Dream saved successfully:', response);
+    console.log('New dream saved successfully:', newDream);
     saveStatus.value = 'Saved!';
-    toast.add({ severity: 'success', summary: 'Success', detail: 'Dream saved successfully!', life: 3000 });
+    toast.add({ severity: 'success', summary: 'Success', detail: 'New dream saved successfully!', life: 3000 });
     
-    tagStore.markAsSaved();
+    // IMPORTANT: Update store to reflect this newly saved dream as the current one
+    tagStore.loadDreamState(newDream.data, newDream.id);
+    // markAsSaved will be called within loadDreamState effectively, or can be called again.
+    // tagStore.markAsSaved(); 
     
-    tagStore.refreshDreamsList(); 
-    
+    tagStore.refreshDreamsList();
     setTimeout(() => { saveStatus.value = null; }, 3000);
   } catch (error: any) {
-    console.error('Error saving dream:', error);
-    let errorMessage = 'Could not save dream due to an unknown error.';
-    if (error.data && error.data.message) {
-      errorMessage = error.data.message;
-    } else if (error.statusMessage) {
-      errorMessage = error.statusMessage;
-    }
-    saveStatus.value = `Error: ${errorMessage}`;
-    toast.add({ severity: 'error', summary: 'Save Failed', detail: errorMessage, life: 5000 });
-    setTimeout(() => { saveStatus.value = null; }, 5000);
+    handleSaveError(error, 'save as new');
   } finally {
     isSavingDream.value = false;
   }
+}
+
+// Helper function to handle save errors
+function handleSaveError(error: any, operation: string) {
+  console.error(`Error ${operation} dream:`, error);
+  let errorMessage = `Could not ${operation} dream due to an unknown error.`;
+  if (error.data && error.data.message) {
+    errorMessage = error.data.message;
+    if (error.data.code === 'VALIDATION_FAILED' && error.data.errors) {
+        errorMessage = error.data.errors.map((e: any) => `${e.field}: ${e.message}`).join('; ');
+    }
+  } else if (error.statusMessage) {
+    errorMessage = error.statusMessage;
+  }
+  saveStatus.value = `Error: ${errorMessage.substring(0, 100)}${errorMessage.length > 100 ? '...' : ''}`;
+  toast.add({ severity: 'error', summary: `${operation.charAt(0).toUpperCase() + operation.slice(1)} Failed`, detail: errorMessage, life: 5000 });
+  setTimeout(() => { saveStatus.value = null; }, 5000);
 }
 
 // Update manual prompt values when loading dreams
