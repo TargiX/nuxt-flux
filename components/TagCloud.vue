@@ -43,20 +43,38 @@
     </div>
 
     
-   <ImageStrip ref="imageStripRef" :dreamId="tagStore.loadedDreamId" @image-selected="handleImageSelectedFromStrip" />
+   <ImageStrip 
+      ref="imageStripRef" 
+      :dreamId="tagStore.loadedDreamId" 
+      @image-selected="handleImageSelectedFromStrip" 
+      :viewingSnapshotId="tagStore.viewingSnapshotImageId"
+    />
      
 
     <div class="prompt-area-container glass-card">
       <div class="prompt-header flex justify-between items-start w-full">
           <h2>Generated Prompt:</h2>
-          <ToggleButton 
-            onLabel="Auto"
-            class="px-1 py-1 h-8"
-            offLabel="Manual"
-            onIcon="pi pi-lock" 
-            offIcon="pi pi-lock-open"
-            v-model="isManualMode" 
-          />
+          <div class="flex items-center gap-2">
+            <Button 
+              v-if="tagStore.stashedSessionState"
+              label="Exit Snapshot View"
+              icon="pi pi-replay"
+              severity="info"
+              text
+              size="small"
+              class="px-2 py-1 h-8"
+              @click="tagStore.restoreStashedSession()"
+              v-tooltip.top="'Return to your live session'"
+            />
+            <ToggleButton 
+              onLabel="Auto"
+              class="px-1 py-1 h-8"
+              offLabel="Manual"
+              onIcon="pi pi-lock" 
+              offIcon="pi pi-lock-open"
+              v-model="isManualMode" 
+            />
+          </div>
         </div>
       <div class="prompt-box w-full max-h-[100px] overflow-y-auto">
     
@@ -295,16 +313,18 @@ onMounted(() => {
 
 // Update the handleNodeClick function to be aware of session state
 async function handleNodeClick(id: string) {
-  // Ignore clicks if we're already processing a request
   if (tagStore.isRequestInProgress) {
-    console.log('Ignoring node click - request already in progress');
     return;
   }
-  
-  // Cancel any running prompt generation by incrementing the request ID
+
+  if (tagStore.stashedSessionState) {
+    console.log("[TagCloud] Interaction while viewing snapshot. Clearing stashed session.");
+    tagStore.stashedSessionState = null; // Clear stash
+    tagStore.viewingSnapshotImageId = null; // Clear viewing ID
+    // The current state is now the live session
+  }
+
   promptRequestId++;
-  
-  console.log('TagCloud received nodeClick:', id);
   try {
     await tagStore.toggleTag(id);
     // Explicitly trigger prompt generation after tags have been updated
@@ -329,6 +349,13 @@ watch(() => tagStore.loadedDreamId, (newId, oldId) => {
   // Reset cooldowns and generation states
   isGeneratingPrompt.value = false;
   // isGeneratingImage.value = false; // Now handled by composable
+
+  if (tagStore.stashedSessionState) {
+    console.log("[TagCloud] New dream loaded/session changed. Clearing any stashed session.");
+    // No need to restore, just clear. The new dream/session takes precedence.
+    tagStore.stashedSessionState = null;
+    tagStore.viewingSnapshotImageId = null;
+  }
 
   // Directly reset viewport for new sessions - no timeouts
   if (newId === null && forceGraphRef.value) {
@@ -430,19 +457,140 @@ function isValidViewport(viewport: ViewportState): boolean {
   return true;
 }
 
+// Helper function to construct dream data payload
+function getDreamDataPayload() {
+  const plainTags = JSON.parse(JSON.stringify(tagStore.tags));
+  return {
+    focusedZone: focusedZone.value,
+    tags: plainTags,
+    generatedPrompt: tagStore.currentGeneratedPrompt,
+    imageUrl: tagStore.currentImageUrl,
+    zoneViewports: tagStore.getAllZoneViewportsObject()
+  };
+}
+
+// New handler for the save button
+async function handleSaveDreamClick() {
+  if (isSavingDisabled.value) return;
+
+  const dreamDataPayload = getDreamDataPayload();
+  await initiateSaveDreamProcess(dreamDataPayload);
+}
+
+// Update manual prompt values when loading dreams
+watch(() => tagStore.currentGeneratedPrompt, (newPrompt) => {
+  if (newPrompt && isManualMode.value) {
+    manualPrompt.value = newPrompt;
+  }
+});
+
+// Watch for store session changes to reset local flags
+watch(() => tagStore.sessionId, () => {
+  // Reset any local state when the store's session changes
+  promptRequestId++;
+  isZoneSwitching.value = false;
+  
+  // Simple synchronous operation - don't use timeouts that cause race conditions
+  // skipPrompt.value = false;
+});
+
+// Placeholder for handling image selection from the strip
+const handleImageSelectedFromStrip = (image: any) => {
+  if (image && image.imageUrl) {
+    // If we're not already viewing a snapshot, stash the current session.
+    // If we are, the original session is already stashed.
+    if (!tagStore.stashedSessionState) {
+      tagStore.stashCurrentSession();
+    }
+    
+    // It's important to set the image URL *before* loading the snapshot state,
+    // as loadStateFromImageSnapshot might also set currentImageUrl.
+    // However, the snapshot is the source of truth for the image being viewed.
+    // tagStore.setCurrentImageUrl(image.imageUrl); // This will be handled by loadStateFromImageSnapshot
+
+    tagStore.loadStateFromImageSnapshot(image); 
+    tagStore.viewingSnapshotImageId = image.id; // Update store state
+
+    // The rest of the logic for updating manualPrompt etc. from image.promptText
+    // should ideally be inside loadStateFromImageSnapshot or triggered by it if needed.
+    if (isManualMode.value && image.promptText) {
+      manualPrompt.value = image.promptText;
+    } else if (!isManualMode.value && image.promptText) {
+      // loadStateFromImageSnapshot already sets currentGeneratedPrompt
+      // tagStore.setCurrentGeneratedPrompt(image.promptText, true);
+    }
+    // nextTick for graph updates can remain if still necessary after store changes
+    nextTick(() => {
+      if (forceGraphRef.value) { /* Potentially update graph if needed */ }
+    });
+
+  } else if (tagStore.viewingSnapshotImageId === image?.id) {
+    // If the *currently selected* snapshot image is clicked again, restore session.
+    // This provides a way to exit snapshot view by clicking the selected image again.
+    if (tagStore.stashedSessionState) {
+      tagStore.restoreStashedSession();
+    }
+  }
+};
+
 // New handler for the Generate Image button
 async function handleGenerateImageClick() {
   const promptText = isManualMode.value ? manualPrompt.value : tagStore.currentGeneratedPrompt;
-  if (!promptText || isGeneratingImageFromComposable.value || isImageCooldownFromComposable.value) {
-    // Composable already handles no-prompt warning if promptText is empty when called
+  
+  if (!promptText || 
+      isGeneratingImageFromComposable.value || 
+      isImageCooldownFromComposable.value || 
+      isSavingDreamFromComposable.value) {
     return;
   }
 
+  if (tagStore.stashedSessionState) {
+    console.log("[TagCloud] Generating image while viewing snapshot. Clearing stashed session.");
+    tagStore.stashedSessionState = null;
+    tagStore.viewingSnapshotImageId = null;
+  }
+
+  let currentDreamId = tagStore.loadedDreamId;
+
+  if (currentDreamId === null) {
+    console.log("[TagCloud] New session, auto-saving before image generation.");
+    toast.add({ severity: 'info', summary: 'Saving Session', detail: 'Auto-saving current session...', life: 3000 });
+
+    const dreamDataPayload = getDreamDataPayload();
+
+    try {
+      await initiateSaveDreamProcess(dreamDataPayload); 
+      
+      if (tagStore.loadedDreamId === null) {
+        console.error("[TagCloud] Auto-save initiated but dream ID is still null in store. Aborting image generation.");
+        toast.add({ severity: 'error', summary: 'Save Failed', detail: 'Failed to auto-save session. Image generation aborted.', life: 5000 });
+        return; 
+      }
+      currentDreamId = tagStore.loadedDreamId;
+      toast.add({ severity: 'success', summary: 'Session Saved', detail: `Session auto-saved successfully. Dream ID: ${currentDreamId}`, life: 3000 });
+    } catch (error: any) {
+      console.error('Failed to auto-save dream:', error);
+      toast.add({
+        severity: 'error',
+        summary: 'Auto-Save Failed',
+        detail: error.message || 'Could not auto-save session. Image generation aborted.',
+        life: 5000,
+      });
+      return;
+    }
+  }
+
+  if (currentDreamId === null) {
+      console.error("[TagCloud] Dream ID is critically null before generating image. Aborting.");
+      toast.add({ severity: 'error', summary: 'Internal Error', detail: 'Dream ID is missing. Cannot generate image.', life: 5000 });
+      return;
+  }
+  
   const imageSaved = await generateImageAndSave(
     promptText,
-    tagStore.loadedDreamId,
-    focusedZone.value, // Pass current focusedZone value
-    tagStore.tags       // Pass current tags array (composable will clone if needed)
+    currentDreamId,
+    focusedZone.value,
+    tagStore.tags
   );
 
   if (imageSaved && imageStripRef.value) {
@@ -482,88 +630,14 @@ function handleNodePositionsUpdated(positions: { id: string; x: number; y: numbe
 }
 
 function handleNodeTextUpdated({ id, text }: { id: string; text: string }) {
-  console.log('[TagCloud] Received nodeTextUpdated:', { id, text });
+  if (tagStore.stashedSessionState) {
+    console.log("[TagCloud] Node text updated while viewing snapshot. Clearing stashed session.");
+    tagStore.stashedSessionState = null; // Clear stash
+    tagStore.viewingSnapshotImageId = null; // Clear viewing ID
+  }
   tagStore.updateTagText(id, text);
-  triggerPromptGeneration(); // Explicitly trigger prompt generation after text update
+  triggerPromptGeneration(); 
 }
-
-// New handler for the save button
-async function handleSaveDreamClick() {
-  if (isSavingDisabled.value) return;
-
-  const plainTags = JSON.parse(JSON.stringify(tagStore.tags));
-  const dreamDataPayload = {
-    focusedZone: focusedZone.value,
-    tags: plainTags,
-    generatedPrompt: tagStore.currentGeneratedPrompt,
-    imageUrl: tagStore.currentImageUrl,
-    zoneViewports: tagStore.getAllZoneViewportsObject()
-  };
-
-  await initiateSaveDreamProcess(dreamDataPayload);
-}
-
-// Update manual prompt values when loading dreams
-watch(() => tagStore.currentGeneratedPrompt, (newPrompt) => {
-  if (newPrompt && isManualMode.value) {
-    manualPrompt.value = newPrompt;
-  }
-});
-
-// Watch for store session changes to reset local flags
-watch(() => tagStore.sessionId, () => {
-  // Reset any local state when the store's session changes
-  promptRequestId++;
-  isZoneSwitching.value = false;
-  
-  // Simple synchronous operation - don't use timeouts that cause race conditions
-  // skipPrompt.value = false;
-});
-
-// Placeholder for handling image selection from the strip
-const handleImageSelectedFromStrip = (image: any) => {
-  console.log('Image selected from strip in TagCloud:', image);
-  if (image && image.imageUrl) {
-    tagStore.setCurrentImageUrl(image.imageUrl);
-    
-    // Immediately signal that the next prompt generation (if any) due to state load should be skipped
-    // skipPrompt.value = true;
-
-    if (image.graphState) {
-      console.log('Loading graph state from selected image:', image.graphState);
-      tagStore.loadStateFromImageSnapshot(image); // Pass the whole image object
-      
-      // Update manual prompt if in manual mode and promptText exists for the image
-      if (isManualMode.value && image.promptText) {
-        manualPrompt.value = image.promptText;
-      } else if (!isManualMode.value && image.promptText) {
-        // If not in manual mode, also update the store's currentGeneratedPrompt
-        // Set skipUndo to true if loadStateFromImageSnapshot doesn't handle prompt setting
-        tagStore.setCurrentGeneratedPrompt(image.promptText, true);
-      }
-
-      // After loading a snapshot, we might want to prevent immediate prompt regeneration
-      // if the loaded tags would trigger it.
-      // skipPrompt.value = true;
-      nextTick(() => {
-        // Force graph to re-render with potentially new node positions from loaded state
-        if (forceGraphRef.value) {
-          // forceGraphRef.value.updateGraph(); 
-          // Consider if a full viewport reset/centering is needed or if loaded state includes viewport
-          // forceGraphRef.value.resetAndCenter(); 
-        }
-      });
-
-    } else if (image.promptText) { // Fallback if no graphState, but there is a prompt
-        // skipPrompt.value = true;
-        if (isManualMode.value) {
-            manualPrompt.value = image.promptText;
-        } else {
-            tagStore.setCurrentGeneratedPrompt(image.promptText, true);
-        }
-    }
-  }
-};
 
 </script>
 

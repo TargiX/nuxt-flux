@@ -29,6 +29,10 @@ export const useTagStore = defineStore('tags', () => {
   const loadedDreamId = ref<number | null>(null); // Track loaded dream ID
   const hasUnsavedChanges = ref(false); // Track unsaved changes
   let _refreshDreamsList: (() => void) | null = null; // Placeholder for refresh function
+  
+  // State for stashing current session when viewing an image snapshot
+  const stashedSessionState = ref<DreamData | null>(null);
+  const viewingSnapshotImageId = ref<number | null>(null); // ID of the image snapshot currently being viewed
   // ------------------------------------
 
   // Add session ID at the top with existing state
@@ -411,6 +415,64 @@ export const useTagStore = defineStore('tags', () => {
   }
   // --------------------------------------------------
 
+  // --- Stash and Restore Session for Image Snapshot Viewing ---
+  function stashCurrentSession() {
+    if (stashedSessionState.value) {
+      // console.warn("[TagStore] Attempted to stash session when one is already stashed. This might indicate an issue.");
+      // Overwriting is probably fine if the user clicks another snapshot while already viewing one.
+      // The key is that the *original* session before *any* snapshot viewing is what we want to keep if possible,
+      // but this function is just about capturing the *current* state.
+    }
+    stashedSessionState.value = {
+      focusedZone: focusedZone.value,
+      tags: JSON.parse(JSON.stringify(tags.value)), // Deep clone
+      generatedPrompt: currentGeneratedPrompt.value,
+      imageUrl: currentImageUrl.value,
+      zoneViewports: getAllZoneViewportsObject(),
+    };
+    console.log("[TagStore] Current session stashed:", stashedSessionState.value);
+  }
+
+  function restoreStashedSession() {
+    if (!stashedSessionState.value) {
+      console.warn("[TagStore] Attempted to restore session when none is stashed.");
+      return;
+    }
+
+    console.log("[TagStore] Restoring stashed session...");
+    const sessionToRestore = stashedSessionState.value;
+
+    // Effectively, this is like loading a dream state but without a dreamId
+    // and without affecting loadedDreamId.
+    sessionId.value = generateSessionId(); // New session for the restored state
+
+    focusedZone.value = sessionToRestore.focusedZone;
+    tags.value = JSON.parse(JSON.stringify(sessionToRestore.tags)); // Deep clone
+    currentGeneratedPrompt.value = sessionToRestore.generatedPrompt || '';
+    currentImageUrl.value = sessionToRestore.imageUrl || null;
+
+    // Restore viewports
+    zoneViewportStates.value = new Map<string, ViewportState>();
+    if (sessionToRestore.zoneViewports) {
+      for (const [zoneName, viewportState] of Object.entries(sessionToRestore.zoneViewports)) {
+        if (viewportState && typeof viewportState.x === 'number' && typeof viewportState.y === 'number' && typeof viewportState.k === 'number') {
+          zoneViewportStates.value.set(zoneName, viewportState);
+        }
+      }
+    }
+    console.log("[TagStore] ZoneViewports after restoring stashed session:", zoneViewportStates.value);
+
+    hasUnsavedChanges.value = false; // Restored state is considered saved/pristine relative to itself
+                                  // Or, we might want to preserve the hasUnsavedChanges from the stashed state?
+                                  // For now, treating it as a clean load.
+
+    // Clear the stash and viewing ID
+    stashedSessionState.value = null;
+    viewingSnapshotImageId.value = null;
+    console.log("[TagStore] Stashed session restored and cleared.");
+  }
+  // -----------------------------------------------------------
+
   return {
     tags,
     zones,
@@ -437,6 +499,10 @@ export const useTagStore = defineStore('tags', () => {
     setDreamsListRefresher,    // Expose action
     refreshDreamsList,         // Expose action
     loadStateFromImageSnapshot, // Expose action
-    getAllZoneViewportsObject  // Expose new getter
+    getAllZoneViewportsObject,  // Expose new getter
+    stashedSessionState,        // EXPOSE
+    viewingSnapshotImageId,   // EXPOSE
+    stashCurrentSession,      // EXPOSE ACTION
+    restoreStashedSession,    // EXPOSE ACTION
   };
 });
