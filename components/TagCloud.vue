@@ -82,7 +82,7 @@
         <Textarea
           v-if="isManualMode"
           v-model="manualPrompt"
-          class="manual-prompt-input text-[var(--text-color)] h-[calc(100%-10px)] w-full p-2"
+          class="manual-prompt-input text-[var(--text-color-secondary)] h-[calc(100%-10px)] w-full p-2"
           placeholder="Enter your prompt..."
         ></Textarea>
         <p class="text-white-palette" v-else>{{ tagStore.currentGeneratedPrompt }}</p>
@@ -554,7 +554,7 @@ async function handleGenerateImageClick() {
 
   if (currentDreamId === null) {
     console.log("[TagCloud] New session, auto-saving before image generation.");
-    toast.add({ severity: 'info', summary: 'Saving Session', detail: 'Auto-saving current session...', life: 3000 });
+    // toast.add({ severity: 'info', summary: 'Saving Session', detail: 'Auto-saving current session...', life: 3000 });
 
     const dreamDataPayload = getDreamDataPayload();
 
@@ -567,7 +567,7 @@ async function handleGenerateImageClick() {
         return; 
       }
       currentDreamId = tagStore.loadedDreamId;
-      toast.add({ severity: 'success', summary: 'Session Saved', detail: `Session auto-saved successfully. Dream ID: ${currentDreamId}`, life: 3000 });
+      // toast.add({ severity: 'success', summary: 'Session Saved', detail: `Session auto-saved successfully. Dream ID: ${currentDreamId}`, life: 3000 });
     } catch (error: any) {
       console.error('Failed to auto-save dream:', error);
       toast.add({
@@ -586,16 +586,31 @@ async function handleGenerateImageClick() {
       return;
   }
   
-  const imageSaved = await generateImageAndSave(
+  const newImageObject = await generateImageAndSave(
     promptText,
     currentDreamId,
     focusedZone.value,
     tagStore.tags
   );
 
-  if (imageSaved && imageStripRef.value) {
-    imageStripRef.value.refetchImages();
+  if (newImageObject && imageStripRef.value) {
+    // Instead of refetching, prepend the new image
+    imageStripRef.value.prependImage(newImageObject);
+    // Potentially show a success toast here if not shown in the composable
+    // toast.add({ 
+    //   severity: 'success',
+    //   summary: 'Image Generated & Saved',
+    //   detail: `New image added to Dream ID: ${currentDreamId}.`,
+    //   life: 3000 
+    // });
+  } else if (!newImageObject && currentDreamId) {
+    // Handle case where image generation might have succeeded but saving to DB or association failed
+    // Error toasts for this should ideally be handled within generateImageAndSave or saveGeneratedImage
+    // This block might be redundant if errors are already toasted there.
+    console.warn('[TagCloud] Image generated but not returned for prepending, or not saved to dream.');
   }
+  // If newImageObject is null and currentDreamId was also null (new session, not auto-saved yet, though that logic is above now)
+  // the 'Image Not Saved to Dream' toast is handled in the composable.
 }
 
 function handleNodePositionsUpdated(positions: { id: string; x: number; y: number }[]) {
@@ -638,6 +653,13 @@ function handleNodeTextUpdated({ id, text }: { id: string; text: string }) {
   tagStore.updateTagText(id, text);
   triggerPromptGeneration(); 
 }
+
+// Watch for changes in manual mode to populate the prompt
+watch(isManualMode, (isManual) => {
+  if (isManual) {
+    manualPrompt.value = tagStore.currentGeneratedPrompt;
+  }
+});
 
 </script>
 

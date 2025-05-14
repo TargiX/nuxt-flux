@@ -4,6 +4,7 @@
 :root {
   --font-family: #{v.$font-family};
   --text-color: #{v.$text-color};
+  --text-color-secondary: #{v.$text-color-secondary};
   --background-color: #{v.$background-color};
   --secondary-color: #{v.$secondary-color};
 }
@@ -61,3 +62,71 @@ body {
 //   background: rgba(255, 255, 255, 0.15);
 //   box-shadow: 0 12px 48px rgba(0, 0, 0, 0.35);
 // }
+
+// PrimeVue Toast Overrides
+.p-toast {
+  // Make toasts take less width, but you can adjust this as needed
+  // width: auto; // Default is 300px, set to auto or a smaller fixed width
+  // max-width: 280px; // Example: constrain max width
+
+  .p-toast-message {
+    padding: 0rem; // Further reduce vertical padding, keep horizontal
+    min-height: auto; // Override any default min-height
+    border-radius: 6px;
+    // box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+
+    .p-toast-message-content {
+      align-items: center;
+      padding: 10px 18px;
+      gap: 0.5rem; // Gap between icon and text block
+      // Ensure this container itself doesn't have excessive vertical padding or min-height
+    }
+
+    .p-toast-message-text {
+      // Container for summary and detail
+    }
+
+    .p-toast-summary {
+      font-size: 0.875rem;
+      font-weight: 600;
+      line-height: 1.2; // Reduce line height
+    }
+
+    .p-toast-detail {
+      font-size: 0.75rem;
+      margin-top: 0.15rem; // Slightly reduce margin-top
+      line-height: 1.2; // Reduce line height
+    }
+
+    .p-toast-icon-close {
+      width: 1.25rem;
+      height: 1.25rem;
+      font-size: 0.875rem;
+      // Ensure the button itself doesn't add extra padding
+      padding: 0.1rem; // Example: reduce padding on the button if it has any
+      align-self: center; // Vertically center the close button if needed
+    }
+    
+    .p-icon.p-toast-message-icon {
+      font-size: 1rem;
+      width: 1rem;
+      height: 1rem;
+      margin-right: 0.25rem; // Add a little explicit margin if gap isn't enough
+    }
+  }
+
+  // Example: More prominent error toasts
+  .p-toast-message-error {
+    border-left-width: 4px; // Example: thicker left border for error
+    // You can also adjust background or text color for specific severities for prominence
+  }
+  .p-toast-message-success {
+    border-left-width: 4px;
+  }
+  .p-toast-message-warn {
+    border-left-width: 4px;
+  }
+  .p-toast-message-info {
+    border-left-width: 4px;
+  }
+}

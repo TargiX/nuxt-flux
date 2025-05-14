@@ -226,7 +226,7 @@ export function useDreamManagement() {
         })
       });
       console.log('New dream saved successfully via composable:', newDreamResponse);
-      toastInstance.add({ severity: 'success', summary: 'Success', detail: 'New dream saved successfully!', life: 3000 });
+      // toastInstance.add({ severity: 'success', summary: 'Success', detail: 'New dream saved successfully!', life: 3000 });
       
       // IMPORTANT: Update store to reflect this newly saved dream as the current one
       tagStoreInstance.loadDreamState(newDreamResponse.data, newDreamResponse.id);

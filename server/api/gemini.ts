@@ -13,7 +13,7 @@ export default defineEventHandler(async (event) => {
 
   const {
     prompt,
-    temperature = 0.7, // Default value
+    temperature = 1, // Default value
     maxOutputTokens = 200, // Default value
     modelName = 'gemini-2.0-flash-lite' // Default model, adjust if needed
   } = await readBody<{ prompt: string; temperature?: number; maxOutputTokens?: number; modelName?: string }>(event)

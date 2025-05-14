@@ -6,9 +6,10 @@
     </h2>
     
     <div class="image-scroll-area">
-      <div class="images-wrapper">
+      <transition-group name="image-pop" tag="div" class="images-wrapper">
         <!-- Current Session Tile - Always Visible -->
         <div
+          key="current-session"
           class="image-thumbnail-item current-session-tile"
           :class="{
             'live-session-active': !tagStore.stashedSessionState,
@@ -23,19 +24,18 @@
 
         <!-- Dream Specific Images -->
         <template v-if="props.dreamId">
-          <div v-if="pending" class="loading-message central-message">
+          <div v-if="pending" key="loading-msg" class="loading-message central-message">
             <ProgressSpinner style="width: 30px; height: 30px" strokeWidth="6" />
             <p>Loading images...</p>
           </div>
-          <div v-else-if="error" class="error-message central-message">
+          <div v-else-if="error" key="error-msg" class="error-message central-message">
             <i class="pi pi-exclamation-triangle"></i>
             <p>Could not load images. {{ error.message }}</p>
           </div>
-          <div v-else-if="images && images.length === 0" class="empty-strip-message central-message">
+          <div v-else-if="images && images.length === 0" key="empty-dream-msg" class="empty-strip-message central-message">
             <p>No images have been generated for this dream yet.</p>
           </div>
           <div
-            v-else
             v-for="image in images"
             :key="image.id"
             class="image-thumbnail-item"
@@ -45,11 +45,11 @@
             <img :src="image.imageUrl" :alt="image.promptText || 'Generated Image'" />
           </div>
         </template>
-        <div v-else-if="!props.dreamId && !tagStore.stashedSessionState" class="empty-strip-message central-message full-width-message">
+        <div v-else-if="!props.dreamId && !tagStore.stashedSessionState" key="no-dream-msg" class="empty-strip-message central-message full-width-message">
             <p>No Dream loaded. Save your session as a Dream to build an image history.</p>
         </div>
 
-      </div>
+      </transition-group>
     </div>
   </div>
 </template>
@@ -65,8 +65,9 @@ interface DreamImage {
   id: number;
   imageUrl: string;
   promptText?: string;
-  createdAt: string; // Assuming Prisma returns date as string
-  graphState?: any; // Add graphState, make it optional for now
+  createdAt: string; // Assuming Prisma returns date as string (matches ReturnedDreamImage)
+  graphState?: any; // This might not be directly returned by saveGeneratedImage, ensure compatibility
+  // Ensure this interface is compatible with what generateImageAndSave will return
 }
 
 const props = defineProps<{
@@ -109,8 +110,18 @@ const refetchImages = () => {
   fetchImages(props.dreamId);
 };
 
+// New method to prepend an image to the list
+const prependImage = (newImage: DreamImage) => {
+  if (newImage && newImage.id) {
+    images.value.unshift(newImage); // Add to the beginning of the array
+  } else {
+    console.warn('[ImageStrip] Attempted to prepend invalid image data:', newImage);
+  }
+};
+
 defineExpose({
   refetchImages,
+  prependImage, // Expose the new method
 });
 
 watch(() => props.dreamId, (newDreamId) => {
@@ -281,5 +292,34 @@ const handleCurrentSessionClick = () => {
 
 .image-strip-container {
   min-height: 170px; /* Ensure adequate height for title + content */
+}
+
+/* Image Pop Animation */
+.image-pop-enter-from {
+  opacity: 0;
+  transform: scale(0.8) translateY(20px);
+}
+.image-pop-enter-active {
+  transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1); /* Smoother ease-out-back like */
+}
+.image-pop-enter-to {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+/* For <transition-group>, -move class is important for smooth reordering */
+.image-pop-move {
+  transition: transform 0.5s ease;
+}
+
+/* Ensure individual items are not affecting layout during transition if needed */
+.image-pop-leave-active {
+  /* Example: if you implement removals later and want them to shrink/fade out */
+  /* position: absolute; */ /* Be cautious with absolute positioning in flex layouts */
+  transition: all 0.3s ease;
+}
+.image-pop-leave-to {
+  opacity: 0;
+  transform: scale(0.6);
 }
 </style> 
