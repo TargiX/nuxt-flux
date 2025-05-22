@@ -41,6 +41,7 @@
      </div>
    
     </div>
+    <NodeContextMenu ref="contextMenu" :node-id="contextMenuNodeId" @menu-action="handleContextMenuAction" />
   </div>
 </template>
 
@@ -53,6 +54,7 @@ import { useNodeStyling } from '~/composables/useNodeStyling';
 import { useLinkStyling } from '~/composables/useLinkStyling';
 import { useForceSimulation } from '~/composables/useForceSimulation';
 import type { GraphNode, GraphLink } from '~/types/graph';
+import NodeContextMenu from './NodeContextMenu.vue';
 
 const props = defineProps<{
   width: number;
@@ -70,6 +72,9 @@ let simulation: d3.Simulation<GraphNode, GraphLink> | null = null;
 
 // Add this ref to track reset state
 const isResetting = ref(false);
+
+const contextMenu = ref<InstanceType<typeof NodeContextMenu> | null>(null);
+const contextMenuNodeId = ref<string | null>(null);
 
 // Compute responsive container style
 const containerStyle = computed(() => {
@@ -324,7 +329,19 @@ function updateNodes() {
       if (svg) {
         centerOnNodeFn(svg, d);
       }
+      // Hide context menu on left click
+      if (contextMenu.value) {
+        contextMenu.value.hide();
+      }
     })
+    .on('contextmenu', (event: MouseEvent, d: GraphNode) => {
+      event.preventDefault(); // Prevent browser default context menu
+      contextMenuNodeId.value = d.id;
+      if (contextMenu.value) {
+        contextMenu.value.show(event);
+      }
+      console.log('Node right-clicked:', d.id);
+    });
   
 
   nodeEnter.append('circle')
@@ -394,6 +411,14 @@ function updateTextForNode(nodeId: string, newText: string) {
 function updateVisualElements() {
   updateLinks();
   updateNodes();
+}
+
+function handleContextMenuAction(payload: { action: string; nodeId: string }) {
+  console.log(`Context menu action '${payload.action}' on node '${payload.nodeId}'`);
+  // Handle specific actions here if needed, or emit further up
+  if (contextMenu.value) {
+    contextMenu.value.hide();
+  }
 }
 
 // Expose methods for parent component interaction
