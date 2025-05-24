@@ -1,0 +1,161 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# TagCloud.vue Component Guidelines
+
+This document outlines best practices and key considerations when developing or modifying the [TagCloud.vue](mdc:components/TagCloud.vue) component.
+
+## 1. Overview
+
+[TagCloud.vue](mdc:components/TagCloud.vue) is a complex component responsible for visualizing and interacting with a tag-based graph, generating image prompts, displaying generated images, and managing application state ("dreams" and "sessions"). It integrates several child components like `ForceGraph`, `ZoneSelector`, and `ImageStrip`, and relies heavily on Pinia for state management and composables for business logic.
+
+## 2. State Management (Pinia - `useTagStore`)
+
+-   **Primary State Source:** All state related to tags, graph nodes/links, the focused zone, current generated prompt, current image URL, dream loading/saving status, and session management (stashing/restoring, snapshot viewing) is managed through `useTagStore()`.
+    -   Refer to `store/tagStore.ts` for state structure and actions.
+-   **Accessing State:** Always access and mutate this state via the `tagStore` instance.
+    ```typescript
+    // ✅ DO:
+    import { useTagStore } from '~/store/tagStore';
+    const tagStore = useTagStore();
+    const nodes = computed(() => tagStore.graphNodes);
+    tagStore.setCurrentImageUrl('new_url.jpg');
+    ```
+-   **Unsaved Changes:** The `tagStore.hasUnsavedChanges` flag is crucial for indicating unsaved work. Ensure actions that modify persistent state correctly update this flag (e.g., `tagStore.markAsDirty()`, `tagStore.markAsSaved()`). Node position updates in the graph are an exception and should not by themselves mark changes as dirty.
+
+## 3. Composables Usage
+
+Leverage the provided composables for their specific functionalities:
+
+-   **`useImageGeneration`**:
+    -   Handles the entire image generation lifecycle: calling the generation service, managing loading states (`isGeneratingImage`), cooldowns (`isImageCooldown`), and saving the generated image associated with a dream.
+    -   Use `generateImageAndSave` for initiating image generation.
+    ```typescript
+    // ✅ DO:
+    import { useImageGeneration } from '~/composables/useImageGeneration';
+    const { generateImageAndSave, isGeneratingImage, isImageCooldown } = useImageGeneration();
+    // ...
+    await generateImageAndSave(prompt, dreamId, zone, tags);
+    ```
+-   **`useDreamManagement`**:
+    -   Manages saving and updating "dreams" (application state snapshots).
+    -   Use `initiateSaveDreamProcess` to save the current state.
+    -   Handles loading states (`isSavingDream`).
+    ```typescript
+    // ✅ DO:
+    import { useDreamManagement } from '~/composables/useDreamManagement';
+    const { initiateSaveDreamProcess, isSavingDream } = useDreamManagement();
+    // ...
+    await initiateSaveDreamProcess(dreamDataPayload);
+    ```
+
+## 4. ForceGraph Interaction (`ForceGraph.vue`)
+
+-   **Reference:** Access the `ForceGraph` instance via `forceGraphRef`.
+-   **Event Handling:**
+    -   `@nodeClick`: Handles user clicks on graph nodes. This action should clear any stashed snapshot session and toggle the tag's selected state, followed by triggering prompt generation.
+    -   `@nodePositionsUpdated`: Updates tag positions in the store. These updates should *not* mark the session as dirty if no other changes were made.
+    -   `@nodeTextUpdated`: Handles direct text edits on nodes. This should clear any stashed snapshot session, update the tag text in the store, and trigger prompt generation.
+-   **Viewport Management:**
+    -   Crucial for persisting user's view when switching zones or loading states.
+    -   `tagStore.saveZoneViewport(zoneName, viewportState)`: Call this when leaving a zone.
+    -   `tagStore.getZoneViewport(zoneName)`: Retrieve stored viewport for a zone.
+    -   `forceGraphRef.value.applyViewport(viewportState)`: Apply a viewport. If no valid saved viewport, apply default.
+    -   `forceGraphRef.value.resetAndCenter()`: Use for complete resets (e.g., new session).
+    -   **Validation:** Always validate viewport state using `isValidViewport` before applying to prevent errors.
+
+## 5. Prompt Generation
+
+-   **Triggering:** Prompt generation is typically triggered by changes in selected tags (`generatedPrompt` computed property) or manually via a refresh button.
+-   **Automatic vs. Manual:**
+    -   `isManualMode` (ref) controls whether the prompt is user-defined (`manualPrompt`) or generated from selected tags.
+    -   When switching to manual mode, `manualPrompt` should be initialized with the current `tagStore.currentGeneratedPrompt`.
+-   **Service:** Uses `generateImagePrompt(tagsString)` from `~/services/promptGenerationService`.
+-   **Debouncing:** `triggerPromptGeneration` is a debounced function. Call this to initiate prompt generation after relevant state changes (e.g., tag toggling).
+-   **Loading State:** `isGeneratingPrompt` (ref) indicates if a prompt generation request is in progress. Use this to disable UI elements or show loading indicators.
+-   **Race Conditions:** `promptRequestId` is used to prevent older, slow requests from overwriting newer ones. Increment this ID before each new call to `generateImagePrompt`.
+-   **Zone Switching:** Prompt generation should be skipped or cancelled if a zone switch (`isZoneSwitching`) is in progress.
+
+## 6. Image Handling
+
+-   **Preview:** `tagStore.currentImageUrl` holds the URL for the main image preview.
+-   **Image Strip (`ImageStrip.vue`):**
+    -   Displays a list of generated images related to a dream.
+    -   `@image-selected`: Handles selection from the strip. This action loads a snapshot of the state associated with the selected image.
+-   **Generation Button (`handleGenerateImageClick`):**
+    -   Uses `generateImageAndSave` from `useImageGeneration`.
+    -   **Auto-Save:** If generating an image in a new session (no `tagStore.loadedDreamId`), the current state *must* be auto-saved as a new dream *before* proceeding with image generation. Ensure `tagStore.loadedDreamId` is populated after the save.
+    -   If viewing a snapshot, generating a new image should clear the snapshot state and revert to a live session.
+    -   The newly generated image should be prepended to the `ImageStrip` without a full refetch.
+
+## 7. Dream & Session Management
+
+-   **Saving Dreams (`handleSaveDreamClick`):**
+    -   Constructs a payload using `getDreamDataPayload()`.
+    -   Calls `initiateSaveDreamProcess` from `useDreamManagement`.
+    -   UI should be disabled appropriately using `isSavingDisabled` computed property.
+-   **Loading Dreams:** When `tagStore.loadedDreamId` changes:
+    -   Reset local component state (e.g., `promptRequestId`, `isGeneratingPrompt`).
+    -   Clear any stashed snapshot sessions.
+    -   If `newId === null` (new session), perform an immediate viewport reset on the graph.
+-   **Snapshot Viewing (via Image Strip):**
+    -   When an image is selected from the strip:
+        1.  If not already viewing a snapshot, call `tagStore.stashCurrentSession()`.
+        2.  Call `tagStore.loadStateFromImageSnapshot(selectedImageData)`.
+        3.  Set `tagStore.viewingSnapshotImageId` to the selected image's ID.
+    -   **Exiting Snapshot View:**
+        -   Clicking the *currently selected* snapshot image again in the strip.
+        -   Any interaction that implies a new state (node click, text update, new image generation, save dream).
+        -   When exiting, call `tagStore.restoreStashedSession()` or simply clear `tagStore.stashedSessionState = null` if a new action takes precedence.
+
+## 8. Zone Switching (`switchToZone`)
+
+-   **Process:**
+    1.  Increment `promptRequestId` to cancel ongoing prompt generations.
+    2.  Set `isZoneSwitching.value = true`.
+    3.  Save the viewport of the `oldZone` using `tagStore.saveZoneViewport()`.
+    4.  Call `tagStore.setFocusedZone(newZone)`.
+    5.  Wait for `nextTick()`.
+    6.  Attempt to load and apply the viewport for `newZone` from `tagStore.getZoneViewport()`. Fall back to default viewport if none saved or invalid.
+    7.  Set `isZoneSwitching.value = false`.
+-   Prompt generation should be disabled during the switch.
+
+## 9. Asynchronous Operations & UI Feedback
+
+-   **Loading States:** Utilize `isGeneratingPrompt`, `isGeneratingImageFromComposable`, `isSavingDreamFromComposable` to provide visual feedback (e.g., spinners, disabled buttons).
+-   **Error Handling:** Catch errors from service calls and composable functions. Use `useToast()` to display user-friendly error messages.
+    ```typescript
+    // ✅ DO:
+    try {
+      // async operation
+    } catch (error: any) {
+      console.error('Operation failed:', error);
+      toast.add({
+        severity: 'error',
+        summary: 'Operation Failed',
+        detail: error.message || 'An unexpected error occurred.',
+        life: 5000,
+      });
+    }
+    ```
+-   **Debouncing:** Use the `debounce` utility for actions that might be triggered rapidly (like prompt generation from tag selections).
+-   **`nextTick`:** Use `nextTick` when needing to wait for DOM updates after reactive state changes, especially before interacting with child component refs.
+
+## 10. UI and PrimeVue Components
+
+-   Adhere to project-specific guidelines for using PrimeVue components ([project-specifics.mdc](mdc:.cursor/rules/project-specifics.mdc)).
+-   Examples in `TagCloud.vue`: `Button`, `ToggleButton`, `Textarea`, `ProgressSpinner`.
+-   Ensure buttons have appropriate `disabled` states based on the current application state (e.g., `isGenerationDisabled`, `isSavingDisabled`).
+
+## 11. Code Structure and Reactivity
+
+-   **Computed Properties:** Use `computed` for derived state that depends on other reactive sources. This keeps templates clean and logic centralized.
+-   **Watchers:** Use `watch` to react to specific state changes and trigger side effects (e.g., API calls, component method calls).
+    -   Be mindful of watcher cleanup and potential infinite loops.
+    -   When watching store properties, ensure proper handling of old/new values.
+    -   For `tagStore.sessionId` changes, reset relevant local component state.
+
+---
+*Always refer to the latest version of [TagCloud.vue](mdc:components/TagCloud.vue) and related store/composables for the most up-to-date implementation details.*

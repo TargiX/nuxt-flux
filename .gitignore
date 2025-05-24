@@ -43,3 +43,13 @@ node_modules/
 # Task files
 tasks.json
 tasks/ 
+DreamSeed - Documentation.pdf
+composables/useZoom.ts
+repomix-output.xml
+repomix-output.txt
+documentation.md
+.windsurfrules
+.windsurfrules
+scripts/prd.txt
+.roo/rules/tag-cloud-component.md
+.roo/rules/general-vue-ui-components.md

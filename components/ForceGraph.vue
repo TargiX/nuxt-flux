@@ -327,7 +327,18 @@ function updateNodes() {
       emit('nodeClick', d.id);
       updateNodeSelection(d.id);
       if (svg) {
+        // Temporarily pin the node to prevent force drift during centering
+        d.fx = d.x;
+        d.fy = d.y;
+        
+        // Snappy centering using predictive translation
         centerOnNodeFn(svg, d);
+        
+        // Release the pin after centering completes
+        setTimeout(() => {
+          d.fx = null;
+          d.fy = null;
+        }, 750); // Match the centering duration
       }
       // Hide context menu on left click
       if (contextMenu.value) {

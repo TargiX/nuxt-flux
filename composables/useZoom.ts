@@ -95,22 +95,28 @@ export function useZoom() {
     applyViewport(svg, undefined, 750);
   }
   
+  /**
+   * Centers viewport on a given node with predictive translation.
+   */
   function centerOnNode(
-    svg: d3.Selection<SVGSVGElement, unknown, null, undefined>,
-    node: { x?: number | null; y?: number | null },
-    // width and height of the SVG drawing area are needed here, assume they are currentSvgWidth/Height
+    svgSelection: d3.Selection<SVGSVGElement, unknown, null, undefined>,
+    node: { x?: number | null; y?: number | null }
   ) {
-    if (!zoomBehavior.value || node.x == null || node.y == null || !svg.node()) return;
-    
-    const currentK = d3.zoomTransform(svg.node()!).k; // Get current scale for smoother centering
-    const targetScale = Math.max(currentK, initialZoomScale); // Center at least at initialZoomScale or current if more zoomed in
-
+    if (!zoomBehavior.value || node.x == null || node.y == null || !svgSelection.node()) return;
+    // Determine current scale
+    const transformObj = d3.zoomTransform(svgSelection.node()!);
+    const currentK = transformObj.k;
+    const targetScale = Math.max(currentK, initialZoomScale);
+    // Use original precise centering calculation
     const transform = d3.zoomIdentity
       .translate(currentSvgWidth / 2, currentSvgHeight / 2) // Translate origin to center of viewport
       .scale(targetScale) // Apply scale
       .translate(-node.x, -node.y); // Translate so node.x, node.y is at the origin
-
-    svg.transition().duration(750).call(zoomBehavior.value.transform as any, transform);
+    
+    // Apply smooth transition with default easing (ease-cubic-in-out)
+    svgSelection.transition()
+      .duration(750)
+      .call(zoomBehavior.value.transform as any, transform);
   }
 
   // Function to completely reset the zoom transform to identity with optional duration

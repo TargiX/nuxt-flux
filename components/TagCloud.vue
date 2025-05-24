@@ -66,6 +66,18 @@
               @click="tagStore.restoreStashedSession()"
               v-tooltip.top="'Return to your live session'"
             />
+            <Button 
+              v-if="!isManualMode && generatedPrompt"
+              icon="pi pi-refresh"
+              severity="secondary"
+              text
+              size="small"
+              class="w-7 h-7 !p-0 flex items-center justify-center"
+              :class="{ 'animate-spin': isGeneratingPrompt }"
+              @click="handleRefreshPrompt"
+              :disabled="isGeneratingPrompt"
+              v-tooltip.top="'Regenerate prompt'"
+            />
             <ToggleButton 
               onLabel="Auto"
               class="px-1 py-1 h-8"
@@ -85,7 +97,13 @@
           class="manual-prompt-input text-[var(--text-color-secondary)] h-[calc(100%-10px)] w-full p-2"
           placeholder="Enter your prompt..."
         ></Textarea>
-        <p class="text-white-palette" v-else>{{ tagStore.currentGeneratedPrompt }}</p>
+        <p 
+          class="text-white-palette prompt-text" 
+          :class="{ 'fade-in': !isGeneratingPrompt, 'fade-out': isGeneratingPrompt }"
+          v-else
+        >
+          {{ tagStore.currentGeneratedPrompt }}
+        </p>
         
      
       </div>
@@ -96,19 +114,33 @@
         <div class="flex gap-2">
           <Button 
             @click="handleSaveDreamClick"
-            severity="secondary" 
+            severity="info"
             :disabled="isSavingDisabled"
-            class="flex items-center gap-1 flex-nowrap whitespace-nowrap px-4 py-1" 
-            icon="pi pi-save" 
-            v-tooltip.top="'Save current state as Dream'" 
+            class="flex items-center justify-center w-8 h-8 !p-0 !bg-blue-600 hover:!bg-blue-700 !border-blue-600 hover:!border-blue-700" 
+            v-tooltip.top="'Save session'" 
           >
+             <!-- Custom floppy disk icon -->
+             <svg 
+               width="16" 
+               height="16" 
+               viewBox="0 0 24 24" 
+               fill="none" 
+               stroke="currentColor" 
+               stroke-width="1.5" 
+               stroke-linecap="round" 
+               stroke-linejoin="round"
+               class="flex-shrink-0"
+             >
+               <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l3 3v13a2 2 0 0 1-2 2z"/>
+               <polyline points="17,21 17,13 7,13 7,21"/>
+               <polyline points="7,3 7,8 15,8"/>
+             </svg>
              <ProgressSpinner
-              v-if="isSavingDreamFromComposable"
-              class="w-4 h-4 progress-spinner" 
-              strokeWidth="8" 
-              fill="transparent"
-            />
-            {{ isSavingDreamFromComposable ? 'Saving...'  : 'Save' }}
+               v-if="isSavingDreamFromComposable"
+               class="w-3 h-3 progress-spinner" 
+               strokeWidth="8" 
+               fill="transparent"
+             />
           </Button>
           <Button 
             @click="handleGenerateImageClick" 
@@ -661,6 +693,14 @@ watch(isManualMode, (isManual) => {
   }
 });
 
+// New handler for the refresh button
+function handleRefreshPrompt() {
+  // Reset the prompt generation flag
+  isGeneratingPrompt.value = false;
+  // Regenerate the prompt
+  triggerPromptGeneration();
+}
+
 </script>
 
 <style scoped>
@@ -672,5 +712,28 @@ watch(isManualMode, (isManual) => {
 
 .image-strip-wrapper {
   margin-top: 1rem; /* Or use grid gap, depending on desired spacing */
+}
+
+/* Spinning animation for refresh button */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Fade transitions for prompt text */
+.prompt-text {
+  transition: opacity 0.3s ease-in-out;
+}
+
+.fade-in {
+  opacity: 1;
+}
+
+.fade-out {
+  opacity: 0.5;
 }
 </style>
