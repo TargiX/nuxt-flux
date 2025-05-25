@@ -102,49 +102,65 @@ const { applyNodeStyle, getSubjectImagePath, createNodeGradients } = useNodeStyl
 const { createLinkGradient, createUniqueGradient, updateGradientPositions, applyLinkStyle } = useLinkStyling();
 const { createSimulation, updateSimulation, createDragBehavior } = useForceSimulation();
 
+// Add version stamp for optimized watching
+const graphVersion = ref(0);
+let resizeObserver: ResizeObserver | null = null;
+
+// Optimized watch - replace deep JSON.stringify with version stamp
+watch(
+  () => graphVersion.value,
+  () => {
+    console.log('Graph updating due to version change');
+    updateGraph();
+  }
+);
+
+// Watch for structural changes and increment version
+watch(
+  () => [props.nodes.length, props.links.length],
+  () => {
+    graphVersion.value++;
+  }
+);
+
 onMounted(() => {
   initializeGraph();
   
-  // Add resize event listener
-  window.addEventListener('resize', handleResize);
+  // Use ResizeObserver instead of window resize for better performance
+  if (container.value) {
+    resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        // Use requestAnimationFrame for batching
+        requestAnimationFrame(() => {
+          updateGraph();
+        });
+      }
+    });
+    resizeObserver.observe(container.value);
+  }
 });
 
 onBeforeUnmount(() => {
   saveNodePositions();
   
-  // Remove resize event listener
-  window.removeEventListener('resize', handleResize);
-});
-
-// Debounced resize handler
-let resizeTimeout: number | null = null;
-function handleResize() {
-  if (resizeTimeout) {
-    window.clearTimeout(resizeTimeout);
+  // Cleanup simulation and SVG to prevent memory leaks
+  if (simulation) {
+    simulation.stop();
+    simulation = null;
   }
   
-  resizeTimeout = window.setTimeout(() => {
-    updateGraph();
-  }, 250);
-}
-
-watch(
-  () => [
-    props.nodes.map(n => ({ id: n.id, text: n.text, size: n.size, children: n.children?.map(c => c.id) || [] })),
-    props.links.map(l => ({ 
-      source: (l.source as GraphNode).id,
-      target: (l.target as GraphNode).id,
-      value: l.value 
-    }))
-  ],
-  (newVal, oldVal) => {
-    if (JSON.stringify(newVal) !== JSON.stringify(oldVal)) {
-      console.log('Graph updating due to structural change');
-      updateGraph();
-    }
-  },
-  { deep: true }
-);
+  if (svg) {
+    svg.selectAll('*').remove();
+    svg = null;
+  }
+  
+  // Cleanup ResizeObserver
+  if (resizeObserver && container.value) {
+    resizeObserver.unobserve(container.value);
+    resizeObserver.disconnect();
+    resizeObserver = null;
+  }
+});
 
 function initializeGraph() {
   if (!container.value) return;
@@ -204,36 +220,50 @@ function initializeGraph() {
   simulation = createSimulation(props.nodes, props.links, width, height);
 
   if (simulation) {
+    // Throttle DOM updates for better performance while keeping physics smooth
+    let needsRender = false;
+    
     simulation.on('tick', () => {
-      if (!svg || !nodeGroup || !linkGroup) return;
-
-      nodeGroup.selectAll<SVGGElement, GraphNode>('g')
-        .attr('transform', d => `translate(${d.x || 0},${d.y || 0})`);
-
-      linkGroup.selectAll<SVGLineElement, GraphLink>('line')
-        .attr('x1', d => (d.source as GraphNode).x || 0)
-        .attr('y1', d => (d.source as GraphNode).y || 0)
-        .attr('x2', d => (d.target as GraphNode).x || 0)
-        .attr('y2', d => (d.target as GraphNode).y || 0);
-
-      const svgEl = svg;
-      if (svgEl) {
-        linkGroup.selectAll<SVGLineElement, GraphLink>('line').each(function(d) {
-          const source = d.source as GraphNode;
-          const target = d.target as GraphNode;
-          
-          updateGradientPositions(svgEl, source, target);
-        });
-      }
+      needsRender = true;
     });
+    
+    // Render loop - updates DOM at 60fps regardless of simulation frequency
+    const renderLoop = () => {
+      if (needsRender && svg && nodeGroup && linkGroup) {
+        nodeGroup.selectAll<SVGGElement, GraphNode>('g')
+          .attr('transform', d => `translate(${d.x || 0},${d.y || 0})`);
+
+        linkGroup.selectAll<SVGLineElement, GraphLink>('line')
+          .attr('x1', d => (d.source as GraphNode).x || 0)
+          .attr('y1', d => (d.source as GraphNode).y || 0)
+          .attr('x2', d => (d.target as GraphNode).x || 0)
+          .attr('y2', d => (d.target as GraphNode).y || 0);
+
+        const svgEl = svg;
+        if (svgEl) {
+          linkGroup.selectAll<SVGLineElement, GraphLink>('line').each(function(d) {
+            const source = d.source as GraphNode;
+            const target = d.target as GraphNode;
+            
+            updateGradientPositions(svgEl, source, target);
+          });
+        }
+        
+        needsRender = false;
+      }
+      requestAnimationFrame(renderLoop);
+    };
+    
+    // Start the render loop
+    requestAnimationFrame(renderLoop);
     
     updateVisualElements();
 
     // Kickstart simulation for new graphs; skip if loading saved positions
     if (!hasSavedPositions) {
-      simulation.tick(30);
-      simulation.alpha(0.3).restart();
-      // Release fixed positions after initial spread
+      // Remove manual ticking - let natural forces handle positioning
+      simulation.alpha(0.15).restart(); // Reduced for faster stabilization
+      // Release fixed positions after initial spread - much faster
       setTimeout(() => {
         if (simulation) {
           simulation.nodes().forEach(node => {
@@ -243,7 +273,7 @@ function initializeGraph() {
             }
           });
         }
-      }, 150);
+      }, 50); // Reduced from 150ms to 50ms for faster release
     }
 
   } else {
@@ -438,6 +468,7 @@ interface ForceGraphExposed {
   applyViewport: (state?: ViewportState, duration?: number) => void;
   centerOnNode: (node: { x?: number | null; y?: number | null }) => void;
   resetAndCenter: () => void;
+  triggerUpdate: () => void; // Add method to manually trigger updates
 }
 
 defineExpose<ForceGraphExposed>({
@@ -459,9 +490,6 @@ defineExpose<ForceGraphExposed>({
   resetAndCenter: () => {
     console.log("ForceGraph resetAndCenter called - performing full reset");
     if (!svg || !simulation || !container.value) return;
-    
-    // Force stop simulation
-    simulation.stop();
     
     // Get container dimensions
     const containerRect = container.value.getBoundingClientRect();
@@ -497,14 +525,15 @@ defineExpose<ForceGraphExposed>({
     // Apply default viewport (force initialZoomScale use)
     applyViewportFn(svg, undefined, 0);
     
-    // Update simulation and run ticks
+    // Update simulation and let natural decay handle stabilization
     updateSimulation(simulation, props.nodes, props.links, width, height);
-    for (let i = 0; i < 50; i++) {
-      simulation.tick();
-    }
     
-    // Restart simulation at high energy
+    // Restart simulation at high energy - let forces naturally stabilize
     simulation.alpha(1).restart();
+  },
+  triggerUpdate: () => {
+    // Manual method to trigger graph updates when needed
+    graphVersion.value++;
   }
 });
 </script>

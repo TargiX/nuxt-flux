@@ -54,10 +54,12 @@ export function useForceSimulation() {
     height: number
   ) => {
     simulation.stop();
-
     
     // Validate nodes and fix invalid coordinates
     const validNodes = nodes.filter(n => n && typeof n.id === 'string');
+    
+    // Create O(1) parent lookup map for performance
+    const parentMap = new Map(validNodes.map(n => [n.id, n]));
     
     // Use centerX/centerY for consistency
     const centerX = width / 2;
@@ -80,17 +82,19 @@ export function useForceSimulation() {
       if (!hasValidX) node.x = centerX + (Math.random() - 0.5) * 10;
       if (!hasValidY) node.y = centerY + (Math.random() - 0.5) * 10;
       
-      // Reset velocities
-      node.vx = 0;
-      node.vy = 0;
+      // Reset velocities only for new/invalid nodes - preserve momentum for stable nodes
+      if (!hasValidX || !hasValidY) {
+        node.vx = 0;
+        node.vy = 0;
+      }
        
       if (node.selected && !node.parentId) {
         // Pin selected top-level nodes
         node.fx = node.x;
         node.fy = node.y;
       } else if (node.parentId) {
-        // Position child nodes near their parent
-        const parent = validNodes.find(n => n.id === node.parentId);
+        // Position child nodes near their parent - use O(1) lookup
+        const parent = parentMap.get(node.parentId);
         if (parent) {
           const parentPosX = typeof parent.x === 'number' && !isNaN(parent.x) ? parent.x : centerX;
           const parentPosY = typeof parent.y === 'number' && !isNaN(parent.y) ? parent.y : centerY;
@@ -161,7 +165,7 @@ export function useForceSimulation() {
       centerForce.x(centerX).y(centerY);
     }
 
-    // Restart simulation
+    // Restart simulation with your original alpha
     simulation.alpha(0.3).restart();
     
     return simulation;
