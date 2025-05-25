@@ -1,0 +1,52 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Development Server Management
+
+## **Server Status Assumptions**
+- **Always assume the dev server is already running** unless explicitly told otherwise
+- The server runs on `http://localhost:3000/`
+- Hot reload is active and automatically picks up file changes
+
+## **When NOT to Restart Server**
+- ❌ **File modifications** - Vue, TypeScript, SCSS files auto-reload
+- ❌ **Component updates** - Hot module replacement handles this
+- ❌ **Composable changes** - Automatically detected and reloaded
+- ❌ **Style changes** - CSS/SCSS changes are hot-reloaded
+- ❌ **Type changes** - TypeScript compilation is automatic
+
+## **When Server Restart IS Needed**
+- ✅ **Package installation** - New dependencies require restart
+- ✅ **Config changes** - [nuxt.config.ts](mdc:nuxt.config.ts), [tailwind.config.js](mdc:tailwind.config.js)
+- ✅ **Environment variables** - Changes to [.env](mdc:.env) files
+- ✅ **Server-side API changes** - New routes in `server/api/`
+- ✅ **Middleware changes** - New or modified middleware files
+
+## **Testing Changes**
+Instead of restarting the server:
+```bash
+# Just check the browser - changes should be visible immediately
+# Look for these reload indicators in terminal:
+# ℹ page reload composables/useNodeStyling.ts
+# ℹ page reload components/ForceGraph.vue
+```
+
+## **Current Project Context**
+- **Main components**: [ForceGraph.vue](mdc:components/ForceGraph.vue), [TagCloud.vue](mdc:components/TagCloud.vue)
+- **Key composables**: [useForceSimulation.ts](mdc:composables/useForceSimulation.ts), [useNodeStyling.ts](mdc:composables/useNodeStyling.ts)
+- **Package manager**: Always use `pnpm` for installations
+- **Hot reload active**: File changes trigger automatic page reloads
+
+## **Verification Approach**
+1. **Make the code change**
+2. **Check terminal output** for reload confirmation
+3. **Refresh browser** if needed (Cmd+R / Ctrl+R)
+4. **Only restart if functionality is broken** and hot reload failed
+
+## **Performance Notes**
+- Server restarts take 15-30 seconds
+- Hot reloads take 1-3 seconds
+- Multiple file changes are batched automatically
+- Terminal shows reload confirmations for tracking

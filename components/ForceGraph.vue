@@ -76,6 +76,10 @@ const isResetting = ref(false);
 const contextMenu = ref<InstanceType<typeof NodeContextMenu> | null>(null);
 const contextMenuNodeId = ref<string | null>(null);
 
+// Add this after the existing refs at the top of the script
+let currentHoveredNodeId: string | null = null;
+let hoverThrottleTimeout: number | null = null;
+
 // Compute responsive container style
 const containerStyle = computed(() => {
   return {
@@ -143,6 +147,13 @@ onMounted(() => {
 onBeforeUnmount(() => {
   saveNodePositions();
   
+  // Clear hover states and timeouts
+  currentHoveredNodeId = null;
+  if (hoverThrottleTimeout) {
+    clearTimeout(hoverThrottleTimeout);
+    hoverThrottleTimeout = null;
+  }
+  
   // Cleanup simulation and SVG to prevent memory leaks
   if (simulation) {
     simulation.stop();
@@ -150,6 +161,8 @@ onBeforeUnmount(() => {
   }
   
   if (svg) {
+    // Remove all event listeners
+    svg.on('mouseleave', null);
     svg.selectAll('*').remove();
     svg = null;
   }
@@ -383,7 +396,6 @@ function updateNodes() {
       }
       console.log('Node right-clicked:', d.id);
     });
-  
 
   nodeEnter.append('circle')
     .attr('r', d => d.size / 2)
@@ -403,14 +415,82 @@ function updateNodes() {
 
   node.exit().remove();
 
-  nodeGroup.selectAll<SVGGElement, GraphNode>('g')
+  // Apply hover behavior to all nodes (both new and existing) with single-glow logic
+  const allNodes = nodeGroup.selectAll<SVGGElement, GraphNode>('g')
     .each(function(d) {
       applyNodeStyle(d3.select(this), false, svg, updateTextForNode);
+    })
+    .on('mouseenter', function(event: MouseEvent, d: GraphNode) {
+      // Throttle hover events to prevent rapid state changes
+      if (hoverThrottleTimeout) {
+        clearTimeout(hoverThrottleTimeout);
+      }
+      
+      hoverThrottleTimeout = window.setTimeout(() => {
+        // Clear any previous hover state first
+        clearAllHoverStates();
+        
+        // Apply hover styling with glow effect for better interactivity indication
+        if (!d.selected && !d.isLoading) {
+          currentHoveredNodeId = d.id;
+          applyNodeStyle(d3.select(this), true, svg, updateTextForNode);
+        }
+        hoverThrottleTimeout = null;
+      }, 50); // 50ms throttle to prevent rapid changes
+    })
+    .on('mouseleave', function(event: MouseEvent, d: GraphNode) {
+      // Clear any pending hover timeout
+      if (hoverThrottleTimeout) {
+        clearTimeout(hoverThrottleTimeout);
+        hoverThrottleTimeout = null;
+      }
+      
+      // Only clear hover if this is the currently hovered node
+      if (currentHoveredNodeId === d.id) {
+        currentHoveredNodeId = null;
+        if (!d.selected && !d.isLoading) {
+          applyNodeStyle(d3.select(this), false, svg, updateTextForNode);
+        }
+      }
+    });
+
+  // Add a global mouseleave handler to the SVG to catch edge cases
+  if (svg) {
+    svg.on('mouseleave', () => {
+      // Clear all hover states when mouse leaves the entire SVG
+      clearAllHoverStates();
+    });
+  }
+}
+
+// Helper function to clear all hover states
+function clearAllHoverStates() {
+  if (!nodeGroup || !svg) return;
+  
+  // Clear any pending hover timeout
+  if (hoverThrottleTimeout) {
+    clearTimeout(hoverThrottleTimeout);
+    hoverThrottleTimeout = null;
+  }
+  
+  // Reset the tracked hovered node
+  const previousHoveredId = currentHoveredNodeId;
+  currentHoveredNodeId = null;
+  
+  // Clear hover styling from all unselected, non-loading nodes
+  nodeGroup.selectAll<SVGGElement, GraphNode>('g')
+    .each(function(d) {
+      if (!d.selected && !d.isLoading) {
+        applyNodeStyle(d3.select(this), false, svg, updateTextForNode);
+      }
     });
 }
 
 function updateNodeSelection(id: string) {
   if (!nodeGroup || !svg) return;
+
+  // Clear any hover states first
+  clearAllHoverStates();
 
   nodeGroup.selectAll<SVGGElement, GraphNode>('g')
     .each(function(d) {
@@ -556,21 +636,17 @@ defineExpose<ForceGraphExposed>({
   cursor: pointer;
   transition: all 0.2s ease;
   
-  &:hover circle.node-circle {
-    stroke: rgba(255, 255, 255, 0.8);
-    fill: rgba(255, 255, 255, 0.3);
-    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.4));
-  }
-  
   .node-circle {
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.2));
+    transform-origin: center;
   }
   
   .subject-node-image {
     clip-path: circle(50%);
     object-fit: cover;
     filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.3));
+    transition: all 0.2s ease;
   }
   
   .node-text {
@@ -579,6 +655,10 @@ defineExpose<ForceGraphExposed>({
     pointer-events: auto;
     cursor: text;
     transition: all 0.2s ease;
+  }
+  
+  .loading-indicator {
+    transition: opacity 0.2s ease;
   }
 }
 

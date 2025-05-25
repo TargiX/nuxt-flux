@@ -112,18 +112,18 @@ export function useNodeStyling() {
           .attr('stop-color', colors.dark)   // Darker accent color
           .attr('stop-opacity', '0.9');
         
-        // Add glow filter
+        // Add glow filter for selected nodes
         if (defs.select(`#glow-${zone.toLowerCase()}`).empty()) {
           const filter = defs.append('filter')
             .attr('id', `glow-${zone.toLowerCase()}`)
-            .attr('x', '-30%')
-            .attr('y', '-30%')
-            .attr('width', '160%')
-            .attr('height', '160%');
+            .attr('x', '-50%')
+            .attr('y', '-50%')
+            .attr('width', '200%')
+            .attr('height', '200%');
             
-          // Add subtle blur effect
+          // Add stronger blur effect for selected nodes
           filter.append('feGaussianBlur')
-            .attr('stdDeviation', '1.5')
+            .attr('stdDeviation', '3')
             .attr('result', 'blur');
             
           // Combine original with blur
@@ -164,13 +164,13 @@ export function useNodeStyling() {
       if (defs.select('#glow-default').empty()) {
         const filter = defs.append('filter')
           .attr('id', 'glow-default')
-          .attr('x', '-30%')
-          .attr('y', '-30%')
-          .attr('width', '160%')
-          .attr('height', '160%');
+          .attr('x', '-50%')
+          .attr('y', '-50%')
+          .attr('width', '200%')
+          .attr('height', '200%');
           
         filter.append('feGaussianBlur')
-          .attr('stdDeviation', '1.5')
+          .attr('stdDeviation', '3')
           .attr('result', 'blur');
           
         filter.append('feComposite')
@@ -179,16 +179,50 @@ export function useNodeStyling() {
           .attr('operator', 'over');
       }
     }
+    
+    // Create loading animation filter
+    if (defs.select('#loading-pulse').empty()) {
+      const filter = defs.append('filter')
+        .attr('id', 'loading-pulse')
+        .attr('x', '-50%')
+        .attr('y', '-50%')
+        .attr('width', '200%')
+        .attr('height', '200%');
+        
+      // Create pulsing effect with feGaussianBlur
+      const blur = filter.append('feGaussianBlur')
+        .attr('stdDeviation', '2')
+        .attr('result', 'blur');
+        
+      // Add animation to the blur
+      blur.append('animate')
+        .attr('attributeName', 'stdDeviation')
+        .attr('values', '2;4;2')
+        .attr('dur', '1.5s')
+        .attr('repeatCount', 'indefinite');
+        
+      filter.append('feComposite')
+        .attr('in', 'SourceGraphic')
+        .attr('in2', 'blur')
+        .attr('operator', 'over');
+    }
   };
   
   /**
-   * Gets the gradient URL for a node based on its zone
+   * Gets the gradient URL for a node based on its zone and state
    */
   const getNodeGradient = (node: GraphNode): string => {
-    if (!node.selected) {
-      return 'rgba(255, 255, 255, 0.2)';
+    // Loading state - use a subtle pulsing effect
+    if (node.isLoading) {
+      return 'rgba(255, 255, 255, 0.4)';
     }
     
+    // Unselected nodes - subtle background
+    if (!node.selected) {
+      return 'rgba(255, 255, 255, 0.15)';
+    }
+    
+    // Selected nodes - full gradient based on zone
     const zone = node.zone || 'default';
     const normalizedZone = Object.keys(zoneGradients).find(
       z => z.toLowerCase() === zone.toLowerCase()
@@ -198,19 +232,25 @@ export function useNodeStyling() {
   };
   
   /**
-   * Gets the glow filter URL for a node based on its zone
+   * Gets the appropriate glow filter for a node based on its state
    */
   const getNodeGlowFilter = (node: GraphNode): string | null => {
-    if (!node.selected) {
-      return null;
+    // Loading state - use pulsing animation
+    if (node.isLoading) {
+      return 'url(#loading-pulse)';
     }
     
-    const zone = node.zone || 'default';
-    const normalizedZone = Object.keys(zoneGradients).find(
-      z => z.toLowerCase() === zone.toLowerCase()
-    ) || 'default';
+    // Selected nodes get zone-specific glow
+    if (node.selected) {
+      const zone = node.zone || 'default';
+      const normalizedZone = Object.keys(zoneGradients).find(
+        z => z.toLowerCase() === zone.toLowerCase()
+      ) || 'default';
+      
+      return `url(#glow-${normalizedZone.toLowerCase()})`;
+    }
     
-    return `url(#glow-${normalizedZone.toLowerCase()})`;
+    return null;
   };
 
   /**
@@ -238,64 +278,124 @@ export function useNodeStyling() {
       createNodeGradients(svg);
     }
     
-    // Apply circle styling
+    // Apply circle styling with enhanced visual states
     selection.select('.node-circle')
       .attr('fill', d => getNodeGradient(d))
-      .attr('filter', d => isHover && d.selected ? getNodeGlowFilter(d) : null)
-      .attr('stroke', d => {
-        if (d.selected) return '#fff';
-        return isHover ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.5)';
+      .attr('filter', d => {
+        // Always apply filter for loading or selected states
+        if (d.isLoading || d.selected) {
+          return getNodeGlowFilter(d);
+        }
+        // Apply glow on hover for unselected nodes to show interactivity
+        return isHover ? 'url(#glow-default)' : null;
       })
-      .attr('stroke-width', d => d.selected ? 1.5 : 1)
-      .attr('r', d => d.size / 2);
+      .attr('stroke', d => {
+        if (d.isLoading) return 'rgba(255, 255, 255, 0.8)';
+        if (d.selected) return '#fff';
+        return isHover ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.3)';
+      })
+      .attr('stroke-width', d => {
+        if (d.isLoading) return 2;
+        if (d.selected) return 2;
+        return isHover ? 2 : 1; // Increased stroke width on hover
+      })
+      .attr('r', d => {
+        // Slightly larger radius for loading state and hover
+        const baseRadius = d.size / 2;
+        if (d.isLoading) return baseRadius * 1.05;
+        if (isHover && !d.selected) return baseRadius * 1.03; // Subtle size increase on hover
+        return baseRadius;
+      })
+      .style('opacity', d => {
+        // Subtle opacity change for loading state
+        if (d.isLoading) return 0.8;
+        return 1;
+      })
+      .style('transition', 'all 0.2s ease'); // Smooth transitions for hover effects
     
-    // Text Formatting Function
+    // Enhanced Text Formatting Function
     const formatNodeText = (text: string): string[] => {
       const words = text.split(' ');
       if (words.length <= 1) return [text];
       if (words.length === 2) return words;
       if (words.length === 3) return [words[0], `${words[1]} ${words[2]}`];
-      const firstLineCount = Math.floor(words.length / 2);
+      
+      // For longer text, try to balance line lengths
+      const firstLineCount = Math.ceil(words.length / 2);
       return [words.slice(0, firstLineCount).join(' '), words.slice(firstLineCount).join(' ')];
     };
     
-    // --- Text Handling --- 
+    // --- Enhanced Text Handling --- 
     selection.each(function(d) {
       const nodeGroup = d3.select(this);
       
       // Remove any previous text elements or foreignObjects to avoid duplication
-      nodeGroup.selectAll('.node-text, .node-text-editor-fo').remove();
+      nodeGroup.selectAll('.node-text, .node-text-editor-fo, .loading-indicator').remove();
 
-      // Create text elements
+      // Add loading indicator if node is loading
+      if (d.isLoading) {
+        const loadingIndicator = nodeGroup.append('text')
+          .attr('class', 'loading-indicator')
+          .attr('x', 0)
+          .attr('y', -d.size / 2 - 8)
+          .attr('text-anchor', 'middle')
+          .attr('dominant-baseline', 'middle')
+          .attr('font-size', '8px')
+          .attr('fill', 'rgba(255, 255, 255, 0.9)')
+          .attr('font-weight', '600')
+          .text('●●●');
+          
+        // Add pulsing animation to loading indicator
+        loadingIndicator
+          .append('animate')
+          .attr('attributeName', 'opacity')
+          .attr('values', '0.3;1;0.3')
+          .attr('dur', '1.5s')
+          .attr('repeatCount', 'indefinite');
+      }
+
+      // Create text elements with enhanced styling
       const textLines = formatNodeText(d.text);
       const textElements: d3.Selection<SVGTextElement, unknown, any, any>[] = [];
       
       textLines.forEach((line, i) => {
-        const yPos = d.size / 2 + 6 + (i * 12);
+        const yPos = d.size / 2 + 8 + (i * 14); // Increased line spacing for better readability
         const textElement = nodeGroup.append('text')
           .attr('class', 'node-text')
           .attr('x', 0)
           .attr('y', yPos)
           .attr('text-anchor', 'middle')
           .attr('dominant-baseline', 'hanging')
-          .attr('font-size', '10px')
-          .attr('fill', 'rgba(255, 255, 255, 0.8)')
-          .attr('font-weight', d.selected ? '600' : '500')
-          .attr('text-shadow', '0 0 4px rgba(255, 255, 255, 0.9)')
-          .style('cursor', 'text')
-          .style('pointer-events', 'auto')
+          .attr('font-size', d.selected ? '11px' : '10px') // Larger font for selected nodes
+          .attr('fill', (d: unknown) => {
+            const node = d as GraphNode;
+            if (node.isLoading) return 'rgba(255, 255, 255, 0.6)';
+            if (node.selected) return 'rgba(255, 255, 255, 0.95)';
+            return 'rgba(255, 255, 255, 0.8)';
+          })
+          .attr('font-weight', (d: unknown) => {
+            const node = d as GraphNode;
+            if (node.selected) return '700';
+            if (node.isLoading) return '500';
+            return '500';
+          })
+          .attr('text-shadow', (d: unknown) => {
+            const node = d as GraphNode;
+            if (node.selected) return '0 0 6px rgba(255, 255, 255, 0.9)';
+            return '0 0 4px rgba(255, 255, 255, 0.7)';
+          })
+          .style('cursor', d.isLoading ? 'default' : 'text')
+          .style('pointer-events', d.isLoading ? 'none' : 'auto')
           .text(line)
           .attr('data-node-id', d.id);
           
-        // TEMPORARY: Add direct click handler to each text element
-        // This is less efficient but will help diagnose issues
-        if (globalTextUpdateCallback) {
+        // Add text editing functionality only for non-loading nodes
+        if (globalTextUpdateCallback && !d.isLoading) {
           textElement.on('click', function(event) {
             console.log('Direct text click:', d.id);
             event.stopPropagation();
             if (currentlyEditingNodeId !== null) return;
             
-            // Use non-null assertion since we already checked it's not null
             startTextEdit(event, d, nodeGroup as any, textElements, globalTextUpdateCallback!);
           });
         }
