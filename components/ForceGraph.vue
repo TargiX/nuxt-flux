@@ -243,7 +243,7 @@ function initializeGraph() {
     // Render loop - updates DOM at 60fps regardless of simulation frequency
     const renderLoop = () => {
       if (needsRender && svg && nodeGroup && linkGroup) {
-        nodeGroup.selectAll<SVGGElement, GraphNode>('g')
+        nodeGroup.selectAll<SVGGElement, GraphNode>('g.node')
           .attr('transform', d => `translate(${d.x || 0},${d.y || 0})`);
 
         linkGroup.selectAll<SVGLineElement, GraphLink>('line')
@@ -655,10 +655,6 @@ defineExpose<ForceGraphExposed>({
     pointer-events: auto;
     cursor: text;
     transition: all 0.2s ease;
-  }
-  
-  .loading-indicator {
-    transition: opacity 0.2s ease;
   }
 }
 

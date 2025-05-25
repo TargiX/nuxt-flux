@@ -25,7 +25,7 @@
         <!-- Dream Specific Images -->
         <template v-if="props.dreamId">
           <div v-if="pending" key="loading-msg" class="loading-message central-message">
-            <ProgressSpinner style="width: 30px; height: 30px" strokeWidth="6" />
+            <LoadingSpinner size="md" strokeWidth="6" />
             <p>Loading images...</p>
           </div>
           <div v-else-if="error" key="error-msg" class="error-message central-message">
@@ -56,7 +56,7 @@
 
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
-import ProgressSpinner from 'primevue/progressspinner'; // For loading state
+import LoadingSpinner from './LoadingSpinner.vue'; // For loading state
 import { useTagStore } from '~/store/tagStore'; // Import the tag store
 
 const tagStore = useTagStore(); // Initialize the store

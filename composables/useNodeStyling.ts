@@ -332,29 +332,7 @@ export function useNodeStyling() {
       // Remove any previous text elements or foreignObjects to avoid duplication
       nodeGroup.selectAll('.node-text, .node-text-editor-fo, .loading-indicator').remove();
 
-      // Add loading indicator if node is loading
-      if (d.isLoading) {
-        const loadingIndicator = nodeGroup.append('text')
-          .attr('class', 'loading-indicator')
-          .attr('x', 0)
-          .attr('y', -d.size / 2 - 8)
-          .attr('text-anchor', 'middle')
-          .attr('dominant-baseline', 'middle')
-          .attr('font-size', '8px')
-          .attr('fill', 'rgba(255, 255, 255, 0.9)')
-          .attr('font-weight', '600')
-          .text('●●●');
-          
-        // Add pulsing animation to loading indicator
-        loadingIndicator
-          .append('animate')
-          .attr('attributeName', 'opacity')
-          .attr('values', '0.3;1;0.3')
-          .attr('dur', '1.5s')
-          .attr('repeatCount', 'indefinite');
-      }
-
-      // Create text elements with enhanced styling
+      // Create text elements with enhanced styling FIRST
       const textLines = formatNodeText(d.text);
       const textElements: d3.Selection<SVGTextElement, unknown, any, any>[] = [];
       
@@ -402,6 +380,49 @@ export function useNodeStyling() {
         
         textElements.push(textElement);
       });
+
+      // Add loading indicator LAST so it renders on top of everything else
+      if (d.isLoading) {
+        // Create SVG circular spinner centered inside the node circle
+        const spinnerGroup = nodeGroup.append('g')
+          .attr('class', 'loading-indicator')
+          .attr('transform', `translate(0, 0)`); // Center inside node
+          
+        // Create a semi-transparent background circle for better visibility
+        spinnerGroup.append('circle')
+          .attr('cx', 0)
+          .attr('cy', 0)
+          .attr('r', 18) // Larger background
+          .attr('fill', 'rgba(255, 255, 255, 0.1)') // Dark semi-transparent background
+          .attr('stroke', 'none');
+          
+        // Create the circular spinner path
+        const spinnerRadius = 13; // Smaller size for better proportion
+        const strokeWidth = 2; // Thicker stroke for visibility
+        
+        // Animated spinner arc - bright white for maximum visibility
+        const spinner = spinnerGroup.append('circle')
+          .attr('cx', 0)
+          .attr('cy', 0)
+          .attr('r', spinnerRadius)
+          .attr('fill', 'none')
+          .attr('stroke', '#ffffff') // Pure white
+          .attr('stroke-width', strokeWidth)
+          .attr('stroke-linecap', 'round')
+          .attr('stroke-dasharray', `${spinnerRadius * 2 * Math.PI * 0.25} ${spinnerRadius * 2 * Math.PI * 0.75}`) // 25% visible, 75% gap
+          .attr('transform-origin', '0 0');
+          
+        // Add rotation animation
+        spinner
+          .append('animateTransform')
+          .attr('attributeName', 'transform')
+          .attr('attributeType', 'XML')
+          .attr('type', 'rotate')
+          .attr('from', '0 0 0')
+          .attr('to', '360 0 0')
+          .attr('dur', '1s') // Standard 1 second rotation
+          .attr('repeatCount', 'indefinite');
+      }
     });
     
     // Selected nodes should be brought to front
