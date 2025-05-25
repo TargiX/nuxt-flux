@@ -119,28 +119,30 @@
             class="flex items-center justify-center w-8 h-8 !p-0 !bg-blue-600 hover:!bg-blue-700 !border-blue-600 hover:!border-blue-700" 
             v-tooltip.top="'Save session'" 
           >
-             <!-- Custom floppy disk icon -->
-             <svg 
-               width="16" 
-               height="16" 
-               viewBox="0 0 24 24" 
-               fill="none" 
-               stroke="currentColor" 
-               stroke-width="1.5" 
-               stroke-linecap="round" 
-               stroke-linejoin="round"
-               class="flex-shrink-0"
-             >
-               <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l3 3v13a2 2 0 0 1-2 2z"/>
-               <polyline points="17,21 17,13 7,13 7,21"/>
-               <polyline points="7,3 7,8 15,8"/>
-             </svg>
-             <ProgressSpinner
-               v-if="isSavingDreamFromComposable"
-               class="w-3 h-3 progress-spinner" 
-               strokeWidth="8" 
-               fill="transparent"
-             />
+            <!-- Show spinner when saving, otherwise show floppy disk icon -->
+            <ProgressSpinner
+              v-if="isSavingDreamFromComposable"
+              class="w-4 h-4 progress-spinner" 
+              strokeWidth="8" 
+              fill="transparent"
+            />
+            <!-- Custom floppy disk icon -->
+            <svg 
+              v-else
+              width="16" 
+              height="16" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              stroke-width="1.5" 
+              stroke-linecap="round" 
+              stroke-linejoin="round"
+              class="flex-shrink-0"
+            >
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l3 3v13a2 2 0 0 1-2 2z"/>
+              <polyline points="17,21 17,13 7,13 7,21"/>
+              <polyline points="7,3 7,8 15,8"/>
+            </svg>
           </Button>
           <Button 
             @click="handleGenerateImageClick" 
