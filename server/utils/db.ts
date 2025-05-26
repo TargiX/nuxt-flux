@@ -1,11 +1,9 @@
-// CJS bundle converted by @rollup/plugin-commonjs → default export
-import * as prismaNS from '~/generated/prisma/client'
-
-const { PrismaClient } = prismaNS as typeof import('~/generated/prisma/client')
+import * as prismaNS from '~/generated/prisma/client';
+const { PrismaClient } = prismaNS as typeof import('~/generated/prisma/client');
 
 const prisma =
   process.env.NODE_ENV === 'production'
     ? new PrismaClient()
-    : (globalThis.__prisma ??= new PrismaClient())
+    : (globalThis.__prisma ??= new PrismaClient());
 
-export default prisma
+export default prisma;

@@ -53,13 +53,16 @@ export default defineNuxtConfig({
             /generated\/prisma\/client/,
             /node_modules\/@prisma\/client/
           ],
-          requireReturnsDefault: 'auto'
+          requireReturnsDefault: 'namespace'
         })
       ]
     },
     externals: {
-      inline: ['@prisma/client'],
-      external: []
+      inline: [],
+      external: [
+       '@prisma/client',
+        '.prisma/client'
+        ]
     },
     esbuild: {
       options: {  
