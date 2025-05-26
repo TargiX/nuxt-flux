@@ -10,12 +10,6 @@ import prisma from '~/server/utils/db'
 
 const runtimeConfig = useRuntimeConfig()
 
-// Custom CSRF bypass function
-function bypassCSRF(request: any) {
-  // Always return true to bypass CSRF checks
-  return true
-}
-
 // --- Debugging --- 
 console.log("[Auth Handler] Reading runtimeConfig.authJs.secret:", runtimeConfig.authJs?.secret ? 'SECRET_FOUND' : 'SECRET_MISSING_OR_UNDEFINED');
 console.log("[Auth Handler] NUXT_NEXTAUTH_URL:", runtimeConfig.authJs?.url);
@@ -29,9 +23,8 @@ if (!runtimeConfig.authJs?.secret) {
 
 // Define AuthConfig according to documentation
 export const authOptions: AuthConfig = {
-  secret: runtimeConfig.authJs.secret, // Use the new config path
-  trustHost: true, // Disable CSRF for production deployment
-  useSecureCookies: false, // Always disable secure cookies for HTTP deployment
+  secret: runtimeConfig.authJs.secret,
+  useSecureCookies: false, // Disable secure cookies for HTTP deployment
   session: { 
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days

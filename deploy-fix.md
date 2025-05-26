@@ -124,4 +124,32 @@ Cannot install with "frozen-lockfile" because pnpm-lock.yaml is not up to date w
    - `x-forwarded-proto`, `x-forwarded-host`
    - `x-auth-return-redirect`, `content-type`
 
-4. **Debugging Enhancement**: Added extensive logging to track CSRF bypass attempts and header modifications. 
+4. **Debugging Enhancement**: Added extensive logging to track CSRF bypass attempts and header modifications.
+
+## Final CSRF Fix - Correct BaseURL Configuration
+
+**Root Cause**: The CSRF protection was failing because the auth library's internal `checkOrigin()` function compares `request.headers.get('Origin')` with `runtimeConfig.public.authJs.baseUrl`, but this configuration was missing.
+
+**Solution**: Fixed the `runtimeConfig` in `nuxt.config.ts` to include the correct `public.authJs.baseUrl`:
+
+```typescript
+runtimeConfig: {
+  authJs: {
+    secret: process.env.NUXT_NEXTAUTH_SECRET
+  },
+  public: {
+    authJs: {
+      baseUrl: 'http://5.161.248.184:3000' // Critical for CSRF protection
+    }
+  }
+}
+```
+
+**Key Changes**:
+- Removed `authJs.url` (not used by the library)
+- Added `public.authJs.baseUrl` with the exact server URL
+- Removed unnecessary `trustHost: true` (not needed when baseUrl matches Origin)
+- Removed all CSRF bypass middleware (no longer needed)
+- Cleaned up unused `bypassCSRF()` function
+
+This allows the auth library to properly validate the request origin against the expected base URL, eliminating the "CSRF protected" errors. 

@@ -75,8 +75,7 @@ const __dirname  = _dirname(__filename);`
 
   runtimeConfig: {
     authJs: {
-      secret: process.env.NUXT_NEXTAUTH_SECRET,
-      url: process.env.NUXT_NEXTAUTH_URL
+      secret: process.env.NUXT_NEXTAUTH_SECRET
     },
     authSecret: process.env.NUXT_AUTH_SECRET,
     google: {
@@ -89,7 +88,9 @@ const __dirname  = _dirname(__filename);`
     public: {
       GEMINI_API_KEY: process.env.GEMINI_API_KEY,
       FLUX_API_KEY: process.env.FLUX_API_KEY,
-      authUrl: process.env.NUXT_AUTH_URL
+      authJs: {
+        baseUrl: 'http://5.161.248.184:3000'
+      }
     }
   },
 
