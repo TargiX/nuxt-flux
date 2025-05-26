@@ -2,9 +2,10 @@
 
 ## Changes Made
 
-### 1. Updated package.json postinstall script
+### 1. Updated package.json postinstall script and dependencies
 - Added `prisma generate` to the postinstall script
-- This ensures Prisma client is generated automatically during `pnpm install`
+- Moved `prisma` from devDependencies to dependencies (required for production `prisma generate`)
+- This ensures Prisma client is generated automatically during `pnpm install --prod`
 
 ### 2. Simplified Nitro configuration in nuxt.config.ts
 - Removed problematic CommonJS and externals configurations that were causing build errors
@@ -85,4 +86,13 @@ The main issue was likely the Prisma client not being properly generated or bund
 Invalid module ".prisma" is not a valid package name
 ```
 
-**Solution**: Simplified the Nitro configuration by removing the problematic CommonJS and externals configurations. The postinstall script handles Prisma client generation, so complex bundling configurations are not needed. 
+**Solution**: Simplified the Nitro configuration by removing the problematic CommonJS and externals configurations. The postinstall script handles Prisma client generation, so complex bundling configurations are not needed.
+
+## Production Deployment Fix
+
+**Issue**: The `prisma generate` command was failing in production because `prisma` was in devDependencies:
+```
+sh: 1: prisma: not found
+```
+
+**Solution**: Moved `prisma` from devDependencies to dependencies so it's available when installing with `--prod` flag. This allows the postinstall script to run `prisma generate` successfully in production. 
