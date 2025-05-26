@@ -20,6 +20,7 @@ if (!runtimeConfig.authJs?.secret) {
 // Define AuthConfig according to documentation
 export const authOptions: AuthConfig = {
   secret: runtimeConfig.authJs.secret, // Use the new config path
+  trustHost: true, // Temporarily disable CSRF for testing
   session: { strategy: 'jwt' },
   callbacks: {
     async signIn({ user, account, profile }) {
