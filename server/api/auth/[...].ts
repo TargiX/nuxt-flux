@@ -12,6 +12,8 @@ const runtimeConfig = useRuntimeConfig()
 
 // --- Debugging --- 
 console.log("[Auth Handler] Reading runtimeConfig.authJs.secret:", runtimeConfig.authJs?.secret ? 'SECRET_FOUND' : 'SECRET_MISSING_OR_UNDEFINED');
+console.log("[Auth Handler] NUXT_NEXTAUTH_URL:", runtimeConfig.authJs?.url);
+console.log("[Auth Handler] trustHost setting should be true");
 if (!runtimeConfig.authJs?.secret) {
   console.error("[Auth Handler] FATAL: runtimeConfig.authJs.secret is MISSING!");
 }
