@@ -49,7 +49,7 @@ export default defineNuxtConfig({
         '@prisma/client',
         '.prisma/client',
         '@prisma/engines*',            // avoid bundling the binary loader
-        resolve('./generated/prisma/client')
+         'generated/prisma/client/**'
       ]
     },
     esbuild: {
