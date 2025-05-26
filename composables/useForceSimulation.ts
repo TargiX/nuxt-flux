@@ -176,6 +176,8 @@ export function useForceSimulation() {
    */
   const createDragBehavior = (simulation: d3.Simulation<GraphNode, GraphLink>) => {
     return d3.drag<any, GraphNode>()
+      // Introduce a 5px threshold to prevent accidental drags on small cursor movements
+      .clickDistance(5)
       .on('start', (event) => {
         if (!event.active) simulation.alphaTarget(0.3).restart();
         event.subject.fx = event.subject.x;
