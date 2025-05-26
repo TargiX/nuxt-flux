@@ -40,7 +40,7 @@ export default defineNuxtConfig({
     appManifest: false
   },
   
-  
+
 
   
   nitro: {
@@ -49,12 +49,7 @@ export default defineNuxtConfig({
     },
     rollupConfig: {
       plugins: [
-        commonjs({
-          include: [
-            /generated\/prisma\/client/,
-          ],
-          requireReturnsDefault: 'namespace'
-        })
+    
       ]
     },
     externals: {
@@ -62,6 +57,7 @@ export default defineNuxtConfig({
       external: [
        '@prisma/client',
         '.prisma/client',
+        /generated\/prisma\/client/,
         '@auth/core',   
         ]
     },
