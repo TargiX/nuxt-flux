@@ -16,8 +16,22 @@ console.log("[Auth Handler] NUXT_NEXTAUTH_URL:", runtimeConfig.authJs?.url);
 console.log("[Auth Handler] NODE_ENV:", process.env.NODE_ENV);
 console.log("[Auth Handler] trustHost setting should be true");
 console.log("[Auth Handler] useSecureCookies setting:", false);
+
+// Google OAuth debugging
+console.log("[Auth Handler] Google Client ID:", runtimeConfig.google?.clientId ? 'CLIENT_ID_FOUND' : 'CLIENT_ID_MISSING');
+console.log("[Auth Handler] Google Client Secret:", runtimeConfig.google?.clientSecret ? 'CLIENT_SECRET_FOUND' : 'CLIENT_SECRET_MISSING');
+console.log("[Auth Handler] Raw Google Client ID:", runtimeConfig.google?.clientId);
+console.log("[Auth Handler] Environment NUXT_GOOGLE_CLIENT_ID:", process.env.NUXT_GOOGLE_CLIENT_ID ? 'ENV_CLIENT_ID_FOUND' : 'ENV_CLIENT_ID_MISSING');
+console.log("[Auth Handler] Environment NUXT_GOOGLE_CLIENT_SECRET:", process.env.NUXT_GOOGLE_CLIENT_SECRET ? 'ENV_CLIENT_SECRET_FOUND' : 'ENV_CLIENT_SECRET_MISSING');
+
 if (!runtimeConfig.authJs?.secret) {
   console.error("[Auth Handler] FATAL: runtimeConfig.authJs.secret is MISSING!");
+}
+if (!runtimeConfig.google?.clientId) {
+  console.error("[Auth Handler] FATAL: runtimeConfig.google.clientId is MISSING!");
+}
+if (!runtimeConfig.google?.clientSecret) {
+  console.error("[Auth Handler] FATAL: runtimeConfig.google.clientSecret is MISSING!");
 }
 // --- End Debugging ---
 
