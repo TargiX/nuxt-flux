@@ -84,6 +84,34 @@ jobs:
           strip_components: 1 # Remove the 'deployment-package' directory layer
           overwrite: true # Ensure files are overwritten
 
+      - name: Create environment file on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_SSH_PORT || 22 }}
+          script: |
+            set -e
+            cd /var/www/dreamseed
+            
+            # Create .env file with secrets
+            cat > .env << 'EOF'
+            DATABASE_URL="${{ secrets.DATABASE_URL }}"
+            NUXT_GOOGLE_CLIENT_ID="${{ secrets.NUXT_GOOGLE_CLIENT_ID }}"
+            NUXT_GOOGLE_CLIENT_SECRET="${{ secrets.NUXT_GOOGLE_CLIENT_SECRET }}"
+            GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}"
+            NUXT_NEXTAUTH_SECRET_VALUE="${{ secrets.NUXT_NEXTAUTH_SECRET_VALUE }}"
+            EOF
+            
+            echo "Environment file created successfully"
+            echo "Environment variables set:"
+            echo "- DATABASE_URL: $(echo $DATABASE_URL | cut -c1-20)..."
+            echo "- NUXT_GOOGLE_CLIENT_ID: $(echo $NUXT_GOOGLE_CLIENT_ID | cut -c1-10)..."
+            echo "- NUXT_GOOGLE_CLIENT_SECRET: $(echo $NUXT_GOOGLE_CLIENT_SECRET | cut -c1-10)..."
+            echo "- GEMINI_API_KEY: $(echo $GEMINI_API_KEY | cut -c1-10)..."
+            echo "- NUXT_NEXTAUTH_SECRET_VALUE: $(echo $NUXT_NEXTAUTH_SECRET_VALUE | cut -c1-10)..."
+
       - name: Deploy & start on server
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -98,5 +126,5 @@ jobs:
               # 1) install production deps (this will trigger postinstall script with prisma generate)
               pnpm install --prod --no-frozen-lockfile
   
-              # 3) reload PM2
-              pm2 reload dreamseed --update-env
+              # 3) reload PM2 with the new environment
+              pm2 restart ecosystem.config.cjs --env prod

@@ -3,6 +3,7 @@ module.exports = {
       name   : "dreamseed",
       script : ".output/server/index.mjs", // Path relative to deploy directory
       cwd    : "/var/www/dreamseed", // Set current working directory
+      env_file: '.env', // Load environment variables from .env file
       env: {
         // Default environment (often not used directly by Nuxt 3/Nitro)
         // NODE_ENV: "production", // Nitro usually sets this
