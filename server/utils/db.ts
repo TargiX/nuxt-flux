@@ -1,4 +1,4 @@
-import * as Prisma from '~/generated/prisma/client'
+import { PrismaClient } from '~/generated/prisma/client'
 
 // Simplify for potential build issue diagnosis
 // Remove the singleton logic for now
@@ -8,7 +8,7 @@ import * as Prisma from '~/generated/prisma/client'
 //   var __prisma: PrismaClient | undefined
 // }
 
-const prisma = new Prisma.PrismaClient()
+const prisma = new PrismaClient()
 
 // if (process.env.NODE_ENV === 'production') {
 //   prisma = new PrismaClient()
