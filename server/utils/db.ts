@@ -1,22 +1,12 @@
-import { PrismaClient } from '~/generated/prisma/client'
+// Common-JS bundle → import its *default*, then pull the named class out.
+// Rollup will inject an ESM wrapper via @rollup/plugin-commonjs.
+import prismaCjs from '~/generated/prisma/client';
+const { PrismaClient } = prismaCjs;
 
-// Simplify for potential build issue diagnosis
-// Remove the singleton logic for now
+// simple singleton (keeps one connection in dev, fresh in prod)
+const _prisma =
+  process.env.NODE_ENV === 'production'
+    ? new PrismaClient()
+    : globalThis.__prisma ?? (globalThis.__prisma = new PrismaClient());
 
-// declare global {
-//   // eslint-disable-next-line no-var
-//   var __prisma: PrismaClient | undefined
-// }
-
-const prisma = new PrismaClient()
-
-// if (process.env.NODE_ENV === 'production') {
-//   prisma = new PrismaClient()
-// } else {
-//   if (!global.__prisma) {
-//     global.__prisma = new PrismaClient()
-//   }
-//   prisma = global.__prisma
-// }
-
-export default prisma 
+export default _prisma;

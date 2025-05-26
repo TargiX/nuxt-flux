@@ -2,12 +2,9 @@ import Aura from '@primeuix/themes/aura';
 import { definePreset } from '@primeuix/themes';
 import Components from 'unplugin-vue-components/vite';
 import { PrimeVueResolver } from '@primevue/auto-import-resolver';
-import { resolve } from 'node:path'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+
 import commonjs from '@rollup/plugin-commonjs'
 
-const root = dirname(fileURLToPath(import.meta.url))  
 
 const MyPreset = definePreset(Aura, {
   semantic: {
