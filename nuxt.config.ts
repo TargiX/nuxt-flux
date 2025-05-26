@@ -53,7 +53,7 @@ export default defineNuxtConfig({
             /generated\/prisma\/client/,
             /node_modules\/@prisma\/client/
           ],
-          requireReturnsDefault: 'auto'  
+          requireReturnsDefault: 'namespace'   
         })
       ]
     },
