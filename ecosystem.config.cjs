@@ -22,7 +22,10 @@ module.exports = {
         NEXTAUTH_SECRET: process.env.NUXT_NEXTAUTH_SECRET_VALUE, // Standard NextAuth secret
         
         // Add other production variables here if needed
-        DATABASE_URL: process.env.DATABASE_URL
+        DATABASE_URL: process.env.DATABASE_URL,
+        NUXT_GOOGLE_CLIENT_ID: process.env.NUXT_GOOGLE_CLIENT_ID,
+        NUXT_GOOGLE_CLIENT_SECRET: process.env.NUXT_GOOGLE_CLIENT_SECRET,
+        GEMINI_API_KEY: process.env.GEMINI_API_KEY
       }
     }]
   }
