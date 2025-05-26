@@ -7,7 +7,7 @@ module.exports = {
         // Default environment (often not used directly by Nuxt 3/Nitro)
         // NODE_ENV: "production", // Nitro usually sets this
       },
-      env_production: {
+      env_prod: {
         // Production specific variables
         NODE_ENV: "production", // Explicitly set Node environment
         // Use documented environment variable names for @hebilicious/authjs-nuxt
