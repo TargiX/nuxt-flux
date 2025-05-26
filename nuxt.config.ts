@@ -48,18 +48,7 @@ export default defineNuxtConfig({
     alias: {
       '#auth': resolve('./node_modules/@hebilicious/authjs-nuxt/runtime')
     },
-    rollupConfig: {
-      plugins: [
-    
-      ]
-    },
-    externals: {
-        inline: [],
-        external: [
-          '@prisma/client',
-          '.prisma/client'
-        ]
-      },
+
     esbuild: {
       options: {  
         banner: `import { fileURLToPath } from 'node:url';
