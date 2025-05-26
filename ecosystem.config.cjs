@@ -22,7 +22,7 @@ module.exports = {
         NEXTAUTH_SECRET: process.env.NUXT_NEXTAUTH_SECRET_VALUE, // Standard NextAuth secret
         
         // Add other production variables here if needed
-        // DATABASE_URL: "your_production_db_string"
+        DATABASE_URL: process.env.DATABASE_URL
       }
     }]
   }
