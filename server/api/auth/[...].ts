@@ -73,6 +73,7 @@ export const authOptions: AuthConfig = {
       console.log('[Auth JWT CB] Account object:', JSON.stringify(account));
       console.log('[Auth JWT CB] Profile object (OAuth):', JSON.stringify(profile));
 
+      
       if (trigger === 'signIn' || trigger === 'signUp') {
         // Priority for Google OAuth: always fetch from DB to ensure internal ID is used.
         if (account?.provider === 'google' && profile?.email) {
