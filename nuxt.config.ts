@@ -44,6 +44,7 @@ export default defineNuxtConfig({
 
   
   nitro: {
+    preset: 'node-server',
     alias: {
       '#auth': resolve('./node_modules/@hebilicious/authjs-nuxt/runtime')
     },
@@ -52,6 +53,13 @@ export default defineNuxtConfig({
     
       ]
     },
+    externals: {
+        inline: [],
+        external: [
+          '@prisma/client',
+          '.prisma/client'
+        ]
+      },
     esbuild: {
       options: {  
         banner: `import { fileURLToPath } from 'node:url';
