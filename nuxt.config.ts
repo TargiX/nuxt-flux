@@ -5,6 +5,7 @@ import { PrimeVueResolver } from '@primevue/auto-import-resolver';
 import { resolve } from 'node:path'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import commonjs from '@rollup/plugin-commonjs'
 
 const root = dirname(fileURLToPath(import.meta.url))  
 
@@ -47,18 +48,16 @@ export default defineNuxtConfig({
   },
   nitro: {
     rollupConfig: {
-      external: id =>
-        id.startsWith(join(root, 'generated/prisma/client'))
+      plugins: [
+        commonjs({
+          include: /generated\/prisma\/client/   // <-- 1-line fix
+        })
+      ]
     },
     externals: {
       // prevent bundling prisma and its runtime files
       inline: [],
-      external: [
-        '@prisma/client',
-        '.prisma/client',
-        '@prisma/engines*',            // avoid bundling the binary loader
-         'generated/prisma/client/**'
-      ]
+
     },
     esbuild: {
       options: {  

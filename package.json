@@ -44,6 +44,7 @@
     "@nuxtjs/google-fonts": "^3.2.0",
     "@primevue/auto-import-resolver": "^4.3.4",
     "@primevue/nuxt-module": "^4.3.3",
+    "@rollup/plugin-commonjs": "^28.0.3",
     "@types/bcrypt": "^5.0.2",
     "@types/d3": "^7.4.3",
     "@types/uuid": "^10.0.0",
@@ -63,7 +64,8 @@
   "pnpm": {
     "overrides": {
       "@auth/core": "0.17.0",
-      "cookie": "0.7.2"
+      "cookie": "0.7.2",
+      "estree-walker": "2.0.2"
     }
   }
 }
