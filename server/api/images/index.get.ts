@@ -1,8 +1,8 @@
-import { PrismaClient } from '~/generated/prisma/client';
+import prisma from '~/server/utils/db'
 import { getServerSession } from '#auth';
 import { authOptions } from '~/server/api/auth/[...]'; // Path from server root
 
-const prisma = new PrismaClient();
+
 
 export default defineEventHandler(async (event) => {
   const session = await getServerSession(event, authOptions);

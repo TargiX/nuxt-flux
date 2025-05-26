@@ -58,7 +58,9 @@ export default defineNuxtConfig({
 
     },
     esbuild: {
+      
       options: {  
+        target: 'es2020',
         banner: `import { fileURLToPath } from 'node:url';
 import { dirname as _dirname } from 'node:path';
 const __filename = fileURLToPath(import.meta.url);
