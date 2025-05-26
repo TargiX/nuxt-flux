@@ -67,7 +67,8 @@ jobs:
           port: ${{ secrets.SERVER_SSH_PORT || 22 }}
           script: |
             echo "Cleaning target directory before deployment..."
-            sudo rm -rf /var/www/dreamseed/*
+            sudo rm -rf /var/www/dreamseed/{*,.*} 2>/dev/null || true
+            sudo mkdir -p /var/www/dreamseed
             echo "Cleanup complete."
 
       - name: Copy deployment package to server
