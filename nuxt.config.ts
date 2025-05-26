@@ -47,12 +47,16 @@ export default defineNuxtConfig({
       inline: [],
       external: [
         '@prisma/client',
-        '.prisma/client'   // ← specifically exclude the client/runtime folder
+        '.prisma/client',
+        '@prisma/engines*'            // avoid bundling the binary loader
       ]
     },
     esbuild: {
       options: {  
-        banner: 'const __dirname = new URL(".", import.meta.url).pathname;'
+        banner: `import { fileURLToPath } from 'node:url';
+import { dirname as _dirname } from 'node:path';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = _dirname(__filename);`
       },
     }
   },
