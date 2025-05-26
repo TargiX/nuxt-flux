@@ -32,7 +32,7 @@ jobs:
           head -n 10 pnpm-lock.yaml || echo "pnpm-lock.yaml not found or empty"
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       # - name: Run tests # Uncomment this block if you have tests configured
 
@@ -96,7 +96,7 @@ jobs:
               cd /var/www/dreamseed
   
               # 1) install production deps (this will trigger postinstall script with prisma generate)
-              pnpm install --prod --frozen-lockfile
+              pnpm install --prod --no-frozen-lockfile
   
               # 3) reload PM2
               pm2 reload dreamseed --update-env

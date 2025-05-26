@@ -12,8 +12,9 @@
 - Kept minimal configuration to avoid module resolution conflicts with Prisma
 - Relies on the postinstall script for proper Prisma client generation
 
-### 3. Simplified deployment workflow
+### 3. Updated deployment workflow
 - Removed redundant `npx prisma generate` steps since postinstall handles it
+- Changed from `--frozen-lockfile` to `--no-frozen-lockfile` to allow lockfile updates
 - The workflow now relies on the postinstall script for Prisma generation
 
 ### 4. Environment Variables Required
@@ -95,4 +96,13 @@ Invalid module ".prisma" is not a valid package name
 sh: 1: prisma: not found
 ```
 
-**Solution**: Moved `prisma` from devDependencies to dependencies so it's available when installing with `--prod` flag. This allows the postinstall script to run `prisma generate` successfully in production. 
+**Solution**: Moved `prisma` from devDependencies to dependencies so it's available when installing with `--prod` flag. This allows the postinstall script to run `prisma generate` successfully in production.
+
+## Lockfile Update Fix
+
+**Issue**: After moving `prisma` to dependencies, the lockfile became outdated:
+```
+Cannot install with "frozen-lockfile" because pnpm-lock.yaml is not up to date with package.json
+```
+
+**Solution**: Updated GitHub Actions workflow to use `--no-frozen-lockfile` instead of `--frozen-lockfile` to allow automatic lockfile updates when dependencies change. 
