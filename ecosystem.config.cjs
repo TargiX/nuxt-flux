@@ -16,6 +16,11 @@ module.exports = {
         NUXT_AUTH_SECRET: process.env.NUXT_NEXTAUTH_SECRET_VALUE, // Fallback auth secret
         NUXT_AUTH_URL: "http://5.161.248.184:3000", // Additional auth URL
         
+        // CSRF bypass environment variables
+        AUTH_TRUST_HOST: "true", // Trust host for CSRF bypass
+        NEXTAUTH_URL: "http://5.161.248.184:3000", // Standard NextAuth URL
+        NEXTAUTH_SECRET: process.env.NUXT_NEXTAUTH_SECRET_VALUE, // Standard NextAuth secret
+        
         // Add other production variables here if needed
         // DATABASE_URL: "your_production_db_string"
       }

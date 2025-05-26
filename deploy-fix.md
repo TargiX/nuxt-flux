@@ -105,4 +105,23 @@ sh: 1: prisma: not found
 Cannot install with "frozen-lockfile" because pnpm-lock.yaml is not up to date with package.json
 ```
 
-**Solution**: Updated GitHub Actions workflow to use `--no-frozen-lockfile` instead of `--frozen-lockfile` to allow automatic lockfile updates when dependencies change. 
+**Solution**: Updated GitHub Actions workflow to use `--no-frozen-lockfile` instead of `--frozen-lockfile` to allow automatic lockfile updates when dependencies change.
+
+## Enhanced CSRF Protection Bypass
+
+**Issue**: Despite previous CSRF fixes, the auth routes were still throwing "CSRF protected" errors.
+
+**Additional Solutions Applied**:
+
+1. **Enhanced Middleware**: Created `server/middleware/01.auth-csrf-bypass.ts` that runs before the auth handler to forcefully set all required headers for CSRF bypass on POST requests.
+
+2. **Additional Environment Variables**: Added standard NextAuth environment variables to PM2 configuration:
+   - `AUTH_TRUST_HOST=true`
+   - `NEXTAUTH_URL` and `NEXTAUTH_SECRET` as fallbacks
+
+3. **Comprehensive Header Injection**: The new middleware ensures all necessary headers are present:
+   - `origin`, `referer`, `host`
+   - `x-forwarded-proto`, `x-forwarded-host`
+   - `x-auth-return-redirect`, `content-type`
+
+4. **Debugging Enhancement**: Added extensive logging to track CSRF bypass attempts and header modifications. 
