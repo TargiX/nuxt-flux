@@ -52,11 +52,7 @@ export default defineNuxtConfig({
     },
     esbuild: {
       options: {  
-        banner: `
-import { fileURLToPath } from 'url';
-const __dirname = new URL(".", import.meta.url).pathname;;
-const __filename = fileURLToPath(import.meta.url);
-`
+        banner: 'const __dirname = new URL(".", import.meta.url).pathname;'
       },
     }
   },
