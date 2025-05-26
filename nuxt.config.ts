@@ -53,18 +53,14 @@ export default defineNuxtConfig({
             /generated\/prisma\/client/,
             /node_modules\/@prisma\/client/
           ],
-          requireReturnsDefault: 'namespace'   
+          requireReturnsDefault: 'auto'
         })
       ]
     },
     externals: {
-        inline: [],
-        external: [
-          '@prisma/client',
-          '.prisma/client',
-          // (если используете собственный путь, добавьте его сюда)
-        ]
-      },
+      inline: ['@prisma/client'],
+      external: []
+    },
     esbuild: {
       options: {  
         banner: `import { fileURLToPath } from 'node:url';
