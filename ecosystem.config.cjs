@@ -12,7 +12,9 @@ module.exports = {
         NODE_ENV: "production", // Explicitly set Node environment
         // Use documented environment variable names for @hebilicious/authjs-nuxt
         NUXT_NEXTAUTH_URL: "http://5.161.248.184:3000", // Base URL of the app
-        NUXT_NEXTAUTH_SECRET: process.env.NUXT_NEXTAUTH_SECRET_VALUE // Get the actual secret from another env var
+        NUXT_NEXTAUTH_SECRET: process.env.NUXT_NEXTAUTH_SECRET_VALUE, // Get the actual secret from another env var
+        NUXT_AUTH_SECRET: process.env.NUXT_NEXTAUTH_SECRET_VALUE, // Fallback auth secret
+        NUXT_AUTH_URL: "http://5.161.248.184:3000", // Additional auth URL
         
         // Add other production variables here if needed
         // DATABASE_URL: "your_production_db_string"

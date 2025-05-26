@@ -53,6 +53,27 @@ If you still get 500 errors:
 - **Prisma Client Generation**: Now handled automatically via postinstall
 - **CommonJS/ESM Compatibility**: Enhanced Nitro configuration for better module handling
 - **Environment Configuration**: Proper NextAuth URL and secret handling
-- **CSRF Protection**: Already configured with `trustHost: true`
+- **CSRF Protection**: Enhanced with multiple bypass methods:
+  - `trustHost: true` in auth configuration
+  - `useSecureCookies: false` to disable secure cookie requirements
+  - Custom middleware to add missing headers for auth routes
+  - Additional environment variables for auth fallbacks
 
-The main issue was likely the Prisma client not being properly generated or bundled in production, which is now fixed with the postinstall script and enhanced Nitro configuration. 
+## Additional CSRF Fixes
+
+### 1. Enhanced Auth Configuration
+- Added `useSecureCookies: false` to handle HTTP deployment
+- Extended session configuration with proper maxAge
+- Added comprehensive debugging logs
+
+### 2. CSRF Bypass Middleware
+- Created `server/middleware/csrf-bypass.ts` to automatically add required headers
+- Specifically targets `/api/auth/` routes
+- Adds missing `origin`, `referer`, and `x-forwarded-proto` headers
+
+### 3. Enhanced Environment Variables
+- Added `NUXT_AUTH_SECRET` as fallback
+- Added `NUXT_AUTH_URL` for additional auth URL configuration
+- Ensures all auth-related environment variables are properly set
+
+The main issue was likely the Prisma client not being properly generated or bundled in production, combined with CSRF protection being too strict for the HTTP deployment environment. These fixes address both issues comprehensively. 

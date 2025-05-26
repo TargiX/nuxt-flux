@@ -13,7 +13,9 @@ const runtimeConfig = useRuntimeConfig()
 // --- Debugging --- 
 console.log("[Auth Handler] Reading runtimeConfig.authJs.secret:", runtimeConfig.authJs?.secret ? 'SECRET_FOUND' : 'SECRET_MISSING_OR_UNDEFINED');
 console.log("[Auth Handler] NUXT_NEXTAUTH_URL:", runtimeConfig.authJs?.url);
+console.log("[Auth Handler] NODE_ENV:", process.env.NODE_ENV);
 console.log("[Auth Handler] trustHost setting should be true");
+console.log("[Auth Handler] useSecureCookies setting:", process.env.NODE_ENV === 'production' ? false : false);
 if (!runtimeConfig.authJs?.secret) {
   console.error("[Auth Handler] FATAL: runtimeConfig.authJs.secret is MISSING!");
 }
@@ -22,8 +24,12 @@ if (!runtimeConfig.authJs?.secret) {
 // Define AuthConfig according to documentation
 export const authOptions: AuthConfig = {
   secret: runtimeConfig.authJs.secret, // Use the new config path
-  trustHost: true, // Temporarily disable CSRF for testing
-  session: { strategy: 'jwt' },
+  trustHost: true, // Disable CSRF for production deployment
+  useSecureCookies: process.env.NODE_ENV === 'production' ? false : false, // Disable secure cookies for now
+  session: { 
+    strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
   callbacks: {
     async signIn({ user, account, profile }) {
       console.log('[Auth SignIn CB] Entry. Provider:', account?.provider, 'User from provider:', JSON.stringify(user), 'Profile email:', profile?.email, 'Account:', JSON.stringify(account));
