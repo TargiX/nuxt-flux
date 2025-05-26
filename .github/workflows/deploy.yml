@@ -58,6 +58,18 @@ jobs:
           echo "Deployment package created."
           ls -la deployment-package # List contents for debugging
 
+      - name: Clean target directory on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_SSH_PORT || 22 }}
+          script: |
+            echo "Cleaning target directory before deployment..."
+            sudo rm -rf /var/www/dreamseed/*
+            echo "Cleanup complete."
+
       - name: Copy deployment package to server
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -73,6 +85,7 @@ jobs:
       - name: Trigger deploy script on server
         uses: appleboy/ssh-action@v1.0.3
         with:
+          
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
