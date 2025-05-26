@@ -1,12 +1,15 @@
-// Prisma's generated bundle is CommonJS.
-// After @rollup/plugin-commonjs runs, **all** exports land on the namespace object.
-// → use a namespace import, not `default`, not named.
-import { PrismaClient } from '@prisma/client';
+// CJS bundle converted by @rollup/plugin-commonjs → default export
+import prismaClientPkg from '~/generated/prisma/client'
+
+const { PrismaClient } =
+  // after common-js transform everything lives on the default object
+  (prismaClientPkg as any).PrismaClient
+    ? (prismaClientPkg as any)
+    : (prismaClientPkg as any).default
 
 const prisma =
   process.env.NODE_ENV === 'production'
     ? new PrismaClient()
-    : // reuse the instance in dev to avoid exhausting connections
-      ((globalThis as any).__prisma ??= new PrismaClient());
+    : (globalThis.__prisma ??= new PrismaClient())
 
-export default prisma;
+export default prisma

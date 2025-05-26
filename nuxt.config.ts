@@ -49,7 +49,11 @@ export default defineNuxtConfig({
     rollupConfig: {
       plugins: [
         commonjs({
-          include: /generated\/prisma\/client/
+          include: [
+            /generated\/prisma\/client/,
+            /node_modules\/@prisma\/client/
+          ],
+          requireReturnsDefault: 'auto'  
         })
       ]
     },
