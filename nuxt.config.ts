@@ -51,7 +51,6 @@ export default defineNuxtConfig({
         commonjs({
           include: [
             /generated\/prisma\/client/,
-            /node_modules\/@prisma\/client/
           ],
           requireReturnsDefault: 'namespace'
         })
