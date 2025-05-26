@@ -178,7 +178,7 @@ import { useTagStore } from '~/store/tagStore';
 import ForceGraph from './ForceGraph.vue';
 import ZoneSelector from './ZoneSelector.vue';
 import ImageStrip from './ImageStrip.vue';
-import { generateImagePrompt } from '~/services/promptGenerationService';
+import { generateImagePrompt, clearPromptCache } from '~/services/promptGenerationService';
 import { useImageGeneration } from '~/composables/useImageGeneration';
 import type { Tag } from '~/types/tag';
 import type { ViewportState } from '~/composables/useZoom';
@@ -333,15 +333,11 @@ const triggerPromptGeneration = debounce(async () => {
 
 // Skip generation once after load, then resume normal behavior
 watch(generatedPrompt, () => {
-  // if (skipPrompt.value) {
-    // skipPrompt.value = false;
-    // return;
-  // }
-  // triggerPromptGeneration();
+  triggerPromptGeneration();
 });
 
 onMounted(() => {
-  // triggerPromptGeneration();
+  triggerPromptGeneration();
 });
 
 // Update the handleNodeClick function to be aware of session state
@@ -391,12 +387,6 @@ watch(() => tagStore.loadedDreamId, (newId, oldId) => {
   }
 
   // Directly reset viewport for new sessions - no timeouts
-  if (newId === null && forceGraphRef.value) {
-    console.log('New session detected - performing immediate viewport reset');
-    forceViewportReset();
-  }
-  
-  // Use a single timeout for optional regeneration later
   // skipPrompt.value = true;
   // setTimeout(() => {
     // skipPrompt.value = false;
@@ -698,6 +688,8 @@ watch(isManualMode, (isManual) => {
 function handleRefreshPrompt() {
   // Reset the prompt generation flag
   isGeneratingPrompt.value = false;
+  // Clear cached prompt for current tags to force fresh generation
+  clearPromptCache(generatedPrompt.value);
   // Regenerate the prompt
   triggerPromptGeneration();
 }

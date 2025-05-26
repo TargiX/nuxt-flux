@@ -42,6 +42,21 @@ export default defineNuxtConfig({
       Roboto: true // Specify Roboto font
     }
   },
+  nitro: {
+    externals: {
+      // prevent bundling prisma and its runtime files
+      inline: [],
+      external: [
+        '@prisma/client',
+        '.prisma/client'   // ← specifically exclude the client/runtime folder
+      ]
+    },
+    esbuild: {
+      options: {  
+        banner: 'const __dirname = new URL(".", import.meta.url).pathname;'
+      },
+    }
+  },
   primevue: {
     options: {
         theme: {
@@ -112,7 +127,7 @@ export default defineNuxtConfig({
   compatibilityDate: '2024-10-07',
 
   tailwindcss: {
-    configPath: './tailwind.config.js', // Reference to the separate config file
+    configPath: './tailwind.config.cjs', // Reference to the separate config file
   },
 
   postcss: {
