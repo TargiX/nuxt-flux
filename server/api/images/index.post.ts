@@ -11,6 +11,8 @@ export default defineEventHandler(async (event) => {
     });
   }
 
+
+  
   const body = await readBody(event);
   const { imageUrl, promptText, dreamId, graphState } = body;
 
