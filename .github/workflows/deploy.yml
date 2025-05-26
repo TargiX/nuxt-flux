@@ -96,7 +96,7 @@ jobs:
             cd /var/www/dreamseed
             
             # Create .env file with secrets
-            cat > .env << 'EOF'
+            cat > .env << EOF
             DATABASE_URL="${{ secrets.DATABASE_URL }}"
             NUXT_GOOGLE_CLIENT_ID="${{ secrets.NUXT_GOOGLE_CLIENT_ID }}"
             NUXT_GOOGLE_CLIENT_SECRET="${{ secrets.NUXT_GOOGLE_CLIENT_SECRET }}"
