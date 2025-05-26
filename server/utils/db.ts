@@ -1,7 +1,9 @@
-import { PrismaClient } from '@prisma/client'
+import pkg from '@prisma/client'
+import type { PrismaClient as PrismaClientType } from '@prisma/client'
+const { PrismaClient } = pkg
 
 declare global {
-  var __prisma: PrismaClient | undefined
+  var __prisma: PrismaClientType | undefined
 }
 
 // reuse global instance in dev
