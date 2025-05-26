@@ -60,7 +60,8 @@ export default defineNuxtConfig({
       inline: [],
       external: [
        '@prisma/client',
-        '.prisma/client'
+        '.prisma/client',
+        '@auth/core',   
         ]
     },
     esbuild: {
