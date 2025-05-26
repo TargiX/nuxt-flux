@@ -52,15 +52,6 @@ export default defineNuxtConfig({
     
       ]
     },
-    externals: {
-      inline: [],
-      external: [
-       '@prisma/client',
-        '.prisma/client',
-        /generated\/prisma\/client/,
-        '@auth/core',   
-        ]
-    },
     esbuild: {
       options: {  
         banner: `import { fileURLToPath } from 'node:url';
