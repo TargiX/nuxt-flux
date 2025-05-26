@@ -6,7 +6,7 @@ import { resolve } from 'node:path'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const root = dirname(fileURLToPath(import.meta.url))
+const root = dirname(fileURLToPath(import.meta.url))  
 
 const MyPreset = definePreset(Aura, {
   semantic: {
@@ -49,8 +49,7 @@ export default defineNuxtConfig({
     rollupConfig: {
       external: id =>
         id.startsWith(join(root, 'generated/prisma/client'))
-    }
-  },
+    },
     externals: {
       // prevent bundling prisma and its runtime files
       inline: [],
