@@ -45,10 +45,13 @@ export default defineNuxtConfig({
   
   nitro: {
     preset: 'node-server',
+    experimental: {
+      wasm: true
+    },
     rollupConfig: {
       plugins: [
         commonjs({
-          include: /node_modules\/@prisma\/client/,
+          include: [/node_modules\/@prisma\/client/, /generated\/prisma\/client/],
           requireReturnsDefault: 'auto'
         })
       ]
@@ -56,7 +59,9 @@ export default defineNuxtConfig({
     alias: {
       '#auth': resolve('./node_modules/@hebilicious/authjs-nuxt/runtime')
     },
-
+    externals: {
+      inline: ['@prisma/client']
+    },
     esbuild: {
       options: {  
         banner: `import { fileURLToPath } from 'node:url';

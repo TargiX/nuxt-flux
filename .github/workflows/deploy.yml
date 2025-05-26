@@ -33,8 +33,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Generate Prisma client
-        run: npx prisma generate
 
       # - name: Run tests # Uncomment this block if you have tests configured
 
@@ -97,11 +95,8 @@ jobs:
               set -e
               cd /var/www/dreamseed
   
-              # 1) install production deps
+              # 1) install production deps (this will trigger postinstall script with prisma generate)
               pnpm install --prod --frozen-lockfile
-  
-              # 2) regenerate Prisma client
-              npx prisma generate
   
               # 3) reload PM2
               pm2 reload dreamseed --update-env
