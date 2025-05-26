@@ -1,12 +1,14 @@
-// Common-JS bundle → import its *default*, then pull the named class out.
-// Rollup will inject an ESM wrapper via @rollup/plugin-commonjs.
-import prismaCjs from '~/generated/prisma/client';
-const { PrismaClient } = prismaCjs;
+// Prisma’s generated bundle is CommonJS.
+// After @rollup/plugin-commonjs runs, **all** exports land on the namespace object.
+// → use a namespace import, not `default`, not named.
+import * as prismaNS from '~/generated/prisma/client';
 
-// simple singleton (keeps one connection in dev, fresh in prod)
-const _prisma =
+const { PrismaClient } = prismaNS as typeof import('~/generated/prisma/client');
+
+const prisma =
   process.env.NODE_ENV === 'production'
     ? new PrismaClient()
-    : globalThis.__prisma ?? (globalThis.__prisma = new PrismaClient());
+    : // reuse the instance in dev to avoid exhausting connections
+      (globalThis.__prisma ??= new PrismaClient());
 
-export default _prisma;
+export default prisma;

@@ -31,7 +31,7 @@ export default defineNuxtConfig({
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt',
     '@nuxtjs/google-fonts', // Add the google fonts module
-    '@hebilicious/authjs-nuxt', // Add the new auth module
+    '@hebilicious/authjs-nuxt', // Add the new auth module∑
   ],
   
   // Disable experimental app manifest (known to cause fetch 404 issues in some versions)
@@ -47,7 +47,8 @@ export default defineNuxtConfig({
     rollupConfig: {
       plugins: [
         commonjs({
-          include: /generated\/prisma\/client/   // <-- 1-line fix
+          include: /generated\/prisma\/client/,   // folder to transform
+          requireReturnsDefault: 'namespace'      // so the namespace import above works
         })
       ]
     },
