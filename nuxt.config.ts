@@ -45,6 +45,14 @@ export default defineNuxtConfig({
   
   nitro: {
     preset: 'node-server',
+    rollupConfig: {
+      plugins: [
+        commonjs({
+          include: /node_modules\/@prisma\/client/,
+          requireReturnsDefault: 'auto'
+        })
+      ]
+    },
     alias: {
       '#auth': resolve('./node_modules/@hebilicious/authjs-nuxt/runtime')
     },
