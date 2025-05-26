@@ -36,7 +36,6 @@ export default defineNuxtConfig({
   experimental: {
     appManifest: false
   },
-  
   googleFonts: { // Add google fonts configuration
     families: {
       Roboto: true // Specify Roboto font
