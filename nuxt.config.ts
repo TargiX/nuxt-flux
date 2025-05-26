@@ -2,7 +2,7 @@ import Aura from '@primeuix/themes/aura';
 import { definePreset } from '@primeuix/themes';
 import Components from 'unplugin-vue-components/vite';
 import { PrimeVueResolver } from '@primevue/auto-import-resolver';
-
+import { resolve } from 'node:path'
 
 const MyPreset = definePreset(Aura, {
   semantic: {
@@ -48,7 +48,8 @@ export default defineNuxtConfig({
       external: [
         '@prisma/client',
         '.prisma/client',
-        '@prisma/engines*'            // avoid bundling the binary loader
+        '@prisma/engines*',            // avoid bundling the binary loader
+        resolve('./generated/prisma/client')
       ]
     },
     esbuild: {
