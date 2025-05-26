@@ -6,10 +6,10 @@
 - Added `prisma generate` to the postinstall script
 - This ensures Prisma client is generated automatically during `pnpm install`
 
-### 2. Enhanced Nitro configuration in nuxt.config.ts
-- Added `experimental.wasm: true` for better Prisma support
-- Updated CommonJS plugin to include both paths: `/node_modules/@prisma/client/` and `/generated/prisma/client/`
-- Added `externals.inline: ['@prisma/client']` to properly bundle Prisma
+### 2. Simplified Nitro configuration in nuxt.config.ts
+- Removed problematic CommonJS and externals configurations that were causing build errors
+- Kept minimal configuration to avoid module resolution conflicts with Prisma
+- Relies on the postinstall script for proper Prisma client generation
 
 ### 3. Simplified deployment workflow
 - Removed redundant `npx prisma generate` steps since postinstall handles it
@@ -76,4 +76,13 @@ If you still get 500 errors:
 - Added `NUXT_AUTH_URL` for additional auth URL configuration
 - Ensures all auth-related environment variables are properly set
 
-The main issue was likely the Prisma client not being properly generated or bundled in production, combined with CSRF protection being too strict for the HTTP deployment environment. These fixes address both issues comprehensively. 
+The main issue was likely the Prisma client not being properly generated or bundled in production, combined with CSRF protection being too strict for the HTTP deployment environment. These fixes address both issues comprehensively.
+
+## Build Error Fix
+
+**Issue**: The enhanced Nitro configuration was causing module resolution errors with Prisma:
+```
+Invalid module ".prisma" is not a valid package name
+```
+
+**Solution**: Simplified the Nitro configuration by removing the problematic CommonJS and externals configurations. The postinstall script handles Prisma client generation, so complex bundling configurations are not needed. 

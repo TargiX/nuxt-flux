@@ -5,7 +5,6 @@ import { PrimeVueResolver } from '@primevue/auto-import-resolver';
 import { resolve } from 'node:path'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import commonjs from '@rollup/plugin-commonjs'
 
 const root = dirname(fileURLToPath(import.meta.url))  
 
@@ -45,22 +44,8 @@ export default defineNuxtConfig({
   
   nitro: {
     preset: 'node-server',
-    experimental: {
-      wasm: true
-    },
-    rollupConfig: {
-      plugins: [
-        commonjs({
-          include: [/node_modules\/@prisma\/client/, /generated\/prisma\/client/],
-          requireReturnsDefault: 'auto'
-        })
-      ]
-    },
     alias: {
       '#auth': resolve('./node_modules/@hebilicious/authjs-nuxt/runtime')
-    },
-    externals: {
-      inline: ['@prisma/client']
     },
     esbuild: {
       options: {  
