@@ -45,7 +45,7 @@
       </template>
       <template #footer>
         <div class="footer-text">
-          Don’t have an account?
+          Don't have an account?
           <NuxtLink to="/register" class="sign-up-link">Register here</NuxtLink>
         </div>
       </template>
@@ -54,89 +54,132 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
+import { useRoute, useRouter, reloadNuxtApp, navigateTo } from '#app'
 
-// Use nuxt-auth composable
-const { signIn } = useAuth()
+// Initialize auth composable
+const { signIn, status, updateSession, session } = useAuth()
 
 // Page meta
 definePageMeta({
-  layout: 'auth', // Assuming you might want a different layout for auth pages
-  auth: {
-    unauthenticatedOnly: true, // Redirect if already logged in
-    navigateAuthenticatedTo: '/', // Where to redirect if logged in
-  }
+  layout: 'auth',
 })
 
 // Component state
 const email = ref('')
 const password = ref('')
-const errorMsg = ref<string | null>(null)
 const loading = ref(false)
-const googleLoading = ref(false); // Added for Google button
+const googleLoading = ref(false);
+const errorMsg = ref<string | null>(null)
 
-// Handle login submission
+// Handle redirect for already authenticated users
+if (status.value === 'authenticated') {
+  const route = useRoute()
+  const redirectPath = typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/') 
+                        ? route.query.redirect 
+                        : '/';
+  await navigateTo(redirectPath, { replace: true });
+}
+
 const handleLogin = async () => {
   loading.value = true;
   errorMsg.value = null;
 
   try {
-    const result = await signIn('credentials', {
+    // 1. send credentials without redirect
+    const res = await signIn('credentials', {
       email: email.value,
       password: password.value,
-      redirect: false,
-    });
+      redirect: false // stay on page
+    }) as Response // signIn with redirect:false returns a Response
 
-    if (result && result.ok) {
-      console.log('Login successful');
-      await navigateTo('/');
-    } else {
-      // Handle error cases
-      let specificError = 'Unknown error';
-      if (result && typeof (result as any).error === 'string') {
-        specificError = (result as any).error;
+    if (!res.ok) {
+      /* error payload from Auth.js: { error: 'CredentialsSignin' | ... } */
+      // Try to parse JSON for an error object, otherwise use statusText
+      let errorDetail = `HTTP error ${res.status}: ${res.statusText}`;
+      try {
+        const errorBody = await res.json();
+        errorDetail = errorBody.error || errorDetail;
+      } catch (e) {
+        // JSON parsing failed, stick with statusText or a generic message
       }
       
-      console.error('Login failed. Result:', result, 'Specific error code:', specificError);
-
-      if (specificError === 'CredentialsSignin') {
-        errorMsg.value = 'Invalid email or password. Please try again.';
-      } else if (specificError !== 'Unknown error') {
-        errorMsg.value = `Login failed: ${specificError}`;
-      } else {
-        errorMsg.value = 'An unexpected error occurred during login. Please check credentials.';
-      }
+      errorMsg.value = errorDetail === 'CredentialsSignin'
+        ? 'Invalid email or password.'
+        : `Login failed: ${errorDetail}`;
+      return;
     }
-  } catch (err) {
-    console.error('Login Submit Error Catch Block:', err);
-    // It's possible `err` itself contains useful info, but often it's a generic network error here
-    errorMsg.value = 'An error occurred while trying to sign in. Please try again.';
+
+    // 2. cookie is now in the browser – hydrate Nuxt auth state once
+    try {
+      // Attempt to get session data from response if backend sends it (often not for credentials)
+      // If res.json() fails or returns empty, it will be caught.
+      const freshSessionData = await res.json(); 
+      console.log(`[LOGIN] Response JSON parsed:`, freshSessionData)
+      
+      if (freshSessionData && Object.keys(freshSessionData).length > 0) {
+        console.log(`[LOGIN] Valid session data found. Calling updateSession...`)
+        await updateSession(freshSessionData); // Update the session store with new data
+        console.log(`[LOGIN] updateSession completed. New status: ${status.value}, Session exists: ${!!session.value}`)
+      } else {
+        console.log(`[LOGIN] No meaningful session data in response. Calling reloadNuxtApp...`)
+        // If no meaningful session data in response, force reload to pick up cookie
+        // This is a common pattern if the credentials endpoint only sets a cookie.
+        reloadNuxtApp({ persistState: true, force: true });
+        return; // reloadNuxtApp will stop current execution flow
+      }
+    } catch (e) {
+      console.log(`[LOGIN] Failed to parse response JSON or updateSession failed:`, e)
+      // Fallback: if res.json() fails (e.g. empty response which is valid for 200 OK)
+      // or if updateSession itself has issues, force-reload to pick up cookie.
+      console.log(`[LOGIN] Calling reloadNuxtApp as fallback...`)
+      reloadNuxtApp({ persistState: true, force: true });
+      return; // reloadNuxtApp will stop current execution flow
+    }
+    // If updateSession was successful and we didn't reload, the watch(status) will navigate
+    console.log(`[LOGIN] Login process completed without reload. Status: ${status.value}, Session exists: ${!!session.value}`)
+
+  } catch (e: any) {
+    // Catch errors from signIn itself (network issues, etc.)
+    console.error('[LOGIN] Credentials Sign-In Main Catch Block:', e);
+    errorMsg.value = e.message || 'An unexpected error occurred during login.';
   } finally {
     loading.value = false;
+    console.log(`[LOGIN] Login process finished. Final status: ${status.value}, Session exists: ${!!session.value}`)
   }
 };
 
-// Handle Google Sign-In
 const handleGoogleSignIn = async () => {
+  console.log(`[LOGIN] Starting Google OAuth login`)
   googleLoading.value = true;
-  errorMsg.value = null; // Clear previous errors
+  errorMsg.value = null;
   try {
-    // Initiates the Google OAuth flow. This will typically redirect the user.
-    // Nuxt-auth handles the callback and session creation.
-    // The page guard (unauthenticatedOnly) should redirect upon successful login.
-    await signIn('google');
-    // If signIn completes without an immediate error/exception before redirect,
-    // the user is likely being redirected. If it throws, catch block will handle.
-    // We might not reach here if redirect happens.
+    await signIn('google'); // Defaults to redirect: true
+    // OAuth flow will redirect away and then back. Watch(status,...) handles post-login.
+    console.log(`[LOGIN] Google signIn completed (should redirect)`)
   } catch (err: any) {
-    console.error('Google Sign-In Invocation Error:', err);
-    // Check if the error object has a message property
-    const message = err.message || 'An error occurred while trying to sign in with Google.';
-    errorMsg.value = message;
-  } finally {
+    console.error('[LOGIN] Google Sign-In Error:', err);
+    errorMsg.value = err.message || 'An error occurred during Google Sign-In.';
     googleLoading.value = false;
   }
 };
+
+const route = useRoute();
+const router = useRouter();
+
+watch(status, (newStatus, oldStatus) => {
+  console.log(`[LOGIN WATCH] Status changed from ${oldStatus} to ${newStatus}. Session exists: ${!!session.value}`)
+  if (newStatus === 'authenticated') {
+    const redirect = route.query.redirect;
+    if (typeof redirect === 'string' && redirect.startsWith('/')) {
+      console.log(`[LOGIN WATCH] Authenticated! Navigating to stored path: ${redirect}`)
+      navigateTo(redirect, { replace: true, external: false });
+    } else {
+      console.log(`[LOGIN WATCH] Authenticated! Navigating to default path: /`)
+      navigateTo('/', { replace: true, external: false });
+    }
+  }
+}, { immediate: false }); // Set immediate to true if you want to check on component mount too
 </script>
 <style scoped lang="scss">
 .login-container {

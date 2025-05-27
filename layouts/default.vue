@@ -10,7 +10,7 @@
       
       <!-- Navigation items -->
       <nav class="nav-menu">
-        <a href="#" class="nav-item active">
+        <!-- <a href="#" class="nav-item active">
           <i class="pi pi-home"></i>
           <span>Home</span>
         </a>
@@ -33,7 +33,7 @@
         <a href="#" class="nav-item">
           <i class="pi pi-bell"></i>
           <span>Notifications</span>
-        </a>
+        </a> -->
 
         <!-- My Dreams Section -->
         <a href="#" class="nav-item" @click.prevent="isDreamsOpen = !isDreamsOpen">
