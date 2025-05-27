@@ -7,7 +7,7 @@ export default defineEventHandler(async (event) => {
     hasGoogleClientId: !!process.env.NUXT_GOOGLE_CLIENT_ID,
     hasGoogleClientSecret: !!process.env.NUXT_GOOGLE_CLIENT_SECRET,
     hasGeminiKey: !!process.env.GEMINI_API_KEY,
-    hasNextAuthSecret: !!process.env.NUXT_NEXTAUTH_SECRET_VALUE,
+    hasNextAuthSecret: !!process.env.NEXTAUTH_SECRET,
     
     // Runtime config values
     runtimeConfig: {

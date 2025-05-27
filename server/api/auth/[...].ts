@@ -12,7 +12,7 @@ const runtimeConfig = useRuntimeConfig()
 
 // --- Debugging --- 
 console.log("[Auth Handler] Reading runtimeConfig.authJs.secret:", runtimeConfig.authJs?.secret ? 'SECRET_FOUND' : 'SECRET_MISSING_OR_UNDEFINED');
-console.log("[Auth Handler] NUXT_NEXTAUTH_URL:", runtimeConfig.authJs?.url);
+console.log("[Auth Handler] NEXTAUTH_URL:", process.env.NEXTAUTH_URL);
 console.log("[Auth Handler] NODE_ENV:", process.env.NODE_ENV);
 console.log("[Auth Handler] trustHost setting should be true");
 console.log("[Auth Handler] useSecureCookies setting:", false);
@@ -39,6 +39,7 @@ if (!runtimeConfig.google?.clientSecret) {
 export const authOptions: AuthConfig = {
   secret: runtimeConfig.authJs.secret,
   useSecureCookies: false, // Disable secure cookies for HTTP deployment
+  trustHost: true, // Trust the host for production deployment
   session: { 
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
@@ -132,6 +133,8 @@ export const authOptions: AuthConfig = {
           }
         } else {
           console.warn('[Auth JWT CB] signIn/signUp trigger, but conditions not met for token population. Token might be incomplete. User:', JSON.stringify(user), 'Account:', JSON.stringify(account));
+          // Return empty token to prevent invalid session
+          return {};
         }
       } else if (trigger === "update" && token.id) {
         console.log('[Auth JWT CB] Update trigger with existing token ID:', token.id);
@@ -157,6 +160,11 @@ export const authOptions: AuthConfig = {
 
       } else {
         console.warn('[Auth Session CB] Token ID not found or session.user missing. Token:', JSON.stringify(token), 'Session:', JSON.stringify(session));
+        // If token is missing critical data, return empty session to force re-authentication
+        if (!token?.id) {
+          console.error('[Auth Session CB] Critical: Token missing ID, forcing re-authentication');
+          return { user: {}, expires: session.expires };
+        }
       }
 
       if (token?.accessToken) {
