@@ -52,6 +52,7 @@ jobs:
           mkdir deployment-package
           cp -R .output deployment-package/
           cp -R prisma deployment-package/
+          cp -R scripts deployment-package/
           cp package.json pnpm-lock.yaml ecosystem.config.cjs deployment-package/
           # Copy .env file if your production server needs it and it's not managed otherwise
           # if [ -f .env ]; then cp .env deployment-package/.env; fi 
@@ -95,7 +96,8 @@ jobs:
             set -e
             cd /var/www/dreamseed
             
-            # Create .env file with secrets
+            # Try to create .env file with secrets first
+            echo "Attempting to create .env file with GitHub secrets..."
             cat > .env << EOF
             DATABASE_URL="${{ secrets.DATABASE_URL }}"
             NUXT_GOOGLE_CLIENT_ID="${{ secrets.NUXT_GOOGLE_CLIENT_ID }}"
@@ -104,13 +106,32 @@ jobs:
             NUXT_NEXTAUTH_SECRET_VALUE="${{ secrets.NUXT_NEXTAUTH_SECRET_VALUE }}"
             EOF
             
-            echo "Environment file created successfully"
-            echo "Environment variables set:"
-            echo "- DATABASE_URL: $(echo $DATABASE_URL | cut -c1-20)..."
-            echo "- NUXT_GOOGLE_CLIENT_ID: $(echo $NUXT_GOOGLE_CLIENT_ID | cut -c1-10)..."
-            echo "- NUXT_GOOGLE_CLIENT_SECRET: $(echo $NUXT_GOOGLE_CLIENT_SECRET | cut -c1-10)..."
-            echo "- GEMINI_API_KEY: $(echo $GEMINI_API_KEY | cut -c1-10)..."
-            echo "- NUXT_NEXTAUTH_SECRET_VALUE: $(echo $NUXT_NEXTAUTH_SECRET_VALUE | cut -c1-10)..."
+            # Check if .env file exists and has content
+            if [ ! -f .env ] || [ ! -s .env ]; then
+              echo "ERROR: .env file missing or empty. Creating fallback .env file..."
+              cat > .env << 'FALLBACK_EOF'
+            DATABASE_URL="postgresql://dreamseed:WSX2rFv67890%21@5.161.248.184:5432/dreamseed?schema=public"
+            NUXT_GOOGLE_CLIENT_ID="REPLACE_WITH_ACTUAL_GOOGLE_CLIENT_ID"
+            NUXT_GOOGLE_CLIENT_SECRET="REPLACE_WITH_ACTUAL_GOOGLE_CLIENT_SECRET"
+            GEMINI_API_KEY="REPLACE_WITH_ACTUAL_GEMINI_API_KEY"
+            NUXT_NEXTAUTH_SECRET_VALUE="REPLACE_WITH_ACTUAL_NEXTAUTH_SECRET"
+            FALLBACK_EOF
+              echo "FALLBACK .env file created. You need to manually update the placeholder values!"
+            else
+              echo "Environment file created successfully from GitHub secrets"
+            fi
+            
+            # Verify .env file content (show first 10 chars of each var for security)
+            echo "Current .env file content (partial):"
+            if [ -f .env ]; then
+              while IFS='=' read -r key value; do
+                if [[ $key && $value && ! $key =~ ^# ]]; then
+                  echo "- $key: ${value:0:10}..."
+                fi
+              done < .env
+            else
+              echo "ERROR: .env file still missing!"
+            fi
 
       - name: Deploy & start on server
         uses: appleboy/ssh-action@v1.0.3
