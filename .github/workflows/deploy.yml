@@ -40,12 +40,9 @@ jobs:
         run: pnpm run build
         env:
           NODE_ENV: production
-          NUXT_NEXTAUTH_SECRET: ${{ secrets.NUXT_NEXTAUTH_SECRET }}
-          NUXT_NEXTAUTH_URL: ${{ secrets.NUXT_NEXTAUTH_URL }}
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          # Add any other build-time environment variables needed from secrets
-          # DATABASE_URL: ${{ secrets.DATABASE_URL_BUILD_TIME }}
-          # NUXT_PUBLIC_API_BASE: ${{ secrets.NUXT_PUBLIC_API_BASE }}
 
       - name: Prepare deployment package
         run: |
@@ -98,23 +95,25 @@ jobs:
             
             # Try to create .env file with secrets first
             echo "Attempting to create .env file with GitHub secrets..."
-            cat > .env << EOF
-            DATABASE_URL="${{ secrets.DATABASE_URL }}"
-            NUXT_GOOGLE_CLIENT_ID="${{ secrets.NUXT_GOOGLE_CLIENT_ID }}"
-            NUXT_GOOGLE_CLIENT_SECRET="${{ secrets.NUXT_GOOGLE_CLIENT_SECRET }}"
-            GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}"
-            NUXT_NEXTAUTH_SECRET_VALUE="${{ secrets.NUXT_NEXTAUTH_SECRET_VALUE }}"
+            cat > .env <<'EOF'
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}
+            NEXTAUTH_URL=${{ secrets.NEXTAUTH_URL }}
+            NUXT_GOOGLE_CLIENT_ID=${{ secrets.NUXT_GOOGLE_CLIENT_ID }}
+            NUXT_GOOGLE_CLIENT_SECRET=${{ secrets.NUXT_GOOGLE_CLIENT_SECRET }}
+            GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
             EOF
             
             # Check if .env file exists and has content
             if [ ! -f .env ] || [ ! -s .env ]; then
               echo "ERROR: .env file missing or empty. Creating fallback .env file..."
-                             cat > .env << 'FALLBACK_EOF'
+                             cat > .env <<'FALLBACK_EOF'
             DATABASE_URL="postgresql://USERNAME:PASSWORD@HOST:5432/DATABASE?schema=public"
+            NEXTAUTH_SECRET="REPLACE_WITH_ACTUAL_NEXTAUTH_SECRET"
+            NEXTAUTH_URL="http://5.161.248.184:3000"
             NUXT_GOOGLE_CLIENT_ID="REPLACE_WITH_ACTUAL_GOOGLE_CLIENT_ID"
             NUXT_GOOGLE_CLIENT_SECRET="REPLACE_WITH_ACTUAL_GOOGLE_CLIENT_SECRET"
             GEMINI_API_KEY="REPLACE_WITH_ACTUAL_GEMINI_API_KEY"
-            NUXT_NEXTAUTH_SECRET_VALUE="REPLACE_WITH_ACTUAL_NEXTAUTH_SECRET"
             FALLBACK_EOF
               echo "FALLBACK .env file created. You need to manually update the placeholder values!"
             else
@@ -148,4 +147,4 @@ jobs:
               pnpm install --prod --no-frozen-lockfile
   
               # 3) reload PM2 with the new environment
-              pm2 restart ecosystem.config.cjs --env prod
+              pm2 restart ecosystem.config.cjs --env production --update-env
