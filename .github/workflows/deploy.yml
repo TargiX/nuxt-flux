@@ -104,6 +104,11 @@ jobs:
             GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}"
             EOF
             
+            # DEBUG: Show what was actually written to .env
+            echo "=== DEBUG: .env file content ==="
+            cat .env
+            echo "=== END .env content ==="
+            
             # Check if .env file exists and has content
             if [ ! -f .env ] || [ ! -s .env ]; then
               echo "ERROR: .env file missing or empty. Creating fallback .env file..."
@@ -146,15 +151,27 @@ jobs:
               # 1) install production deps (this will trigger postinstall script with prisma generate)
               pnpm install --prod --no-frozen-lockfile
   
-              # 2) Kill PM2 daemon completely to force fresh environment loading
+              # 2) DEBUG: Check if .env file exists before PM2 restart
+              echo "=== DEBUG: Checking .env file before PM2 restart ==="
+              ls -la .env
+              echo "First 3 lines of .env:"
+              head -3 .env
+              
+              # 3) Kill PM2 daemon completely to force fresh environment loading
               pm2 kill
               
-              # 3) Start fresh with new .env file
+              # 4) Load environment variables manually and start PM2
+              echo "=== Loading .env manually ==="
+              set -a  # automatically export all variables
+              source .env
+              set +a  # stop auto-export
+              
+              # 5) Start fresh with new .env file
               pm2 start ecosystem.config.cjs --env production
               
-              # 4) Verification - check if environment variables are loaded
+              # 6) Verification - check if environment variables are loaded
               echo "=== PM2 Environment Check ==="
-              pm2 show dreamseed | grep -A10 'env'
+              pm2 show dreamseed | grep -A20 'env' || echo "PM2 show failed"
               echo "=== Debug API Check ==="
-              sleep 3  # Give server time to start
+              sleep 5  # Give server more time to start
               curl -s http://localhost:3000/api/debug/env || echo "Debug endpoint not ready yet"
