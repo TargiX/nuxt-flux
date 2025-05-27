@@ -9,7 +9,6 @@ module.exports = {
         // NODE_ENV: "production", // Nitro usually sets this
       },
             env_production: {
-        // Production specific variables
         NODE_ENV: "production",
         AUTH_TRUST_HOST: "true"
         // All other environment variables come from .env file via env_file
