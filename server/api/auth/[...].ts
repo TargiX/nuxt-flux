@@ -168,6 +168,7 @@ export const authOptions: AuthConfig = {
       return session;
     },
   },
+  
   // pages: { // Keep pages commented out unless needed
   //   signIn: '/login',
   // },
