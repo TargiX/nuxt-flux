@@ -105,16 +105,9 @@ import { ref, reactive, watch } from 'vue'
 // Use nuxt-auth composable
 const { signIn, status } = useAuth()
 
-// Log initial status
-console.log('Initial auth status on register page:', status.value);
-
 // Page meta
 definePageMeta({
   layout: 'auth',
-  auth: {
-    unauthenticatedOnly: true,
-    navigateAuthenticatedTo: '/',
-  }
 })
 
 // Component state
@@ -131,7 +124,6 @@ const googleLoading = ref(false)
 
 // Watch for authentication status changes
 watch(status, (newStatus) => {
-  console.log('Auth status changed on register page to:', newStatus)
   if (newStatus === 'authenticated') {
     navigateTo('/');
   }
@@ -269,18 +261,39 @@ const handleRegister = async () => {
       errorMsg.value = error.value.statusMessage || 'Registration failed. Please try again.'
       console.error('Register Error:', error.value)
     } else {
-      // Registration successful
-      successMsg.value = 'Account created successfully! Redirecting to login...'
+      // Registration successful - now automatically sign in the user
+      successMsg.value = 'Account created successfully! Signing you in...'
       
-      // Reset form
-      name.value = ''
-      email.value = ''
-      password.value = ''
-      
-      // Redirect to login after a short delay
-      setTimeout(() => {
-        navigateTo('/')
-      }, 2000)
+      try {
+        // Automatically sign in the user with their credentials
+        const signInResult = await signIn('credentials', {
+          email: email.value,
+          password: password.value,
+          redirect: false
+        }) as Response
+
+        if (signInResult.ok) {
+          // Sign in successful - the watch() will handle navigation
+          successMsg.value = 'Account created and signed in successfully!'
+          // Reset form
+          name.value = ''
+          email.value = ''
+          password.value = ''
+        } else {
+          // Sign in failed - redirect to login manually
+          successMsg.value = 'Account created successfully! Please sign in.'
+          setTimeout(() => {
+            navigateTo('/login')
+          }, 2000)
+        }
+      } catch (signInError) {
+        console.error('Auto sign-in error:', signInError)
+        // Fallback to manual login
+        successMsg.value = 'Account created successfully! Please sign in.'
+        setTimeout(() => {
+          navigateTo('/login')
+        }, 2000)
+      }
     }
   } catch (err) {
     // Unexpected error

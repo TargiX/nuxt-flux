@@ -75,7 +75,7 @@ const __dirname  = _dirname(__filename);`
 
   runtimeConfig: {
     authJs: {
-      secret: process.env.NEXTAUTH_SECRET
+      secret: process.env.NEXTAUTH_SECRET,
     },
     authSecret: process.env.NEXTAUTH_SECRET,
     google: {
