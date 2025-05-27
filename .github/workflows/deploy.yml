@@ -109,8 +109,8 @@ jobs:
             # Check if .env file exists and has content
             if [ ! -f .env ] || [ ! -s .env ]; then
               echo "ERROR: .env file missing or empty. Creating fallback .env file..."
-              cat > .env << 'FALLBACK_EOF'
-            DATABASE_URL="postgresql://dreamseed:WSX2rFv67890%21@5.161.248.184:5432/dreamseed?schema=public"
+                             cat > .env << 'FALLBACK_EOF'
+            DATABASE_URL="postgresql://USERNAME:PASSWORD@HOST:5432/DATABASE?schema=public"
             NUXT_GOOGLE_CLIENT_ID="REPLACE_WITH_ACTUAL_GOOGLE_CLIENT_ID"
             NUXT_GOOGLE_CLIENT_SECRET="REPLACE_WITH_ACTUAL_GOOGLE_CLIENT_SECRET"
             GEMINI_API_KEY="REPLACE_WITH_ACTUAL_GEMINI_API_KEY"

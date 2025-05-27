@@ -18,7 +18,7 @@ fi
 
 # Create the .env file with production values
 cat > .env << 'EOF'
-DATABASE_URL="postgresql://dreamseed:WSX2rFv67890%21@5.161.248.184:5432/dreamseed?schema=public"
+DATABASE_URL="postgresql://USERNAME:PASSWORD@HOST:5432/DATABASE?schema=public"
 NUXT_GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID_HERE"
 NUXT_GOOGLE_CLIENT_SECRET="YOUR_GOOGLE_CLIENT_SECRET_HERE"
 GEMINI_API_KEY="YOUR_GEMINI_API_KEY_HERE"
