@@ -5,12 +5,18 @@
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
+    "dev:local": "cp .env.local .env && nuxt dev",
+    "dev:prod": "cp .env.production .env && nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare && prisma generate",
     "lint": "eslint --ext .js,.ts,.vue --ignore-path .gitignore .",
     "lint:fix": "eslint --fix --ext .js,.ts,.vue --ignore-path .gitignore .",
-    "format": "prettier --write \"**/*.{js,ts,vue,scss,html,md,json}\" --ignore-path .gitignore"
+    "format": "prettier --write \"**/*.{js,ts,vue,scss,html,md,json}\" --ignore-path .gitignore",
+    "db:studio:local": "cp .env.local .env && npx prisma studio",
+    "db:studio:prod": "cp .env.production .env && npx prisma studio",
+    "db:migrate:local": "cp .env.local .env && npx prisma migrate deploy",
+    "db:migrate:prod": "cp .env.production .env && npx prisma migrate deploy"
   },
   "dependencies": {
     "@auth/core": "^0.39.0",
