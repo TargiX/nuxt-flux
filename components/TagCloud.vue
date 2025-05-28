@@ -13,6 +13,7 @@
         @nodeClick="handleNodeClick"
         @nodePositionsUpdated="handleNodePositionsUpdated"
         @nodeTextUpdated="handleNodeTextUpdated"
+        @menu-action="handleNodeContextMenu"
       >
         <!-- Zone selector will be moved here via slot later -->
         <template #controls>
@@ -206,6 +207,7 @@ import ForceGraph from './ForceGraph.vue';
 import ZoneSelector from './ZoneSelector.vue';
 import ImageStrip from './ImageStrip.vue';
 import { generateImagePrompt, clearPromptCache } from '~/services/promptGenerationService';
+import { generateConceptTags, preselectConceptTag } from '~/services/tagSelectionService';
 import { useImageGeneration } from '~/composables/useImageGeneration';
 import type { Tag } from '~/types/tag';
 import type { ViewportState } from '~/composables/useZoom';
@@ -628,7 +630,7 @@ async function handleGenerateImageClick() {
         return; 
       }
       currentDreamId = tagStore.loadedDreamId;
-      // toast.add({ severity: 'success', summary: 'Session Saved', detail: `Session auto-saved successfully. Dream ID: ${currentDreamId}`, life: 3000 });
+      // toast.add({ severity: 'success', summary: 'Session Saved', detail: `Session auto-saved successfully. Dream ID: ${currentId}`, life: 3000 });
     } catch (error: any) {
       console.error('Failed to auto-save dream:', error);
       toast.add({
@@ -782,6 +784,49 @@ async function handleDownloadImage() {
       severity: 'error',
       summary: 'Download Failed',
       detail: error.message || 'Could not download image. Please try again.',
+      life: 5000,
+    });
+  }
+}
+
+// New handler for context menu concept selections
+async function handleNodeContextMenu(payload: { category: string; action: string; nodeId: string }) {
+  console.log(`[TagCloud] Context menu selection '${payload.category} -> ${payload.action}' for node '${payload.nodeId}'`);
+  
+  if (tagStore.isRequestInProgress) {
+    return;
+  }
+
+  // Immediate selection and panning
+  const preResult = preselectConceptTag(
+    payload.nodeId,
+    payload.category,
+    payload.action,
+    tagStore.tags
+  );
+  tagStore.tags = preResult.updatedTags;
+  tagStore.hasUnsavedChanges = true;
+  await nextTick();
+  if (forceGraphRef.value) {
+    forceGraphRef.value.centerAndPinNodeById(preResult.selectedTag.id);
+  }
+
+  // Fetch concept tags and distribute children
+  try {
+    const result = await generateConceptTags(
+      payload.nodeId,
+      payload.category,
+      payload.action,
+      tagStore.tags
+    );
+    tagStore.tags = result.updatedTags;
+    triggerPromptGeneration();
+  } catch (error: any) {
+    console.error('Error generating concept tags:', error);
+    toast.add({
+      severity: 'error',
+      summary: 'Concept Generation Failed',
+      detail: error.message || 'Could not generate concept tags. Please try again.',
       life: 5000,
     });
   }

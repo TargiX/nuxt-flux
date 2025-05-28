@@ -11,6 +11,33 @@
   --p-progressspinner-color-two: #ffffff !important;
   --p-progressspinner-color-three: #ffffff !important;
   --p-progressspinner-color-four: #ffffff !important;
+  
+  // TieredMenu Dark Theme Variables
+  --p-tieredmenu-background: #2a2a2a;
+  --p-tieredmenu-border-color: #444;
+  --p-tieredmenu-color: #e2e8f0;
+  --p-tieredmenu-border-radius: 8px;
+  --p-tieredmenu-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --p-tieredmenu-transition-duration: 0.2s;
+  --p-tieredmenu-list-padding: 8px 0;
+  --p-tieredmenu-list-gap: 0;
+  --p-tieredmenu-item-focus-background: #383838;
+  --p-tieredmenu-item-active-background: #383838;
+  --p-tieredmenu-item-color: #e2e8f0;
+  --p-tieredmenu-item-focus-color: #ffffff;
+  --p-tieredmenu-item-active-color: #ffffff;
+  --p-tieredmenu-item-padding: 10px 16px;
+  --p-tieredmenu-item-border-radius: 4px;
+  --p-tieredmenu-item-gap: 8px;
+  --p-tieredmenu-item-icon-color: #e2e8f0;
+  --p-tieredmenu-item-icon-focus-color: #ffffff;
+  --p-tieredmenu-item-icon-active-color: #ffffff;
+  --p-tieredmenu-submenu-mobile-indent: 1rem;
+  --p-tieredmenu-submenu-icon-size: 0.875rem;
+  --p-tieredmenu-submenu-icon-color: #e2e8f0;
+  --p-tieredmenu-submenu-icon-focus-color: #ffffff;
+  --p-tieredmenu-submenu-icon-active-color: #ffffff;
+  --p-tieredmenu-separator-border-color: #444;
 }
 
 body {
@@ -43,7 +70,6 @@ body {
 
 .glass-card {
   position: relative;
-  z-index: 0;
   overflow: hidden;
   background-color: rgba(255,255,255,0.05);
   border: 1px solid rgba(255,255,255,0.2);
@@ -133,4 +159,80 @@ body {
   .p-toast-message-info {
     border-left-width: 4px;
   }
+}
+
+// TieredMenu Global Styling
+.p-tieredmenu {
+  background: var(--p-tieredmenu-background) !important;
+  border: 1px solid var(--p-tieredmenu-border-color) !important;
+  border-radius: var(--p-tieredmenu-border-radius) !important;
+  box-shadow: var(--p-tieredmenu-shadow) !important;
+  color: var(--p-tieredmenu-color) !important;
+  z-index: 9999 !important;
+  min-width: 180px !important;
+
+  .p-tieredmenu-root-list {
+    padding: var(--p-tieredmenu-list-padding) !important;
+  }
+
+  .p-tieredmenu-item-link {
+    color: var(--p-tieredmenu-item-color) !important;
+    padding: var(--p-tieredmenu-item-padding) !important;
+    border-radius: var(--p-tieredmenu-item-border-radius) !important;
+    transition: all var(--p-tieredmenu-transition-duration) ease !important;
+
+    &:hover, &:focus {
+      background: var(--p-tieredmenu-item-focus-background) !important;
+      color: var(--p-tieredmenu-item-focus-color) !important;
+    }
+
+    &.p-focus {
+      background: var(--p-tieredmenu-item-focus-background) !important;
+      color: var(--p-tieredmenu-item-focus-color) !important;
+    }
+  }
+
+  .p-tieredmenu-item-icon {
+    color: var(--p-tieredmenu-item-icon-color) !important;
+    margin-right: var(--p-tieredmenu-item-gap) !important;
+  }
+
+  .p-tieredmenu-submenu-icon {
+    color: var(--p-tieredmenu-submenu-icon-color) !important;
+    font-size: var(--p-tieredmenu-submenu-icon-size) !important;
+  }
+
+  .p-tieredmenu-separator {
+    border-top: 1px solid var(--p-tieredmenu-separator-border-color) !important;
+    margin: 4px 0 !important;
+  }
+}
+
+// Submenu specific styling with higher z-index
+.p-tieredmenu-submenu {
+  background: var(--p-tieredmenu-background) !important;
+  border: 1px solid var(--p-tieredmenu-border-color) !important;
+  border-radius: var(--p-tieredmenu-border-radius) !important;
+  box-shadow: var(--p-tieredmenu-shadow) !important;
+  z-index: 10000 !important;
+  min-width: 160px !important;
+
+  .p-tieredmenu-item-link {
+    color: var(--p-tieredmenu-item-color) !important;
+    padding: var(--p-tieredmenu-item-padding) !important;
+
+    &:hover, &:focus {
+      background: var(--p-tieredmenu-item-focus-background) !important;
+      color: var(--p-tieredmenu-item-focus-color) !important;
+    }
+  }
+
+  .p-tieredmenu-item-icon {
+    color: var(--p-tieredmenu-item-icon-color) !important;
+  }
+}
+
+// Ensure all TieredMenu panels have proper z-index
+.p-tieredmenu-panel {
+  z-index: 10001 !important;
 }

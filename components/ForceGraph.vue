@@ -63,7 +63,7 @@ const props = defineProps<{
   links: GraphLink[];
 }>();
 
-const emit = defineEmits(['nodeClick', 'nodePositionsUpdated', 'nodeTextUpdated']);
+const emit = defineEmits(['nodeClick', 'nodePositionsUpdated', 'nodeTextUpdated', 'menuAction']);
 const container = ref<HTMLElement | null>(null);
 let svg: d3.Selection<SVGSVGElement, unknown, null, undefined> | null = null;
 let linkGroup: d3.Selection<SVGGElement, unknown, null, undefined> | null = null;
@@ -579,12 +579,12 @@ function updateVisualElements() {
   updateNodes();
 }
 
-function handleContextMenuAction(payload: { action: string; nodeId: string }) {
-  console.log(`Context menu action '${payload.action}' on node '${payload.nodeId}'`);
-  // Handle specific actions here if needed, or emit further up
+function handleContextMenuAction(payload: { category: string; action: string; nodeId: string }) {
+  console.log(`Context menu selection '${payload.category} -> ${payload.action}' on node '${payload.nodeId}'`);
   if (contextMenu.value) {
     contextMenu.value.hide();
   }
+  emit('menuAction', payload);
 }
 
 // Expose methods for parent component interaction
@@ -594,6 +594,7 @@ interface ForceGraphExposed {
   centerOnNode: (node: { x?: number | null; y?: number | null }) => void;
   resetAndCenter: () => void;
   triggerUpdate: () => void; // Add method to manually trigger updates
+  centerAndPinNodeById: (id: string) => void;
 }
 
 defineExpose<ForceGraphExposed>({
@@ -659,6 +660,22 @@ defineExpose<ForceGraphExposed>({
   triggerUpdate: () => {
     // Manual method to trigger graph updates when needed
     graphVersion.value++;
+  },
+  centerAndPinNodeById: (id: string) => {
+    if (!svg || !simulation) return;
+    // Find the node in the simulation by id
+    const node = simulation.nodes().find(n => (n as GraphNode).id === id) as GraphNode | undefined;
+    if (!node) return;
+    // Pin the node at its current position
+    node.fx = node.x;
+    node.fy = node.y;
+    // Center the view on the node
+    centerOnNodeFn(svg, node);
+    // Release the node pin after centering completes
+    setTimeout(() => {
+      node.fx = null;
+      node.fy = null;
+    }, 750);
   }
 });
 </script>

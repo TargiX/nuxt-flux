@@ -99,4 +99,79 @@ export async function toggleTag(
   }
 
   return { updatedTags, selectedTag: tag };
+}
+
+export async function generateConceptTags(
+  id: string,
+  category: string,
+  action: string,
+  allTags: Tag[]
+): Promise<{ updatedTags: Tag[]; selectedTag: Tag }> {
+  const tag = findTagById(id, allTags);
+  if (!tag) {
+    throw new Error(`Tag ${id} not found`);
+  }
+
+  let updatedTags = [...allTags];
+
+  // If tag is not selected, select it first (following same logic as toggleTag)
+  if (!tag.selected) {
+    unselectTopLevelSiblings(tag, updatedTags);
+    tag.selected = true;
+
+    if (tag.parentId) {
+      const parent = findTagById(tag.parentId, updatedTags);
+      if (parent) {
+        expandChildAwayFromParent(tag, parent);
+      }
+    }
+  }
+
+  try {
+    tag.isLoading = true;
+    const ancestorChain = getAncestorChain(tag.id, updatedTags);
+    
+    // Build a pseudo-parent tag with concept emphasis for generation
+    const conceptTag = { ...tag, text: `${category} - ${action}` };
+    const newTags = await generateRelatedTags(conceptTag, updatedTags, ancestorChain);
+    
+    tag.children = [...(tag.children || []), ...newTags];
+    updatedTags = [...updatedTags, ...newTags];
+    
+    // Distribute children in a circle after adding new ones
+    distributeChildNodes(tag, 80);
+  } finally {
+    tag.isLoading = false;
+  }
+
+  return { updatedTags, selectedTag: tag };
+}
+
+export function preselectConceptTag(
+  id: string,
+  category: string,
+  action: string,
+  allTags: Tag[]
+): { updatedTags: Tag[]; selectedTag: Tag } {
+  const tag = findTagById(id, allTags);
+  if (!tag) {
+    throw new Error(`Tag ${id} not found`);
+  }
+
+  let updatedTags = [...allTags];
+
+  // If tag is not selected, select it first and handle sibling logic
+  if (!tag.selected) {
+    unselectTopLevelSiblings(tag, updatedTags);
+    tag.selected = true;
+
+    if (tag.parentId) {
+      const parent = findTagById(tag.parentId, updatedTags);
+      if (parent) {
+        expandChildAwayFromParent(tag, parent);
+      }
+    }
+  }
+
+  return { updatedTags, selectedTag: tag };
 } 
