@@ -110,7 +110,23 @@ const { createSimulation, updateSimulation, createDragBehavior } = useForceSimul
 const graphVersion = ref(0);
 let resizeObserver: ResizeObserver | null = null;
 
-// Optimized watch - replace deep JSON.stringify with version stamp
+// Batched structural watch to throttle multiple triggers into one per update cycle
+let pendingUpdate = false;
+watch(
+  () => [props.nodes.length, props.links.length],
+  () => {
+    if (!pendingUpdate) {
+      pendingUpdate = true;
+      setTimeout(() => {
+        console.log('Graph structure LENGTH (batched), triggering update');
+        graphVersion.value++;
+        pendingUpdate = false;
+      }, 10);
+    }
+  }
+);
+
+// Watch for graphVersion changes and update graph
 watch(
   () => graphVersion.value,
   () => {
@@ -119,12 +135,39 @@ watch(
   }
 );
 
-// Watch for structural changes and increment version
 watch(
-  () => [props.nodes.length, props.links.length],
-  () => {
-    graphVersion.value++;
-  }
+  () => props.nodes.map(node => ({ id: node.id, text: node.text, selected: node.selected, isLoading: node.isLoading })),
+  (newValues, oldValues) => {
+    // Check if there are actual content changes
+    if (oldValues && newValues.length === oldValues.length) {
+      const hasChanges = newValues.some((newNode, index) => {
+        const oldNode = oldValues[index];
+        return oldNode && (
+          newNode.text !== oldNode.text ||
+          newNode.selected !== oldNode.selected ||
+          newNode.isLoading !== oldNode.isLoading
+        );
+      });
+      
+      if (hasChanges) {
+        console.log('Graph content changed, triggering update');
+        console.log('Changed nodes:', newValues.filter((newNode, index) => {
+          const oldNode = oldValues[index];
+          return oldNode && (
+            newNode.text !== oldNode.text ||
+            newNode.selected !== oldNode.selected ||
+            newNode.isLoading !== oldNode.isLoading
+          );
+        }));
+        graphVersion.value++;
+      }
+    } else {
+      // Length changed or first run
+      console.log('Graph structure changed (length or first run)');
+      graphVersion.value++;
+    }
+  },
+  { deep: true }
 );
 
 onMounted(() => {
@@ -295,6 +338,7 @@ function initializeGraph() {
 }
 
 function updateGraph() {
+  console.log('Updating graph');
   if (!svg || !simulation || !container.value) return;
   
   const containerRect = container.value.getBoundingClientRect();
@@ -415,9 +459,10 @@ function updateNodes() {
 
   node.exit().remove();
 
-  // Apply hover behavior to all nodes (both new and existing) with single-glow logic
+  // Apply hover behavior and styling to all nodes (both new and existing)
   const allNodes = nodeGroup.selectAll<SVGGElement, GraphNode>('g')
     .each(function(d) {
+      // Apply styling to all nodes to ensure text updates are reflected
       applyNodeStyle(d3.select(this), false, svg, updateTextForNode);
     })
     .on('mouseenter', function(event: MouseEvent, d: GraphNode) {

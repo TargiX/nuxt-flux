@@ -28,7 +28,20 @@
 
     <!-- Top Right: Image Preview -->
     <div class="image-preview-container glass-card">
-      <h2>Image:</h2>
+      <div class="flex justify-between items-center mb-2 w-full">
+        <h2>Image:</h2>
+        <Button 
+          v-if="tagStore.currentImageUrl"
+          @click="handleDownloadImage"
+          severity="secondary"
+          text
+          size="small"
+          class="w-8 h-8 !p-0 flex items-center justify-center"
+          v-tooltip.top="'Download image'"
+        >
+          <i class="pi pi-download text-sm"></i>
+        </Button>
+      </div>
       <div class="image-container">
         <img
           v-if="tagStore.currentImageUrl"
@@ -116,13 +129,14 @@
             @click="handleSaveDreamClick"
             severity="info"
             :disabled="isSavingDisabled"
-            class="flex items-center justify-center w-8 h-8 !p-0 !bg-blue-600 hover:!bg-blue-700 !border-blue-600 hover:!border-blue-700" 
+            class="flex items-center justify-center !w-8 !h-8 !p-0 !bg-blue-600 hover:!bg-blue-700 !border-blue-600 hover:!border-blue-700" 
             v-tooltip.top="'Save session'" 
           >
             <!-- Show spinner when saving, otherwise show floppy disk icon -->
             <LoadingSpinner
               v-if="isSavingDreamFromComposable"
-              size="sm"
+              :width="16"
+              :height="16"
               strokeWidth="8"
             />
             <!-- Custom floppy disk icon -->
@@ -147,15 +161,28 @@
             @click="handleGenerateImageClick" 
             severity="primary"
             :disabled="isGenerationDisabled"
-            class="flex items-center gap-2 flex-nowrap whitespace-nowrap pl-7 pr-8 py-1"
+            class="flex items-center gap-2 flex-nowrap whitespace-nowrap !h-8 px-3"
           >
+            <!-- Show spinner when generating, otherwise show generate icon -->
             <LoadingSpinner
               v-if="isGeneratingImageFromComposable"
-              size="sm"
+              :width="16"
+              :height="16"
               strokeWidth="8"
             />
-            <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9 4.5a.75.75 0 0 1 .721.544l.813 2.846a3.75 3.75 0 0 0 2.576 2.576l2.846.813a.75.75 0 0 1 0 1.442l-2.846.813a3.75 3.75 0 0 0-2.576 2.576l-.813 2.846a.75.75 0 0 1-1.442 0l-.813-2.846a3.75 3.75 0 0 0-2.576-2.576l-2.846-.813a.75.75 0 0 1 0-1.442l2.846-.813A3.75 3.75 0 0 0 7.466 7.89l.813-2.846A.75.75 0 0 1 9 4.5Zm9-3a.75.75 0 0 1 .728.568l.258 1.036a2.63 2.63 0 0 0 1.91 1.91l1.036.258a.75.75 0 0 1 0 1.456l-1.036.258a2.63 2.63 0 0 0-1.91 1.91l-.258 1.036a.75.75 0 0 1-1.456 0l-.258-1.036a2.624 2.624 0 0 0-1.91-1.91l-1.036-.258a.75.75 0 0 1 0-1.456l1.036-.258a2.625 2.625 0 0 0 1.91-1.91l.258-1.036A.75.75 0 0 1 18 1.5ZM16.5 15a.75.75 0 0 1 .712.513l.394 1.183c.15.447.5.799.948.948l1.183.395a.75.75 0 0 1 0 1.422l-1.183.395a1.5 1.5 0 0 0-.948.948l-.395 1.183a.75.75 0 0 1-1.422 0l-.395-1.183a1.5 1.5 0 0 0-.948-.948l-1.183-.395a.75.75 0 0 1 0-1.422l1.183-.395a1.5 1.5 0 0 0 .948-.948l.395-1.183a.75.75 0 0 1 .71-.513Z" fill="currentColor"></path></svg>
-            {{ isGeneratingImageFromComposable ? 'Generating...' : (isImageCooldownFromComposable ? 'Cooldown...' : 'Generate Image') }}
+            <svg 
+              v-else
+              width="16" 
+              height="16" 
+              viewBox="0 0 24 24" 
+              xmlns="http://www.w3.org/2000/svg"
+              class="flex-shrink-0"
+            >
+              <path d="M9 4.5a.75.75 0 0 1 .721.544l.813 2.846a3.75 3.75 0 0 0 2.576 2.576l2.846.813a.75.75 0 0 1 0 1.442l-2.846.813a3.75 3.75 0 0 0-2.576 2.576l-.813 2.846a.75.75 0 0 1-1.442 0l-.813-2.846a3.75 3.75 0 0 0-2.576-2.576l-2.846-.813a.75.75 0 0 1 0-1.442l2.846-.813A3.75 3.75 0 0 0 7.466 7.89l.813-2.846A.75.75 0 0 1 9 4.5Zm9-3a.75.75 0 0 1 .728.568l.258 1.036a2.63 2.63 0 0 0 1.91 1.91l1.036.258a.75.75 0 0 1 0 1.456l-1.036.258a2.63 2.63 0 0 0-1.91 1.91l-.258 1.036a.75.75 0 0 1-1.456 0l-.258-1.036a2.624 2.624 0 0 0-1.91-1.91l-1.036-.258a.75.75 0 0 1 0-1.456l1.036-.258a2.625 2.625 0 0 0 1.91-1.91l.258-1.036A.75.75 0 0 1 18 1.5ZM16.5 15a.75.75 0 0 1 .712.513l.394 1.183c.15.447.5.799.948.948l1.183.395a.75.75 0 0 1 0 1.422l-1.183.395a1.5 1.5 0 0 0-.948.948l-.395 1.183a.75.75 0 0 1-1.422 0l-.395-1.183a1.5 1.5 0 0 0-.948-.948l-1.183-.395a.75.75 0 0 1 0-1.422l1.183-.395a1.5 1.5 0 0 0 .948-.948l.395-1.183a.75.75 0 0 1 .71-.513Z" fill="currentColor"/>
+            </svg>
+            <span class="text-sm">
+              {{ isGeneratingImageFromComposable ? 'Generating...' : (isImageCooldownFromComposable ? 'Cooldown...' : 'Generate Image') }}
+            </span>
           </Button>
         </div>
       </div>
@@ -395,6 +422,17 @@ watch(() => tagStore.loadedDreamId, (newId, oldId) => {
   // nextTick(() => {
     // skipPrompt.value = false;
   // });
+
+  // Apply viewport for the newly loaded dream's focused zone
+  nextTick(() => {
+    if (!forceGraphRef.value) return;
+    const savedViewport = tagStore.getZoneViewport(tagStore.focusedZone);
+    if (isValidViewport(savedViewport)) {
+      forceGraphRef.value.applyViewport(savedViewport);
+    } else {
+      forceGraphRef.value.applyViewport();
+    }
+  });
 });
 
 // Remove the problematic timeout-based forceViewportReset function
@@ -461,7 +499,7 @@ async function switchToZone(newZone: string, oldZone?: string) {
 }
 
 // Add a function to validate viewport states
-function isValidViewport(viewport: ViewportState): boolean {
+function isValidViewport(viewport: ViewportState | null | undefined): boolean {
   // Check for NaN or invalid values
   if (viewport === null || viewport === undefined) return false;
   
@@ -692,6 +730,61 @@ function handleRefreshPrompt() {
   clearPromptCache(generatedPrompt.value);
   // Regenerate the prompt
   triggerPromptGeneration();
+}
+
+// New handler for downloading the image
+async function handleDownloadImage() {
+  if (!tagStore.currentImageUrl) {
+    toast.add({
+      severity: 'warn',
+      summary: 'No Image',
+      detail: 'No image available to download.',
+      life: 3000,
+    });
+    return;
+  }
+
+  try {
+    // Create a temporary anchor element to trigger download
+    const response = await fetch(tagStore.currentImageUrl);
+    const blob = await response.blob();
+    
+    // Create object URL
+    const url = window.URL.createObjectURL(blob);
+    
+    // Create temporary anchor element
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    
+    // Generate filename based on current prompt or timestamp
+    const promptText = isManualMode.value ? manualPrompt.value : tagStore.currentGeneratedPrompt;
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+    const filename = promptText 
+      ? `dreamseed-${promptText.slice(0, 30).replace(/[^a-zA-Z0-9]/g, '_')}-${timestamp}.png`
+      : `dreamseed-image-${timestamp}.png`;
+    
+    anchor.download = filename;
+    
+    // Trigger download
+    document.body.appendChild(anchor);
+    anchor.click();
+    
+    // Cleanup
+    document.body.removeChild(anchor);
+    window.URL.revokeObjectURL(url);
+    
+    // Show success feedback with subtle animation instead of toast
+    // You can add a subtle animation here if needed
+    
+  } catch (error: any) {
+    console.error('Failed to download image:', error);
+    toast.add({
+      severity: 'error',
+      summary: 'Download Failed',
+      detail: error.message || 'Could not download image. Please try again.',
+      life: 5000,
+    });
+  }
 }
 
 </script>
