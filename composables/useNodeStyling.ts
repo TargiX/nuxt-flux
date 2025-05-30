@@ -294,97 +294,67 @@ export function useNodeStyling() {
       })
       .style('transition', 'all 0.2s ease');
     
-    const formatNodeText = (text: string): string[] => {
-      const words = text.split(' ');
-      if (words.length <= 1) return [text];
-      if (words.length === 2) return words;
-      if (words.length === 3) return [words[0], `${words[1]} ${words[2]}`];
-      const firstLineCount = Math.ceil(words.length / 2);
-      return [words.slice(0, firstLineCount).join(' '), words.slice(firstLineCount).join(' ')];
-    };
-    
     selection.each(function(d) {
       const nodeGroup = d3.select(this);
-      nodeGroup.selectAll('.node-text, .node-text-editor-fo, .loading-indicator').remove();
+      // DO NOT REMOVE .node-text or .node-text-editor-fo here
+      // Only manage .loading-indicator if needed, or handle it separately
 
-      // Create text elements (click handler is removed from here)
-      const textLines = formatNodeText(d.text);
-      const textElements: d3.Selection<SVGTextElement, unknown, any, any>[] = [];
-      textLines.forEach((line, i) => {
-        const yPos = d.size / 2 + 8 + (i * 14);
-        const textElement = nodeGroup.append('text')
-          .attr('class', 'node-text')
-          .attr('x', 0)
-          .attr('y', yPos)
-          .attr('text-anchor', 'middle')
-          .attr('dominant-baseline', 'hanging')
-          .attr('font-size', d.selected ? '11px' : '10px')
-          .attr('fill', (nodeData: unknown) => {
-            const node = nodeData as GraphNode;
-            if (node.isLoading) return 'rgba(255, 255, 255, 0.6)';
-            if (node.selected) return 'rgba(255, 255, 255, 0.95)';
-            return 'rgba(255, 255, 255, 0.8)';
-          })
-          .attr('font-weight', (nodeData: unknown) => {
-            const node = nodeData as GraphNode;
-            if (node.selected) return '700';
-            if (node.isLoading) return '500';
-            return '500';
-          })
-          .attr('text-shadow', (nodeData: unknown) => {
-            const node = nodeData as GraphNode;
-            if (node.selected) return '0 0 6px rgba(255, 255, 255, 0.9)';
-            return '0 0 4px rgba(255, 255, 255, 0.7)';
-          })
-          .style('cursor', d.isLoading ? 'default' : 'text') // Maintained for visual cue
-          .style('pointer-events', d.isLoading ? 'none' : 'auto') // Maintained
-          .style('user-select', 'none')
-          .style('paint-order', 'stroke fill')
-          .style('stroke', 'transparent')
-          .style('stroke-width', '6px')
-          .text(line)
-          .attr('data-node-id', d.id)
-          .raise();
-        textElements.push(textElement);
-        // Reattach click handler for text editing
-        if (textUpdateCallback && !d.isLoading) {
-          textElement.on('click.textEdit', function(event) {
-            event.stopPropagation();
-            startTextEdit(event, d, nodeGroup.node() as SVGGElement, textElements, textUpdateCallback);
-          });
-        }
-      });
+      // Update existing text elements' styles, don't recreate them
+      nodeGroup.selectAll('.node-text')
+        .attr('font-size', d.selected ? '11px' : '10px')
+        .attr('fill', (nodeData: unknown) => {
+          const node = nodeData as GraphNode;
+          if (node.isLoading) return 'rgba(255, 255, 255, 0.6)';
+          if (node.selected) return 'rgba(255, 255, 255, 0.95)';
+          return 'rgba(255, 255, 255, 0.8)';
+        })
+        .attr('font-weight', (nodeData: unknown) => {
+          const node = nodeData as GraphNode;
+          if (node.selected) return '700';
+          if (node.isLoading) return '500';
+          return '500';
+        })
+        .attr('text-shadow', (nodeData: unknown) => {
+          const node = nodeData as GraphNode;
+          if (node.selected) return '0 0 6px rgba(255, 255, 255, 0.9)';
+          return '0 0 4px rgba(255, 255, 255, 0.7)';
+        });
 
+      // Handle loading indicator separately if it needs to be removed/added
       if (d.isLoading) {
-        const spinnerGroup = nodeGroup.append('g')
-          .attr('class', 'loading-indicator')
-          .attr('transform', `translate(0, 0)`);
-        spinnerGroup.append('circle')
-          .attr('cx', 0)
-          .attr('cy', 0)
-          .attr('r', 18)
-          .attr('fill', 'rgba(255, 255, 255, 0.1)')
-          .attr('stroke', 'none');
-        const spinnerRadius = 13;
-        const strokeWidth = 2;
-        const spinner = spinnerGroup.append('circle')
-          .attr('cx', 0)
-          .attr('cy', 0)
-          .attr('r', spinnerRadius)
-          .attr('fill', 'none')
-          .attr('stroke', '#ffffff')
-          .attr('stroke-width', strokeWidth)
-          .attr('stroke-linecap', 'round')
-          .attr('stroke-dasharray', `${spinnerRadius * 2 * Math.PI * 0.25} ${spinnerRadius * 2 * Math.PI * 0.75}`)
-          .attr('transform-origin', '0 0');
-        spinner.append('animateTransform')
-          .attr('attributeName', 'transform')
-          .attr('attributeType', 'XML')
-          .attr('type', 'rotate')
-          .attr('from', '0 0 0')
-          .attr('to', '360 0 0')
-          .attr('dur', '1s')
-          .attr('repeatCount', 'indefinite');
+        if (nodeGroup.select('.loading-indicator').empty()) {
+          const spinnerGroup = nodeGroup.append('g')
+            .attr('class', 'loading-indicator')
+            .attr('transform', `translate(0, 0)`);
+          spinnerGroup.append('circle')
+            .attr('cx', 0)
+            .attr('cy', 0)
+            .attr('r', 18)
+            .attr('fill', 'rgba(255, 255, 255, 0.1)')
+            .attr('stroke', 'none');
+          const spinnerRadius = 13;
+          const strokeWidth = 2;
+          const spinner = spinnerGroup.append('circle')
+            .attr('cx', 0)
+            .attr('cy', 0)
+            .attr('r', spinnerRadius)
+            .attr('fill', 'none')
+            .attr('stroke', '#ffffff')
+            .attr('stroke-width', strokeWidth)
+            .attr('stroke-linecap', 'round')
+            .attr('stroke-dasharray', `${spinnerRadius * 2 * Math.PI * 0.25} ${spinnerRadius * 2 * Math.PI * 0.75}`)
+            .attr('transform-origin', '0 0');
+          spinner.append('animateTransform')
+            .attr('attributeName', 'transform')
+            .attr('attributeType', 'XML')
+            .attr('type', 'rotate')
+            .attr('from', '0 0 0')
+            .attr('to', '360 0 0')
+            .attr('dur', '1s')
+            .attr('repeatCount', 'indefinite');
+        }
+      } else {
+        nodeGroup.select('.loading-indicator').remove();
       }
     });
     
@@ -536,12 +506,23 @@ export function useNodeStyling() {
     return new URL(`/assets/pics/subject/${filename}.png`, import.meta.url).href;
   };
 
+  // Helper function to format text, keep this as it's used by ForceGraph.vue's nodeEnter
+  const formatNodeText = (text: string): string[] => {
+    const words = text.split(' ');
+    if (words.length <= 1) return [text];
+    if (words.length === 2) return words;
+    if (words.length === 3) return [words[0], `${words[1]} ${words[2]}`];
+    const firstLineCount = Math.ceil(words.length / 2);
+    return [words.slice(0, firstLineCount).join(' '), words.slice(firstLineCount).join(' ')];
+  };
+
   return {
     applyNodeStyle,
     getSubjectImagePath,
     createNodeGradients,
     // Expose text editing functions
     startTextEdit,
+    formatNodeText, // Expose formatNodeText
     // saveTextEdit, // Not directly called from ForceGraph
     // cancelTextEdit, // Not directly called from ForceGraph
     // cleanupEdit // Not directly called from ForceGraph
