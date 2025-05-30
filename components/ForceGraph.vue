@@ -102,15 +102,23 @@ const {
   applyViewport: applyViewportFn,
 } = useZoom();
 
-const { 
-  applyNodeStyle, 
-  getSubjectImagePath, 
-  createNodeGradients, 
-  startTextEdit, 
-  formatNodeText
+const {
+  manageNodeVisualsAndText,
+  createNodeGradients,
 } = useNodeStyling();
-const { createLinkGradient, createUniqueGradient, updateGradientPositions, applyLinkStyle } = useLinkStyling();
-const { createSimulation, updateSimulation, createDragBehavior } = useForceSimulation();
+
+const { 
+  createLinkGradient, 
+  createUniqueGradient, 
+  updateGradientPositions, 
+  applyLinkStyle 
+} = useLinkStyling();
+
+const { 
+  createSimulation, 
+  updateSimulation, 
+  createDragBehavior 
+} = useForceSimulation();
 
 // Add version stamp for optimized watching
 const graphVersion = ref(0);
@@ -399,8 +407,6 @@ function updateLinks() {
 function updateNodes() {
   if (!nodeGroup || !simulation || !svg) return;
 
-  createNodeGradients(svg);
-
   const node = nodeGroup.selectAll<SVGGElement, GraphNode>('g.node')
     .data(props.nodes, d => d.id);
 
@@ -410,232 +416,96 @@ function updateNodes() {
     .call(createDragBehavior(simulation))
     .on('click', (event: MouseEvent, d: GraphNode) => {
       const targetEl = event.target as Element;
-      
-      if (targetEl.tagName.toLowerCase() === 'input') {
-        return;
-      }
-
+      if (targetEl.tagName.toLowerCase() === 'input') return; // Click on active editor input
       console.log('Node clicked:', d.id);
       emit('nodeClick', d.id);
       updateNodeSelection(d.id);
       if (svg) {
-        // Temporarily pin the node to prevent force drift during centering
-        d.fx = d.x;
-        d.fy = d.y;
-        
-        // Snappy centering using predictive translation
+        d.fx = d.x; d.fy = d.y;
         centerOnNodeFn(svg, d);
-        
-        // Release the pin after centering completes
-        setTimeout(() => {
-          d.fx = null;
-          d.fy = null;
-        }, 750); // Match the centering duration
+        setTimeout(() => { d.fx = null; d.fy = null; }, 750);
       }
-      // Hide context menu on left click
-      if (contextMenu.value) {
-        contextMenu.value.hide();
-      }
+      if (contextMenu.value) contextMenu.value.hide();
     })
     .on('contextmenu', (event: MouseEvent, d: GraphNode) => {
-      event.preventDefault(); // Prevent browser default context menu
+      event.preventDefault();
       contextMenuNodeId.value = d.id;
-      if (contextMenu.value) {
-        contextMenu.value.show(event);
-      }
+      if (contextMenu.value) contextMenu.value.show(event);
       console.log('Node right-clicked:', d.id);
     });
   
-
-  nodeEnter.append('circle')
-    .attr('r', d => d.size / 2)
-    .attr('class', 'node-circle');
-  
-  nodeEnter.filter(d => d.zone === 'Subject' && !d.parentId)
-    .append('image')
-    .attr('xlink:href', d => getSubjectImagePath(d.text))
-    .attr('x', d => -d.size / 2)
-    .attr('y', d => -d.size / 2)
-    .attr('width', d => d.size)
-    .attr('height', d => d.size)
-    .attr('class', 'subject-node-image')
-    .on('error', function() {
-      d3.select(this).style('display', 'none');
-    });
-
-  // Append text elements only on enter
-  nodeEnter.each(function(d) {
-    const nodeGroup = d3.select(this);
-    const textLines = formatNodeText(d.text);
-    const textElements: d3.Selection<SVGTextElement, unknown, any, any>[] = [];
-    textLines.forEach((line, i) => {
-      const yPos = d.size / 2 + 8 + (i * 14);
-      const textElement = nodeGroup.append('text')
-        .attr('class', 'node-text')
-        .attr('x', 0)
-        .attr('y', yPos)
-        .attr('text-anchor', 'middle')
-        .attr('dominant-baseline', 'hanging')
-        // Initial styles, applyNodeStyle will adjust them later if needed
-        .attr('font-size', '10px') 
-        .attr('fill', 'rgba(255, 255, 255, 0.8)')
-        .attr('font-weight', '500')
-        .attr('text-shadow', '0 0 4px rgba(255, 255, 255, 0.7)')
-        .style('cursor', d.isLoading ? 'default' : 'text')
-        .style('pointer-events', d.isLoading ? 'none' : 'auto')
-        .style('user-select', 'none')
-        .style('paint-order', 'stroke fill')
-        .style('stroke', 'transparent')
-        .style('stroke-width', '6px')
-        .text(line)
-        .attr('data-node-id', d.id);
-      textElements.push(textElement);
-
-      if (!d.isLoading) {
-        textElement.on('click.textEdit', function(event) {
-          event.stopPropagation();
-          // Pass the array of d3 selections of text elements for this node
-          startTextEdit(event, d, nodeGroup.node() as SVGGElement, textElements, updateTextForNode);
-        });
-      }
-    });
+  nodeEnter.each(function(d) { // `this` is the <g class='node'> element
+    manageNodeVisualsAndText(d3.select(this), true, { updateTextForNode }, false, svg!, null);
   });
 
   node.exit().remove();
   
   const nodeMerge = nodeEnter.merge(node as any);
   
-  // Apply visual styles and handle hover effects
-  nodeMerge.each(function(d) {
-    // Apply base styles (no hover)
-    applyNodeStyle(d3.select(this), false, svg);
-    
-    // Update text content if it changed
-    const textLines = formatNodeText(d.text);
-    const currentTextGroup = d3.select(this);
-    const textElementsSelection = currentTextGroup.selectAll<SVGTextElement, string>('.node-text').data(textLines);
-    
-    // Update existing text elements
-    textElementsSelection.text(line => line);
-    
-    // Add new text elements if the number of lines increased
-    textElementsSelection.enter().append('text')
-      .attr('class', 'node-text')
-      .attr('x', 0)
-      .attr('y', (line, i, nodes) => {
-        // Calculate y position based on existing elements or default if none
-        const existingTextElements = currentTextGroup.selectAll('.node-text');
-        const baseIndex = existingTextElements.size() > nodes.length 
-                          ? existingTextElements.size() - nodes.length + i 
-                          : i;
-        return d.size / 2 + 8 + (baseIndex * 14);
-      })
-      .attr('text-anchor', 'middle')
-      .attr('dominant-baseline', 'hanging')
-      .attr('font-size', d.selected ? '11px' : '10px') // Match applyNodeStyle logic or initial setup
-      .attr('fill', 'rgba(255, 255, 255, 0.8)') // Match initial setup
-      .attr('font-weight', d.selected ? '700' : '500') // Match applyNodeStyle logic or initial setup
-      .attr('text-shadow', d.selected ? '0 0 6px rgba(255, 255, 255, 0.9)' : '0 0 4px rgba(255, 255, 255, 0.7)') // Match applyNodeStyle logic or initial setup
-      .style('cursor', d.isLoading ? 'default' : 'text')
-      .style('pointer-events', d.isLoading ? 'none' : 'auto')
-      .style('user-select', 'none')
-      .style('paint-order', 'stroke fill')
-      .style('stroke', 'transparent')
-      .style('stroke-width', '6px')
-      .attr('data-node-id', d.id)
-      .text(line => line)
-      .each(function(lineData) { // `this` refers to the newly created text element
-        const textElement = d3.select(this);
-        if (!d.isLoading) {
-          textElement.on('click.textEdit', function(event) {
-            event.stopPropagation();
-            // Need to collect all text elements for this node again for startTextEdit
-            const allTextElementsForNode = currentTextGroup.selectAll<SVGTextElement, unknown>('.node-text').nodes()
-              .map(el => d3.select(el)); 
-            startTextEdit(event, d, currentTextGroup.node() as SVGGElement, allTextElementsForNode, updateTextForNode);
-          });
-        }
-      });
-      
-    // Remove text elements if the number of lines decreased
-    textElementsSelection.exit().remove();
+  nodeMerge.each(function(d) { // `this` is the <g class='node'> element
+    const isCurrentlyHovered = currentHoveredNodeId === d.id && !d.selected && !d.isLoading;
+    manageNodeVisualsAndText(d3.select(this), false, { updateTextForNode }, isCurrentlyHovered, svg!, null);
   })
   .on('mouseenter', function(event: MouseEvent, d: GraphNode) {
-    // Only trigger hover styling when entering the group itself, not its children
     if (event.target !== this) return;
     if (hoverThrottleTimeout) clearTimeout(hoverThrottleTimeout);
     hoverThrottleTimeout = window.setTimeout(() => {
       clearAllHoverStates();
       if (!d.selected && !d.isLoading) {
         currentHoveredNodeId = d.id;
-        applyNodeStyle(d3.select(this), true, svg);
+        manageNodeVisualsAndText(d3.select(this), false, { updateTextForNode }, true, svg!, null);
       }
       hoverThrottleTimeout = null;
     }, 50);
   })
   .on('mouseleave', function(event: MouseEvent, d: GraphNode) {
-    // Only trigger hover cleanup when leaving the group itself, not its children
     if (event.target !== this) return;
     if (hoverThrottleTimeout) { clearTimeout(hoverThrottleTimeout); hoverThrottleTimeout = null; }
     if (currentHoveredNodeId === d.id && !d.selected && !d.isLoading) {
       currentHoveredNodeId = null;
-      applyNodeStyle(d3.select(this), false, svg);
+      manageNodeVisualsAndText(d3.select(this), false, { updateTextForNode }, false, svg!, null);
     }
-  })
-  
+  });
 
-  // Add a global mouseleave handler to the SVG to catch edge cases
   if (svg) {
     svg.on('mouseleave', () => {
-      // Clear all hover states when mouse leaves the entire SVG
       clearAllHoverStates();
     });
   }
 }
 
-// Helper function to clear all hover states
 function clearAllHoverStates() {
   if (!nodeGroup || !svg) return;
-  
-  // Clear any pending hover timeout
   if (hoverThrottleTimeout) {
     clearTimeout(hoverThrottleTimeout);
     hoverThrottleTimeout = null;
   }
-  
-  // Reset the tracked hovered node
-  const previousHoveredId = currentHoveredNodeId;
+  const previouslyHoveredNodeId = currentHoveredNodeId;
   currentHoveredNodeId = null;
   
-  // Clear hover styling from all unselected, non-loading nodes
   nodeGroup.selectAll<SVGGElement, GraphNode>('g.node')
     .each(function(d) {
-      applyNodeStyle(d3.select(this), false, svg);
+      if (d.id === previouslyHoveredNodeId || !d.selected && !d.isLoading) {
+         manageNodeVisualsAndText(d3.select(this), false, { updateTextForNode }, false, svg!, null);
+      }
     });
 }
 
 function updateNodeSelection(id: string) {
   if (!nodeGroup || !svg) return;
 
-  nodeGroup.selectAll<SVGGElement, GraphNode>('g')
-    .each(function(d) {
-      applyNodeStyle(d3.select(this), false, svg);
-    });
-
-  const node = nodeGroup.selectAll<SVGGElement, GraphNode>('g.node')
-    .filter(d => d.id === id);
-    
-  setTimeout(() => {
-    applyNodeStyle(node, true, svg);
-    node.select('.node-circle')
+  const nodeToSelect = nodeGroup.selectAll<SVGGElement, GraphNode>('g.node')
+    .filter(d_node => d_node.id === id);
+  
+  if (!nodeToSelect.empty()) {
+    nodeToSelect.select('.node-circle')
       .transition()
-      .duration(300)
-      .attr('r', d => d.size / 2 * 1.05)
+      .duration(150)
+      .attr('r', d_node => d_node.size / 2 * 1.1)
       .transition()
-      .duration(300)
-      .attr('r', d => d.size / 2);
-    node.raise();
-  }, 50);
+      .duration(150)
+      .attr('r', d_node => d_node.size / 2);
+  }
 }
 
 function saveNodePositions() {
