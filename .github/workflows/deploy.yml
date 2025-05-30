@@ -13,6 +13,37 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4 # Use latest version
 
+      - name: DEBUG - Print secret values (TEMPORARY)
+        run: |
+          echo "=== DEBUG: SECRET VALUES ==="
+          echo "DATABASE_URL:"
+          echo "${{ secrets.DATABASE_URL }}" | sed 's/./& /g'
+          echo ""
+          echo "NEXTAUTH_SECRET:"
+          echo "${{ secrets.NEXTAUTH_SECRET }}" | sed 's/./& /g'
+          echo ""
+          echo "NEXTAUTH_URL:"
+          echo "${{ secrets.NEXTAUTH_URL }}" | sed 's/./& /g'
+          echo ""
+          echo "NUXT_AUTH_SECRET:"
+          echo "${{ secrets.NUXT_AUTH_SECRET }}" | sed 's/./& /g'
+          echo ""
+          echo "NUXT_GOOGLE_CLIENT_ID:"
+          echo "${{ secrets.NUXT_GOOGLE_CLIENT_ID }}" | sed 's/./& /g'
+          echo ""
+          echo "NUXT_GOOGLE_CLIENT_SECRET:"
+          echo "${{ secrets.NUXT_GOOGLE_CLIENT_SECRET }}" | sed 's/./& /g'
+          echo ""
+          echo "NUXT_NEXTAUTH_SECRET:"
+          echo "${{ secrets.NUXT_NEXTAUTH_SECRET }}" | sed 's/./& /g'
+          echo ""
+          echo "NUXT_NEXTAUTH_URL:"
+          echo "${{ secrets.NUXT_NEXTAUTH_URL }}" | sed 's/./& /g'
+          echo ""
+          echo "GEMINI_API_KEY:"
+          echo "${{ secrets.GEMINI_API_KEY }}" | sed 's/./& /g'
+          echo "=== END DEBUG ==="
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
         with:
