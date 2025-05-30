@@ -26,6 +26,15 @@ export function useZoom() {
 
     zoomBehavior.value = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.1, 8])
+      .filter(event => {
+        // Never act if the pointer started on text or an inline editor
+        const t = event.target as HTMLElement;
+        if (t.tagName === 'text') return false;
+        if (t.tagName === 'input') return false;
+        if (t.closest('.node-text-editor-fo')) return false;
+        // Default zoom filter for buttons / wheel etc.
+        return (!event.ctrlKey && !event.button && !event.shiftKey);
+      })
       .on('zoom', (event: d3.D3ZoomEvent<SVGSVGElement, unknown>) => {
         g.attr('transform', event.transform.toString());
       });

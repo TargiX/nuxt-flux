@@ -175,19 +175,29 @@ export function useForceSimulation() {
    * Creates a drag behavior for nodes
    */
   const createDragBehavior = (simulation: d3.Simulation<GraphNode, GraphLink>) => {
-    return d3.drag<any, GraphNode>()
-      // Introduce a 5px threshold to prevent accidental drags on small cursor movements
+    return d3.drag<SVGGElement, GraphNode>()
       .clickDistance(5)
-      .on('start', (event) => {
+  
+      // 1️⃣  <<—  Reject drags that start on text / inputs —>>
+      .filter(event => {
+        if (event.button !== 0) return false;             // only left-button
+        const t = event.target as HTMLElement;
+        if (t.tagName === 'text') return false;           // node label
+        if (t.tagName === 'input') return false;          // inline editor
+        if (t.closest('.node-text-editor-fo')) return false; // editor container
+        return true;                                      // otherwise allow
+      })
+  
+      .on('start', event => {
         if (!event.active) simulation.alphaTarget(0.3).restart();
         event.subject.fx = event.subject.x;
         event.subject.fy = event.subject.y;
       })
-      .on('drag', (event) => {
+      .on('drag', event => {
         event.subject.fx = event.x;
         event.subject.fy = event.y;
       })
-      .on('end', (event) => {
+      .on('end', event => {
         if (!event.active) simulation.alphaTarget(0);
         event.subject.fx = null;
         event.subject.fy = null;

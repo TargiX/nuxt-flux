@@ -102,7 +102,7 @@ const {
   applyViewport: applyViewportFn,
 } = useZoom();
 
-const { applyNodeStyle, getSubjectImagePath, createNodeGradients } = useNodeStyling();
+const { applyNodeStyle, startTextEdit, getSubjectImagePath, createNodeGradients } = useNodeStyling();
 const { createLinkGradient, createUniqueGradient, updateGradientPositions, applyLinkStyle } = useLinkStyling();
 const { createSimulation, updateSimulation, createDragBehavior } = useForceSimulation();
 
@@ -271,6 +271,12 @@ function initializeGraph() {
 
   initializeZoom(svg, g, width, height, 1.4);
 
+  // [TEMPORARY DEBUG] Add trace listener to see all clicks
+  d3.select('body').on('click.trace', (e: any) => {
+    const t = e.target as HTMLElement;
+    console.log('[TRACE] click on', t.tagName, t.className);
+  });
+
   applyViewportFn(svg, undefined, 0);
 
   simulation = createSimulation(props.nodes, props.links, width, height);
@@ -397,7 +403,7 @@ function updateNodes() {
 
   createNodeGradients(svg);
 
-  const node = nodeGroup.selectAll<SVGGElement, GraphNode>('g')
+  const node = nodeGroup.selectAll<SVGGElement, GraphNode>('g.node')
     .data(props.nodes, d => d.id);
 
   const nodeEnter = node.enter()
@@ -406,34 +412,30 @@ function updateNodes() {
     .call(createDragBehavior(simulation))
     .on('click', (event: MouseEvent, d: GraphNode) => {
       const targetEl = event.target as Element;
-      if (targetEl.tagName.toLowerCase() === 'input') {
+      if (targetEl.tagName.toLowerCase() === 'text' && targetEl.classList.contains('node-text')) {
+        event.stopPropagation();
+        const nodeEl = (event.currentTarget as SVGGElement);
+        const textEls = Array.from(nodeEl.querySelectorAll('text.node-text'))
+          .map(el => d3.select(el as SVGTextElement) as d3.Selection<SVGTextElement, unknown, any, any>);
+        startTextEdit(event, d, nodeEl, textEls, updateTextForNode);
+        // Bring this node group above all others so its text/input is not occluded
+        d3.select(nodeEl).raise();
         return;
       }
-
-      console.log('Node clicked:', d.id);
+      // Otherwise treat as node click for selection and centering
+      const inputEl = event.target as Element;
+      if (inputEl.tagName.toLowerCase() === 'input') return;
       emit('nodeClick', d.id);
       updateNodeSelection(d.id);
       if (svg) {
-        // Temporarily pin the node to prevent force drift during centering
-        d.fx = d.x;
-        d.fy = d.y;
-        
-        // Snappy centering using predictive translation
+        d.fx = d.x; d.fy = d.y;
         centerOnNodeFn(svg, d);
-        
-        // Release the pin after centering completes
-        setTimeout(() => {
-          d.fx = null;
-          d.fy = null;
-        }, 750); // Match the centering duration
+        setTimeout(() => { d.fx = null; d.fy = null; }, 750);
       }
-      // Hide context menu on left click
-      if (contextMenu.value) {
-        contextMenu.value.hide();
-      }
+      if (contextMenu.value) contextMenu.value.hide();
     })
     .on('contextmenu', (event: MouseEvent, d: GraphNode) => {
-      event.preventDefault(); // Prevent browser default context menu
+      event.preventDefault();
       contextMenuNodeId.value = d.id;
       if (contextMenu.value) {
         contextMenu.value.show(event);
@@ -458,46 +460,30 @@ function updateNodes() {
     });
 
   node.exit().remove();
-
-  // Apply hover behavior and styling to all nodes (both new and existing)
-  const allNodes = nodeGroup.selectAll<SVGGElement, GraphNode>('g')
-    .each(function(d) {
-      // Apply styling to all nodes to ensure text updates are reflected
+  // Enter + Update: bind styling and hover handlers once, then layer above links
+  const nodeMerge = nodeEnter.merge(node as any);
+  nodeMerge.each(function(d) {
+    applyNodeStyle(d3.select(this), false, svg, updateTextForNode);
+  })
+  .on('mouseenter', function(event: MouseEvent, d: GraphNode) {
+    if (hoverThrottleTimeout) clearTimeout(hoverThrottleTimeout);
+    hoverThrottleTimeout = window.setTimeout(() => {
+      clearAllHoverStates();
+      if (!d.selected && !d.isLoading) {
+        currentHoveredNodeId = d.id;
+        applyNodeStyle(d3.select(this), true, svg, updateTextForNode);
+      }
+      hoverThrottleTimeout = null;
+    }, 50);
+  })
+  .on('mouseleave', function(event: MouseEvent, d: GraphNode) {
+    if (hoverThrottleTimeout) { clearTimeout(hoverThrottleTimeout); hoverThrottleTimeout = null; }
+    if (currentHoveredNodeId === d.id && !d.selected && !d.isLoading) {
+      currentHoveredNodeId = null;
       applyNodeStyle(d3.select(this), false, svg, updateTextForNode);
-    })
-    .on('mouseenter', function(event: MouseEvent, d: GraphNode) {
-      // Throttle hover events to prevent rapid state changes
-      if (hoverThrottleTimeout) {
-        clearTimeout(hoverThrottleTimeout);
-      }
-      
-      hoverThrottleTimeout = window.setTimeout(() => {
-        // Clear any previous hover state first
-        clearAllHoverStates();
-        
-        // Apply hover styling with glow effect for better interactivity indication
-        if (!d.selected && !d.isLoading) {
-          currentHoveredNodeId = d.id;
-          applyNodeStyle(d3.select(this), true, svg, updateTextForNode);
-        }
-        hoverThrottleTimeout = null;
-      }, 50); // 50ms throttle to prevent rapid changes
-    })
-    .on('mouseleave', function(event: MouseEvent, d: GraphNode) {
-      // Clear any pending hover timeout
-      if (hoverThrottleTimeout) {
-        clearTimeout(hoverThrottleTimeout);
-        hoverThrottleTimeout = null;
-      }
-      
-      // Only clear hover if this is the currently hovered node
-      if (currentHoveredNodeId === d.id) {
-        currentHoveredNodeId = null;
-        if (!d.selected && !d.isLoading) {
-          applyNodeStyle(d3.select(this), false, svg, updateTextForNode);
-        }
-      }
-    });
+    }
+  })
+  .raise();
 
   // Add a global mouseleave handler to the SVG to catch edge cases
   if (svg) {
@@ -523,7 +509,7 @@ function clearAllHoverStates() {
   currentHoveredNodeId = null;
   
   // Clear hover styling from all unselected, non-loading nodes
-  nodeGroup.selectAll<SVGGElement, GraphNode>('g')
+  nodeGroup.selectAll<SVGGElement, GraphNode>('g.node')
     .each(function(d) {
       if (!d.selected && !d.isLoading) {
         applyNodeStyle(d3.select(this), false, svg, updateTextForNode);
@@ -537,12 +523,12 @@ function updateNodeSelection(id: string) {
   // Clear any hover states first
   clearAllHoverStates();
 
-  nodeGroup.selectAll<SVGGElement, GraphNode>('g')
+  nodeGroup.selectAll<SVGGElement, GraphNode>('g.node')
     .each(function(d) {
       applyNodeStyle(d3.select(this), false, svg, updateTextForNode);
     });
 
-  const node = nodeGroup.selectAll<SVGGElement, GraphNode>('g')
+  const node = nodeGroup.selectAll<SVGGElement, GraphNode>('g.node')
     .filter(d => d.id === id);
     
   setTimeout(() => {

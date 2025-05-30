@@ -5,10 +5,8 @@ import * as d3 from 'd3';
 // Helper to check if currently editing
 let currentlyEditingNodeId: string | null = null;
 let activeInput: HTMLInputElement | null = null;
-// Store the callback globally to avoid recreating it
-let globalTextUpdateCallback: ((nodeId: string, newText: string) => void) | null = null;
 // Track if we've initialized the event handlers
-let eventHandlersInitialized = false;
+// let eventHandlersInitialized = false; // No longer needed here
 
 // Add a cleanup flag to prevent double-removal
 let isCleaningUp = false;
@@ -262,31 +260,16 @@ export function useNodeStyling() {
     svg?: Selection<any, unknown, null, undefined> | null,
     textUpdateCallback?: (nodeId: string, newText: string) => void
   ) => {
-    // Store the callback globally if provided
-    if (textUpdateCallback) {
-      globalTextUpdateCallback = textUpdateCallback;
-      
-      // Initialize global event handlers only once
-      if (!eventHandlersInitialized && svg && svg.node()) {
-        console.log('Initializing global handlers');
-        initializeGlobalEventHandlers(svg);
-      }
-    }
-    
-    // Create gradients if needed
     if (svg) {
       createNodeGradients(svg);
     }
     
-    // Apply circle styling with enhanced visual states
     selection.select('.node-circle')
       .attr('fill', d => getNodeGradient(d))
       .attr('filter', d => {
-        // Always apply filter for loading or selected states
         if (d.isLoading || d.selected) {
           return getNodeGlowFilter(d);
         }
-        // Apply glow on hover for unselected nodes to show interactivity
         return isHover ? 'url(#glow-default)' : null;
       })
       .attr('stroke', d => {
@@ -297,189 +280,136 @@ export function useNodeStyling() {
       .attr('stroke-width', d => {
         if (d.isLoading) return 2;
         if (d.selected) return 2;
-        return isHover ? 2 : 1; // Increased stroke width on hover
+        return isHover ? 2 : 1;
       })
       .attr('r', d => {
-        // Slightly larger radius for loading state and hover
         const baseRadius = d.size / 2;
         if (d.isLoading) return baseRadius * 1.05;
-        if (isHover && !d.selected) return baseRadius * 1.03; // Subtle size increase on hover
+        if (isHover && !d.selected) return baseRadius * 1.03;
         return baseRadius;
       })
       .style('opacity', d => {
-        // Subtle opacity change for loading state
         if (d.isLoading) return 0.8;
         return 1;
       })
-      .style('transition', 'all 0.2s ease'); // Smooth transitions for hover effects
+      .style('transition', 'all 0.2s ease');
     
-    // Enhanced Text Formatting Function
     const formatNodeText = (text: string): string[] => {
       const words = text.split(' ');
       if (words.length <= 1) return [text];
       if (words.length === 2) return words;
       if (words.length === 3) return [words[0], `${words[1]} ${words[2]}`];
-      
-      // For longer text, try to balance line lengths
       const firstLineCount = Math.ceil(words.length / 2);
       return [words.slice(0, firstLineCount).join(' '), words.slice(firstLineCount).join(' ')];
     };
     
-    // --- Enhanced Text Handling --- 
     selection.each(function(d) {
       const nodeGroup = d3.select(this);
-      
-      // Remove any previous text elements or foreignObjects to avoid duplication
       nodeGroup.selectAll('.node-text, .node-text-editor-fo, .loading-indicator').remove();
 
-      // Create text elements with enhanced styling FIRST
+      // Create text elements (click handler is removed from here)
       const textLines = formatNodeText(d.text);
       const textElements: d3.Selection<SVGTextElement, unknown, any, any>[] = [];
-      
       textLines.forEach((line, i) => {
-        const yPos = d.size / 2 + 8 + (i * 14); // Increased line spacing for better readability
+        const yPos = d.size / 2 + 8 + (i * 14);
         const textElement = nodeGroup.append('text')
           .attr('class', 'node-text')
           .attr('x', 0)
           .attr('y', yPos)
           .attr('text-anchor', 'middle')
           .attr('dominant-baseline', 'hanging')
-          .attr('font-size', d.selected ? '11px' : '10px') // Larger font for selected nodes
-          .attr('fill', (d: unknown) => {
-            const node = d as GraphNode;
+          .attr('font-size', d.selected ? '11px' : '10px')
+          .attr('fill', (nodeData: unknown) => {
+            const node = nodeData as GraphNode;
             if (node.isLoading) return 'rgba(255, 255, 255, 0.6)';
             if (node.selected) return 'rgba(255, 255, 255, 0.95)';
             return 'rgba(255, 255, 255, 0.8)';
           })
-          .attr('font-weight', (d: unknown) => {
-            const node = d as GraphNode;
+          .attr('font-weight', (nodeData: unknown) => {
+            const node = nodeData as GraphNode;
             if (node.selected) return '700';
             if (node.isLoading) return '500';
             return '500';
           })
-          .attr('text-shadow', (d: unknown) => {
-            const node = d as GraphNode;
+          .attr('text-shadow', (nodeData: unknown) => {
+            const node = nodeData as GraphNode;
             if (node.selected) return '0 0 6px rgba(255, 255, 255, 0.9)';
             return '0 0 4px rgba(255, 255, 255, 0.7)';
           })
-          .style('cursor', d.isLoading ? 'default' : 'text')
-          .style('pointer-events', d.isLoading ? 'none' : 'auto')
+          .style('cursor', d.isLoading ? 'default' : 'text') // Maintained for visual cue
+          .style('pointer-events', d.isLoading ? 'none' : 'auto') // Maintained
+          .style('user-select', 'none')
+          .style('paint-order', 'stroke fill')
+          .style('stroke', 'transparent')
+          .style('stroke-width', '6px')
           .text(line)
-          .attr('data-node-id', d.id);
-          
-        // Add text editing functionality only for non-loading nodes
-        if (globalTextUpdateCallback && !d.isLoading) {
-          textElement.on('click', function(event) {
-            console.log('Direct text click:', d.id);
+          .attr('data-node-id', d.id)
+          .raise();
+        textElements.push(textElement);
+        // Reattach click handler for text editing
+        if (textUpdateCallback && !d.isLoading) {
+          textElement.on('click.textEdit', function(event) {
             event.stopPropagation();
-            if (currentlyEditingNodeId !== null) return;
-            
-            startTextEdit(event, d, nodeGroup as any, textElements, globalTextUpdateCallback!);
+            startTextEdit(event, d, nodeGroup.node() as SVGGElement, textElements, textUpdateCallback);
           });
         }
-        
-        textElements.push(textElement);
       });
 
-      // Add loading indicator LAST so it renders on top of everything else
       if (d.isLoading) {
-        // Create SVG circular spinner centered inside the node circle
         const spinnerGroup = nodeGroup.append('g')
           .attr('class', 'loading-indicator')
-          .attr('transform', `translate(0, 0)`); // Center inside node
-          
-        // Create a semi-transparent background circle for better visibility
+          .attr('transform', `translate(0, 0)`);
         spinnerGroup.append('circle')
           .attr('cx', 0)
           .attr('cy', 0)
-          .attr('r', 18) // Larger background
-          .attr('fill', 'rgba(255, 255, 255, 0.1)') // Dark semi-transparent background
+          .attr('r', 18)
+          .attr('fill', 'rgba(255, 255, 255, 0.1)')
           .attr('stroke', 'none');
-          
-        // Create the circular spinner path
-        const spinnerRadius = 13; // Smaller size for better proportion
-        const strokeWidth = 2; // Thicker stroke for visibility
-        
-        // Animated spinner arc - bright white for maximum visibility
+        const spinnerRadius = 13;
+        const strokeWidth = 2;
         const spinner = spinnerGroup.append('circle')
           .attr('cx', 0)
           .attr('cy', 0)
           .attr('r', spinnerRadius)
           .attr('fill', 'none')
-          .attr('stroke', '#ffffff') // Pure white
+          .attr('stroke', '#ffffff')
           .attr('stroke-width', strokeWidth)
           .attr('stroke-linecap', 'round')
-          .attr('stroke-dasharray', `${spinnerRadius * 2 * Math.PI * 0.25} ${spinnerRadius * 2 * Math.PI * 0.75}`) // 25% visible, 75% gap
+          .attr('stroke-dasharray', `${spinnerRadius * 2 * Math.PI * 0.25} ${spinnerRadius * 2 * Math.PI * 0.75}`)
           .attr('transform-origin', '0 0');
-          
-        // Add rotation animation
-        spinner
-          .append('animateTransform')
+        spinner.append('animateTransform')
           .attr('attributeName', 'transform')
           .attr('attributeType', 'XML')
           .attr('type', 'rotate')
           .attr('from', '0 0 0')
           .attr('to', '360 0 0')
-          .attr('dur', '1s') // Standard 1 second rotation
+          .attr('dur', '1s')
           .attr('repeatCount', 'indefinite');
       }
     });
     
-    // Selected nodes should be brought to front
     if (selection.data().length > 0 && selection.data()[0]?.selected) {
       selection.raise();
     }
   };
   
-  /**
-   * Set up global event delegation for text editing
-   */
-  function initializeGlobalEventHandlers(svg: Selection<any, unknown, null, undefined>) {
-    if (eventHandlersInitialized) return;
-    
-    const svgNode = svg.node();
-    if (!svgNode) return;
-    
-    // For debugging - add a click handler to the SVG root
-    svgNode.addEventListener('click', (e: Event) => {
-      const target = e.target as Element;
-      console.log('SVG click event:', {
-        target: target.tagName,
-        classes: target.classList.toString(),
-        isText: target.tagName.toLowerCase() === 'text',
-        hasNodeTextClass: target.classList.contains('node-text'),
-        attributes: {
-          nodeId: target.getAttribute('data-node-id')
-        }
-      });
-    });
-    
-    eventHandlersInitialized = true;
-    console.log('Global text editing event handlers initialized');
-  }
-  
-  // --- Edit Functions --- 
-  
   function startTextEdit(
     event: any, 
     d: GraphNode, 
-    nodeGroup: Selection<any, GraphNode, any, any>,
-    originalTextElements: d3.Selection<SVGTextElement, unknown, any, any>[],
+    nodeElement: SVGGElement, // Changed from nodeGroup to the actual g.node element
+    textElementsToHide: d3.Selection<SVGTextElement, unknown, any, any>[],
     textUpdateCallback: (nodeId: string, newText: string) => void
   ) {
     console.log('Starting text edit for node:', d.id);
     currentlyEditingNodeId = d.id;
 
-    // Hide original text elements
-    originalTextElements.forEach(el => el.style('display', 'none'));
+    textElementsToHide.forEach(el => el.style('display', 'none'));
 
-    // Calculate position and size for the input
     let firstLineY = d.size / 2 + 6;
     const approxInputHeight = 20;
     const inputWidth = 100;
 
-    // Create foreignObject
-    const foreignObject = nodeGroup.append('foreignObject')
+    const foreignObject = d3.select(nodeElement).append('foreignObject') // Append to the specific node element
       .attr('class', 'node-text-editor-fo')
       .attr('x', -inputWidth / 2)
       .attr('y', firstLineY - 2)
@@ -487,7 +417,6 @@ export function useNodeStyling() {
       .attr('height', approxInputHeight)
       .style('overflow', 'visible');
 
-    // Create HTML input inside foreignObject with improved styling
     const input = foreignObject.append('xhtml:input')
       .attr('type', 'text')
       .attr('value', d.text)
@@ -502,29 +431,26 @@ export function useNodeStyling() {
       .style('border-radius', '3px')
       .style('padding', '1px 3px')
       .style('box-shadow', '0 1px 3px rgba(0,0,0,0.1)')
-      .style('color', 'rgba(0, 0, 0, 0.8)') // Add text color to match the text elements
-      .style('background-color', 'rgba(255, 255, 255, 0.95)') // Slightly transparent white
+      .style('color', 'rgba(0, 0, 0, 0.8)')
+      .style('background-color', 'rgba(255, 255, 255, 0.95)')
       .node() as HTMLInputElement;
 
     activeInput = input;
-
-    // Focus and select text
     input.focus();
     input.select();
 
-    // Add event listeners
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        saveTextEdit(d.id, input.value, foreignObject, originalTextElements, textUpdateCallback);
+        saveTextEdit(d.id, input.value, foreignObject, textElementsToHide, textUpdateCallback);
       } else if (e.key === 'Escape') {
-        cancelTextEdit(foreignObject, originalTextElements);
+        cancelTextEdit(foreignObject, textElementsToHide);
       }
     });
 
     input.addEventListener('blur', () => {
       if (currentlyEditingNodeId === d.id) {
-        cancelTextEdit(foreignObject, originalTextElements);
+        cancelTextEdit(foreignObject, textElementsToHide);
       }
     });
   }
@@ -532,57 +458,36 @@ export function useNodeStyling() {
   function saveTextEdit(
     nodeId: string, 
     newValue: string, 
-    foreignObject: Selection<any, GraphNode, any, any>,
+    foreignObject: Selection<any, unknown, null, undefined>, // Corrected type
     originalTextElements: d3.Selection<SVGTextElement, unknown, any, any>[],
     textUpdateCallback: (nodeId: string, newText: string) => void
   ) {
     console.log(`Saving text for ${nodeId}: ${newValue}`);
-    
-    // Prevent race condition with blur event
-    if (isCleaningUp) {
-      console.log('Already cleaning up, skipping save');
-      return;
-    }
-    
-    // Set flag to prevent multiple cleanups
+    if (isCleaningUp) return;
     isCleaningUp = true;
-    
-    // Call the callback before cleanup
     textUpdateCallback(nodeId, newValue);
-    
-    // Use try/catch to handle any DOM removal errors
     try {
       cleanupEdit(foreignObject, originalTextElements);
     } catch (error) {
       console.warn('Error during edit cleanup:', error);
-      // Reset editing state even if cleanup fails
       currentlyEditingNodeId = null;
       activeInput = null;
     } finally {
-      // Reset cleanup flag when done
       isCleaningUp = false;
     }
   }
 
   function cancelTextEdit(
-    foreignObject: Selection<any, GraphNode, any, any>,
+    foreignObject: Selection<any, unknown, null, undefined>, // Corrected type
     originalTextElements: d3.Selection<SVGTextElement, unknown, any, any>[]
   ) {
     console.log(`Cancelling text edit for ${currentlyEditingNodeId}`);
-    
-    // Skip if already cleaning up from save
-    if (isCleaningUp) {
-      console.log('Already cleaning up, skipping cancel');
-      return;
-    }
-    
+    if (isCleaningUp) return;
     isCleaningUp = true;
-    
     try {
       cleanupEdit(foreignObject, originalTextElements);
     } catch (error) {
       console.warn('Error during edit cleanup:', error);
-      // Reset editing state even if cleanup fails
       currentlyEditingNodeId = null;
       activeInput = null;
     } finally {
@@ -591,7 +496,7 @@ export function useNodeStyling() {
   }
   
   function cleanupEdit(
-    foreignObject: Selection<any, any, any, any>,
+    foreignObject: Selection<any, unknown, null, undefined>, // Corrected type
     originalTextElements: d3.Selection<SVGTextElement, unknown, any, any>[]
   ) {
     if (!foreignObject.empty()) {
@@ -601,13 +506,11 @@ export function useNodeStyling() {
         console.warn('Error removing foreignObject:', error);
       }
     }
-    
     try {
       originalTextElements.forEach(el => el.style('display', null));
     } catch (error) {
       console.warn('Error restoring text elements:', error);
     }
-    
     currentlyEditingNodeId = null;
     activeInput = null;
   }
@@ -636,6 +539,11 @@ export function useNodeStyling() {
   return {
     applyNodeStyle,
     getSubjectImagePath,
-    createNodeGradients
+    createNodeGradients,
+    // Expose text editing functions
+    startTextEdit,
+    // saveTextEdit, // Not directly called from ForceGraph
+    // cancelTextEdit, // Not directly called from ForceGraph
+    // cleanupEdit // Not directly called from ForceGraph
   };
 } 
