@@ -6,10 +6,10 @@
     </h2>
     
     <div class="image-scroll-area">
-      <transition-group name="image-pop" tag="div" class="images-wrapper">
+      <div class="images-wrapper"> <!-- This is the main flex container -->
         <!-- Current Session Tile - Always Visible -->
         <div
-          key="current-session"
+          key="current-session-tile"
           class="image-thumbnail-item current-session-tile"
           :class="{
             'live-session-active': !tagStore.stashedSessionState,
@@ -22,19 +22,8 @@
           <span>{{ !tagStore.stashedSessionState ? 'Current Session' : 'Return to Current Session' }}</span>
         </div>
 
-        <!-- Dream Specific Images -->
-        <template v-if="props.dreamId">
-          <div v-if="pending" key="loading-msg" class="loading-message central-message">
-            <LoadingSpinner size="md" strokeWidth="6" />
-            <p>Loading images...</p>
-          </div>
-          <div v-else-if="error" key="error-msg" class="error-message central-message">
-            <i class="pi pi-exclamation-triangle"></i>
-            <p>Could not load images. {{ error.message }}</p>
-          </div>
-          <div v-else-if="images && images.length === 0" key="empty-dream-msg" class="empty-strip-message central-message">
-            <p>No images have been generated for this dream yet.</p>
-          </div>
+        <!-- Transition group ONLY for actual images -->
+        <transition-group name="image-pop" tag="div" class="images-animation-wrapper" v-if="props.dreamId">
           <div
             v-for="image in images"
             :key="image.id"
@@ -44,12 +33,30 @@
           >
             <img :src="image.imageUrl" :alt="image.promptText || 'Generated Image'" />
           </div>
-        </template>
-        <div v-else-if="!props.dreamId && !tagStore.stashedSessionState" key="no-dream-msg" class="empty-strip-message central-message full-width-message">
-            <p>No Dream loaded. Save your session as a Dream to build an image history.</p>
-        </div>
+        </transition-group>
 
-      </transition-group>
+        <!-- Conditional Messages with a simple fade transition -->
+        <transition name="fade" mode="out-in">
+          <div v-if="props.dreamId && pending && images.length === 0" key="loading-initial" class="loading-message central-message">
+            <LoadingSpinner size="md" strokeWidth="6" />
+            <p>Loading images...</p>
+          </div>
+          <div v-else-if="props.dreamId && pending && images.length > 0" key="loading-refresh" class="loading-message central-message">
+            <LoadingSpinner size="md" strokeWidth="6" />
+            <p>Updating images...</p>
+          </div>
+          <div v-else-if="props.dreamId && error && !pending" key="error-msg" class="error-message central-message">
+            <i class="pi pi-exclamation-triangle"></i>
+            <p>Could not load images. {{ error.message }}</p>
+          </div>
+          <div v-else-if="props.dreamId && images.length === 0 && !pending && !error" key="empty-dream-msg" class="empty-strip-message central-message">
+            <p>No images have been generated for this dream yet.</p>
+          </div>
+          <div v-else-if="!props.dreamId && !tagStore.stashedSessionState && !pending" key="no-dream-msg" class="empty-strip-message central-message full-width-message">
+            <p>No Dream loaded. Save your session as a Dream to build an image history.</p>
+          </div>
+        </transition>
+      </div>
     </div>
   </div>
 </template>
@@ -80,28 +87,51 @@ const images = ref<DreamImage[]>([]);
 const pending = ref(false);
 const error = ref<Error | null>(null);
 
-const fetchImages = async (currentDreamId: number | null) => {
-  if (!currentDreamId) {
-    images.value = []; // Clear images if no dreamId
-    // Do not return early, as the component itself might still be visible for the "Current Session" tile.
-    return; 
+let fetchController: AbortController | null = null;
+
+const fetchImages = async (idToFetch: number | null) => {
+  // Cancel any ongoing fetch
+  if (fetchController) {
+    fetchController.abort();
   }
-  // Only set pending if we are actually fetching for a dreamId
-  if (currentDreamId) {
-    pending.value = true;
+  fetchController = new AbortController();
+  const signal = fetchController.signal;
+
+  if (typeof idToFetch !== 'number' || idToFetch <= 0) {
+    images.value = [];
+    pending.value = false;
     error.value = null;
-    try {
-      const fetchedImages = await $fetch<DreamImage[]>('/api/images?dreamId=' + currentDreamId);
+    return;
+  }
+
+  pending.value = true;
+  error.value = null;
+  // Do NOT clear images.value here immediately.
+
+  try {
+    const fetchedImages = await $fetch<DreamImage[]>(`/api/images?dreamId=${idToFetch}`, { signal });
+    if (signal.aborted) return;
+    // Only update if the dreamId for this fetch is still the current one
+    if (props.dreamId === idToFetch) {
       images.value = fetchedImages;
-    } catch (err: any) {
-      console.error('Failed to fetch images for dream strip:', err);
+    }
+  } catch (err: any) {
+    if (err.name === 'AbortError') {
+      console.log('Image fetch aborted for dreamId:', idToFetch);
+      // If this aborted fetch was for the current dreamId, pending should reflect that.
+      if (props.dreamId === idToFetch) pending.value = false;
+      return;
+    }
+    console.error('Failed to fetch images for dream strip:', err);
+    if (props.dreamId === idToFetch) {
       error.value = err.data || new Error('Failed to load images');
-      images.value = []; // Clear images on error
-    } finally {
+      images.value = [];
+    }
+  } finally {
+    // Only set pending to false if this fetch was for the *current* dreamId
+    if (props.dreamId === idToFetch && !signal.aborted) {
       pending.value = false;
     }
-  } else {
-    images.value = []; // Ensure images are cleared if dreamId becomes null
   }
 };
 
@@ -124,8 +154,23 @@ defineExpose({
   prependImage, // Expose the new method
 });
 
-watch(() => props.dreamId, (newDreamId) => {
-  fetchImages(newDreamId);
+// Watch for changes to dreamId and fetch accordingly
+watch(() => props.dreamId, (newDreamId, oldDreamId) => {
+  if (typeof newDreamId === 'number' && newDreamId > 0) {
+    // On first valid load or when switching to a new dream, clear old images immediately
+    if (newDreamId !== oldDreamId || oldDreamId === undefined) {
+      images.value = []; // clear previous session's images
+      fetchImages(newDreamId);
+    }
+  } else if (oldDreamId !== null && newDreamId === null) {
+    // If dreamId explicitly becomes null (user returns to live session), clear images
+    images.value = [];
+    fetchImages(null);
+  } else if (oldDreamId === undefined && newDreamId === null) {
+    // Initial load with no dream, clear images
+    images.value = [];
+    fetchImages(null);
+  }
 }, { immediate: true });
 
 // Watch for stashed state changes to potentially re-evaluate visibility or fetch
@@ -321,5 +366,20 @@ const handleCurrentSessionClick = () => {
 .image-pop-leave-to {
   opacity: 0;
   transform: scale(0.6);
+}
+
+/* Fade Transition for messages */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.images-animation-wrapper {
+  display: contents;
 }
 </style> 

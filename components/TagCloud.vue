@@ -81,7 +81,7 @@
               v-tooltip.top="'Return to your live session'"
             />
             <Button 
-              v-if="!isManualMode && generatedPrompt"
+              v-if="!isManualMode && generatedPrompt && devMode"
               icon="pi pi-refresh"
               severity="secondary"
               text
@@ -242,6 +242,7 @@ const selectedZone = ref(focusedZone.value);
 
 // First let's add a zone change tracking flag
 const isZoneSwitching = ref(false);
+const devMode = ref(false);
 
 watch(() => tagStore.loadedDreamId, (newId, oldId) => {
   if (newId !== oldId) {
@@ -324,8 +325,8 @@ function debounce<T extends (...args: any[]) => any>(
 // Update the triggerPromptGeneration function to check for zone switching
 const triggerPromptGeneration = debounce(async () => {
   // Skip prompt generation if we're in manual mode, already generating,
-  // or during zone switching
-  if (isManualMode.value || isGeneratingPrompt.value || isZoneSwitching.value) {
+  // during zone switching, or if a session is currently being restored.
+  if (isManualMode.value || isGeneratingPrompt.value || isZoneSwitching.value || tagStore.isRestoringSession) {
     return;
   }
   
@@ -362,11 +363,17 @@ const triggerPromptGeneration = debounce(async () => {
 
 // Skip generation once after load, then resume normal behavior
 watch(generatedPrompt, () => {
-  triggerPromptGeneration();
+  // Also check isRestoringSession here before triggering
+  if (!tagStore.isRestoringSession) {
+    triggerPromptGeneration();
+  }
 });
 
 onMounted(() => {
-  triggerPromptGeneration();
+  // Check isRestoringSession here as well for initial mount
+  if (!tagStore.isRestoringSession) {
+    triggerPromptGeneration();
+  }
 });
 
 // Update the handleNodeClick function to be aware of session state

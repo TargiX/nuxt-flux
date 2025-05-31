@@ -1,6 +1,6 @@
 // stores/tagStore.ts
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, nextTick } from 'vue';
 import { useRuntimeConfig } from '#app';
 import type { Tag } from '~/types/tag';
 import { initializeTags, getAvailableZones } from '~/services/tagProcessingService';
@@ -38,6 +38,7 @@ export const useTagStore = defineStore('tags', () => {
   // Add session ID at the top with existing state
   const sessionId = ref<string>(generateSessionId());
   const isRequestInProgress = ref(false);
+  const isRestoringSession = ref(false); // Flag to indicate a dream/snapshot load is in progress
 
   // Initialize tags on store creation
   tags.value = initializeTags();
@@ -119,9 +120,17 @@ export const useTagStore = defineStore('tags', () => {
   // --- Action to load a saved dream state ---
   function loadDreamState(dreamData: DreamData, dreamId: number | null) {
     console.log("Loading dream state for ID:", dreamId);
-    
+    isRestoringSession.value = true; // Set flag true
+
+    // Clear previous session data immediately
+    currentGeneratedPrompt.value = '';
+    currentImageUrl.value = null;
+    // tags.value = []; // Avoid this, as it causes graph churn; reconstruction below handles it.
+    loadedDreamId.value = null; // Clear this early so UI doesn't show old ID during load
+    hasUnsavedChanges.value = false; // New state is initially pristine
+
     sessionId.value = generateSessionId();
-    
+
     zoneViewportStates.value = new Map<string, ViewportState>(); // Clear existing
     if (dreamData.zoneViewports) {
       for (const [zoneName, viewportState] of Object.entries(dreamData.zoneViewports)) {
@@ -134,11 +143,6 @@ export const useTagStore = defineStore('tags', () => {
       }
       console.log("[TagStore] Loaded zoneViewports from dream data:", zoneViewportStates.value);
     }
-    
-    loadedDreamId.value = null;
-    currentGeneratedPrompt.value = '';
-    currentImageUrl.value = null;
-    hasUnsavedChanges.value = false;
     
     // Validate data
     if (!dreamData || typeof dreamData !== 'object') {
@@ -207,6 +211,10 @@ export const useTagStore = defineStore('tags', () => {
     hasUnsavedChanges.value = false;
     
     console.log("Dream state loaded synchronously.");
+    // Set flag false after a short delay to allow Vue to settle
+    nextTick(() => {
+      isRestoringSession.value = false;
+    });
   }
   // ------------------------------------------
 
@@ -309,12 +317,22 @@ export const useTagStore = defineStore('tags', () => {
   // -------------------------------
 
   // --- Action to load state from an image snapshot ---
-  function loadStateFromImageSnapshot(imageSnapshot: { 
-    imageUrl: string; 
-    promptText?: string; 
-    graphState: any; // This will be the { focusedZone, tags } object 
+  function loadStateFromImageSnapshot(imageSnapshot: {
+    imageUrl: string;
+    promptText?: string;
+    graphState: any; // This will be the { focusedZone, tags } object
   }) {
     console.log("Loading state from image snapshot:", imageSnapshot);
+    isRestoringSession.value = true; // Set flag true
+
+    // Clear previous session data immediately
+    currentGeneratedPrompt.value = ''; // Clear prompt
+    currentImageUrl.value = null;    // Clear main image
+    // viewingSnapshotImageId is handled by the calling component (ImageStrip)
+
+    // Generate new session ID to invalidate any in-flight requests
+    sessionId.value = generateSessionId();
+    console.log(`Session changed to ${sessionId.value} when loading image snapshot`);
 
     if (!imageSnapshot || !imageSnapshot.graphState || typeof imageSnapshot.graphState !== 'object') {
       console.error("Invalid image snapshot or graphState provided to loadStateFromImageSnapshot");
@@ -327,10 +345,6 @@ export const useTagStore = defineStore('tags', () => {
       console.error("Invalid graphState structure in image snapshot");
       return;
     }
-
-    // Generate new session ID to invalidate any in-flight requests
-    sessionId.value = generateSessionId();
-    console.log(`Session changed to ${sessionId.value} when loading image snapshot`);
 
     // IMPORTANT: Unlike loadDreamState, we do NOT clear loadedDreamId here.
     // We are loading a sub-state OF THE CURRENTLY LOADED DREAM (or new session).
@@ -412,6 +426,10 @@ export const useTagStore = defineStore('tags', () => {
     hasUnsavedChanges.value = true; 
 
     console.log("State loaded from image snapshot. Focused zone:", focusedZone.value);
+    // Set flag false after a short delay to allow Vue to settle
+    nextTick(() => {
+      isRestoringSession.value = false;
+    });
   }
   // --------------------------------------------------
 
@@ -477,6 +495,7 @@ export const useTagStore = defineStore('tags', () => {
     tags,
     zones,
     focusedZone,
+    isRestoringSession, // Expose the new flag
     zoneViewportStates, // Expose the raw map (or preferably through getters/setters if more control needed)
     saveZoneViewport,   // Expose action to save viewport
     getZoneViewport,    // Expose action/getter to retrieve viewport
