@@ -18,6 +18,16 @@
                 "AZURE_OPENAI_API_KEY": "AZURE_OPENAI_API_KEY_HERE",
                 "OLLAMA_API_KEY": "OLLAMA_API_KEY_HERE"
             }
+        },
+        "shrimp-task-manager": {
+            "command": "node",
+            "args": ["/Users/ilyamoskovkin1/Cursor/mcp-shrimp-task-manager/dist/index.js"],
+            "env": {
+              "DATA_DIR": "/Users/ilyamoskovkin1/Documents/GitHub/nuxt-flux/shrimp-data", 
+              "TEMPLATES_USE": "en",
+              "ENABLE_GUI": "false"
+            }
+          }
         }
-    }
+        
 }

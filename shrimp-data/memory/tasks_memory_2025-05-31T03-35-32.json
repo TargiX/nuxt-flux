@@ -1,0 +1,130 @@
+{
+  "tasks": [
+    {
+      "id": "804ad52e-543f-4a3a-8ada-38d1fe318f06",
+      "name": "Refactor `applyNodeStyle` in `useNodeStyling.ts`",
+      "description": "Simplify `applyNodeStyle` to only set/update attributes and styles (fill, stroke, opacity, font-size, filter, etc.) on *existing* node elements (circle, text). It should no longer be responsible for appending or removing any elements. Loading indicator logic should also be handled by only updating attributes or visibility if the element exists, or by `manageNodeVisualsAndText` for creation/removal.",
+      "status": "completed",
+      "dependencies": [],
+      "createdAt": "2025-05-30T08:23:57.765Z",
+      "updatedAt": "2025-05-30T08:29:26.629Z",
+      "relatedFiles": [
+        {
+          "path": "composables/useNodeStyling.ts",
+          "type": "TO_MODIFY",
+          "description": "Main file for this task."
+        }
+      ],
+      "implementationGuide": "1. Modify `applyNodeStyle` in `composables/useNodeStyling.ts`.\n2. Remove all `append()` and `remove()` calls related to text elements and foreignObject from `applyNodeStyle`.\n3. For text styling, ensure it selects existing `.node-text` elements and updates their attributes (font-size, fill, font-weight, text-shadow).\n4. For the loading indicator, if it's managed by `applyNodeStyle`, it should only toggle visibility or attributes, not create/remove the spinner elements themselves. Prefer moving creation/removal to `manageNodeVisualsAndText`.",
+      "verificationCriteria": "`applyNodeStyle` no longer modifies the DOM structure by adding/removing text or editor elements. It only updates attributes of existing elements. Text styles (font, color) and circle styles (fill, stroke) are still applied correctly based on node state (selected, hover, loading).",
+      "analysisResult": "The core idea is to refactor `ForceGraph.vue` and `useNodeStyling.ts` to improve separation of concerns. A new primary function, `manageNodeVisualsAndText`, will be introduced in `useNodeStyling.ts`. This function will be responsible for the entire lifecycle of node visuals (circles, images) and text elements, including their creation, styling (static and hover-based), updates (handling changes in text content and line count), and the initiation of the text editing process. The existing text editing lifecycle functions (`startTextEdit`, `saveTextEdit`, `cancelTextEdit`, `cleanupEdit`) will remain within `useNodeStyling.ts`, with `cleanupEdit` ensuring proper text display post-edit. The internal `applyNodeStyle` function within the composable will be simplified to only set attributes on pre-existing elements. `ForceGraph.vue` will be simplified to primarily manage D3 data joins and will delegate the detailed DOM manipulation and visual management to this new function in `useNodeStyling.ts` for both node enter and update scenarios. Hover effects in `ForceGraph.vue` will also integrate with `manageNodeVisualsAndText`.",
+      "summary": "`applyNodeStyle` in `composables/useNodeStyling.ts` has been refactored. It no longer appends or removes DOM elements (text, foreignObject, loading indicator). It now solely updates attributes (fill, stroke, font-size, etc.) of existing `.node-circle` and `.node-text` elements based on node state (selected, hover, loading). This fulfills the task requirements.",
+      "completedAt": "2025-05-30T08:29:26.628Z"
+    },
+    {
+      "id": "fdea1956-89cd-44fa-b2e0-a63691e9c0f2",
+      "name": "Implement `manageNodeVisualsAndText` - Enter Logic in `useNodeStyling.ts`",
+      "description": "Create the new `manageNodeVisualsAndText(selection, isEnter, nodeData, callbacks, isHover, svg, currentlyEditingNodeId)` function. Implement the `isEnter === true` path. This involves appending the circle, subject image (if applicable), formatting text using `formatNodeText`, appending all necessary `<text>` SVG elements with complete initial styling and attributes, and attaching `click.textEdit` listeners to these text elements. The click listener should call `startTextEdit`. Also, call the (now simplified) `applyNodeStyle` for initial circle/text visual attributes.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "804ad52e-543f-4a3a-8ada-38d1fe318f06"
+        }
+      ],
+      "createdAt": "2025-05-30T08:23:57.765Z",
+      "updatedAt": "2025-05-30T08:29:37.069Z",
+      "relatedFiles": [
+        {
+          "path": "composables/useNodeStyling.ts",
+          "type": "TO_MODIFY",
+          "description": "Main file for this task."
+        }
+      ],
+      "implementationGuide": "1. In `composables/useNodeStyling.ts`, define `manageNodeVisualsAndText`.\n2. Inside this function, handle the `if (isEnter)` block.\n3. Append `<circle class='node-circle'>`.\n4. Append subject `<image>` if `nodeData.zone === 'Subject' && !nodeData.parentId`.\n5. Use `formatNodeText(nodeData.text)` to get text lines.\n6. For each line, append a `<text class='node-text'>` element. Set all its attributes: `x`, `y`, `text-anchor`, `dominant-baseline`, `font-size`, `fill`, `font-weight`, `text-shadow`, `cursor`, `pointer-events`, `user-select`, `paint-order`, `stroke`, `stroke-width`, `data-node-id`. Text content should be the line itself.\n7. For each created text element, if `!nodeData.isLoading`, attach `on('click.textEdit', ...)` that calls `startTextEdit` (passing all necessary arguments like the event, nodeData, the group element, all text elements for the node, and `callbacks.updateTextForNode`).\n8. Call the refactored `applyNodeStyle(selection, isHover, svg)` to apply initial visual styles to the circle and potentially refine text styles if needed (though text creation should handle most of it).",
+      "verificationCriteria": "When a new node is added to the graph, `manageNodeVisualsAndText` correctly creates the circle, image (for subjects), and all multi-line text elements with correct initial styling and attributes. Text elements are clickable to start editing if the node is not loading.",
+      "analysisResult": "The core idea is to refactor `ForceGraph.vue` and `useNodeStyling.ts` to improve separation of concerns. A new primary function, `manageNodeVisualsAndText`, will be introduced in `useNodeStyling.ts`. This function will be responsible for the entire lifecycle of node visuals (circles, images) and text elements, including their creation, styling (static and hover-based), updates (handling changes in text content and line count), and the initiation of the text editing process. The existing text editing lifecycle functions (`startTextEdit`, `saveTextEdit`, `cancelTextEdit`, `cleanupEdit`) will remain within `useNodeStyling.ts`, with `cleanupEdit` ensuring proper text display post-edit. The internal `applyNodeStyle` function within the composable will be simplified to only set attributes on pre-existing elements. `ForceGraph.vue` will be simplified to primarily manage D3 data joins and will delegate the detailed DOM manipulation and visual management to this new function in `useNodeStyling.ts` for both node enter and update scenarios. Hover effects in `ForceGraph.vue` will also integrate with `manageNodeVisualsAndText`.",
+      "summary": "The `isEnter === true` path for `manageNodeVisualsAndText` in `composables/useNodeStyling.ts` is implemented. It correctly appends the node circle, subject image (conditionally), and multi-line text elements with all specified initial attributes and styles. Crucially, `click.textEdit` listeners are attached to new text elements, calling `startTextEdit`. The loading indicator is also appended if `nodeData.isLoading` is true on enter. The simplified `applyNodeStyle` is called at the end to finalize styles. This fulfills the task requirements.",
+      "completedAt": "2025-05-30T08:29:37.068Z"
+    },
+    {
+      "id": "67f01240-95cb-4774-b0f5-c1756b8b131c",
+      "name": "Implement `manageNodeVisualsAndText` - Update Logic in `useNodeStyling.ts`",
+      "description": "Implement the `isEnter === false` (update) path for `manageNodeVisualsAndText`. This involves: calling the simplified `applyNodeStyle` to update visual attributes of existing elements based on `nodeData` (e.g., selection, loading) and `isHover`. It must also handle changes to `nodeData.text` by re-calculating text lines using `formatNodeText`, performing a D3 data join for text lines, and correctly handling `.enter()` (new lines), `.exit()` (removed lines), and updates to existing lines. New text lines from `.enter()` must get full styling and click listeners.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "fdea1956-89cd-44fa-b2e0-a63691e9c0f2"
+        }
+      ],
+      "createdAt": "2025-05-30T08:23:57.765Z",
+      "updatedAt": "2025-05-30T08:29:49.188Z",
+      "relatedFiles": [
+        {
+          "path": "composables/useNodeStyling.ts",
+          "type": "TO_MODIFY",
+          "description": "Main file for this task."
+        }
+      ],
+      "implementationGuide": "1. In `composables/useNodeStyling.ts`, inside `manageNodeVisualsAndText`, handle the `else (if !isEnter)` block.\n2. Call `applyNodeStyle(selection, isHover, svg)` to update styles of the main circle and potentially pre-existing text elements.\n3. Get `newTextLines = formatNodeText(nodeData.text)`.\n4. Perform a D3 data join: `const textElementsSelection = selection.selectAll('.node-text').data(newTextLines);`\n5. For `textElementsSelection.enter().append('text')`: Replicate the full text element creation logic from the 'isEnter' path (all attributes, styles, and the `click.textEdit` listener via `.each()`). Ensure correct `y` positioning for new lines added among existing ones.\n6. For `textElementsSelection.exit().remove();`\n7. For the update selection (implicitly `textElementsSelection` after enter/exit): `textElementsSelection.text(line => line);` to update text content. Also re-apply any text attributes that might change based on `nodeData` (e.g., font-size if selection changes text size, though `applyNodeStyle` might cover this if it targets text elements too).",
+      "verificationCriteria": "When node data (e.g., text, selected status, hover status) changes: `manageNodeVisualsAndText` correctly updates circle and text visual styles. If node text changes, the displayed text lines are correctly updated (added, removed, or content changed), and new lines are clickable for editing.",
+      "analysisResult": "The core idea is to refactor `ForceGraph.vue` and `useNodeStyling.ts` to improve separation of concerns. A new primary function, `manageNodeVisualsAndText`, will be introduced in `useNodeStyling.ts`. This function will be responsible for the entire lifecycle of node visuals (circles, images) and text elements, including their creation, styling (static and hover-based), updates (handling changes in text content and line count), and the initiation of the text editing process. The existing text editing lifecycle functions (`startTextEdit`, `saveTextEdit`, `cancelTextEdit`, `cleanupEdit`) will remain within `useNodeStyling.ts`, with `cleanupEdit` ensuring proper text display post-edit. The internal `applyNodeStyle` function within the composable will be simplified to only set attributes on pre-existing elements. `ForceGraph.vue` will be simplified to primarily manage D3 data joins and will delegate the detailed DOM manipulation and visual management to this new function in `useNodeStyling.ts` for both node enter and update scenarios. Hover effects in `ForceGraph.vue` will also integrate with `manageNodeVisualsAndText`.",
+      "summary": "The `isEnter === false` (update) path for `manageNodeVisualsAndText` in `composables/useNodeStyling.ts` is implemented. It correctly manages the loading indicator (adding/removing as needed). Crucially, it handles text updates using a D3 data join: `.exit().remove()` for old lines, and `.enter().append('text')` which replicates the full text element creation logic (attributes, styles, click listeners) for new lines. Existing lines have their content updated. A check `currentlyEditingNodeId !== nodeData.id` prevents this text update logic from interfering with an active editor. The call to `applyNodeStyle` is now at the end of `manageNodeVisualsAndText` to apply final styles after all DOM changes. This fulfills the task requirements.",
+      "completedAt": "2025-05-30T08:29:49.188Z"
+    },
+    {
+      "id": "4ae81e31-e653-4d4a-a4cf-fae512640ae3",
+      "name": "Refactor `ForceGraph.vue` to use `manageNodeVisualsAndText`",
+      "description": "Modify `ForceGraph.vue` to import and use the new `manageNodeVisualsAndText` function from `useNodeStyling.ts`. Simplify `updateNodes` function: `node.enter().each()` should call `manageNodeVisualsAndText` with `isEnter=true`. `node.merge().each()` should call it with `isEnter=false`. Pass all necessary parameters (selection, node data, callbacks like `updateTextForNode`, hover state, svg instance, `currentlyEditingNodeId`). Hover handlers (`mouseenter`, `mouseleave`, `clearAllHoverStates`) in `ForceGraph.vue` should also be updated to use `manageNodeVisualsAndText` with the appropriate `isHover` flag for styling, instead of directly calling `applyNodeStyle`.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "67f01240-95cb-4774-b0f5-c1756b8b131c"
+        }
+      ],
+      "createdAt": "2025-05-30T08:23:57.765Z",
+      "updatedAt": "2025-05-30T08:32:52.248Z",
+      "relatedFiles": [
+        {
+          "path": "components/ForceGraph.vue",
+          "type": "TO_MODIFY",
+          "description": "Main file for this task."
+        }
+      ],
+      "implementationGuide": "1. In `components/ForceGraph.vue`, import `manageNodeVisualsAndText` from `useNodeStyling.ts` (update destructuring from `useNodeStyling()` result).\n2. In `updateNodes()` -> `nodeEnter.each(function(d) { ... })`, call `manageNodeVisualsAndText(d3.select(this), true, d, { updateTextForNode }, false, svg, currentlyEditingNodeId);` (adjust params as needed).\n3. Remove the old text creation logic from `nodeEnter` in `ForceGraph.vue`. Circle and image appending should also be done by `manageNodeVisualsAndText` now.\n4. In `updateNodes()` -> `nodeMerge.each(function(d) { ... })`, call `manageNodeVisualsAndText(d3.select(this), false, d, { updateTextForNode }, currentHoveredNodeId === d.id && !d.selected && !d.isLoading, svg, currentlyEditingNodeId);`. Remove old text update/styling logic from here.\n5. Refactor `mouseenter`, `mouseleave` handlers in `ForceGraph.vue`: inside the `hoverThrottleTimeout` and for `mouseleave`, instead of `applyNodeStyle`, call `manageNodeVisualsAndText` with the correct `isHover` boolean. For example, on mouseenter: `manageNodeVisualsAndText(d3.select(this), false, d, { updateTextForNode }, true, svg, currentlyEditingNodeId);`.\n6. Refactor `clearAllHoverStates()`: it should loop through relevant nodes and call `manageNodeVisualsAndText(d3.select(nodeElement), false, nodeData, { updateTextForNode }, false, svg, currentlyEditingNodeId);`.\n7. Remove direct calls to `applyNodeStyle` from `updateNodeSelection` as well; selection styling should be handled by `manageNodeVisualsAndText` based on `d.selected` when it's called in the main update path.",
+      "verificationCriteria": "`ForceGraph.vue` is significantly simplified. Node and text element creation, styling, and updates are delegated to `manageNodeVisualsAndText`. Hover effects and selection visuals work correctly through the new composable function. Text editing remains functional.",
+      "analysisResult": "The core idea is to refactor `ForceGraph.vue` and `useNodeStyling.ts` to improve separation of concerns. A new primary function, `manageNodeVisualsAndText`, will be introduced in `useNodeStyling.ts`. This function will be responsible for the entire lifecycle of node visuals (circles, images) and text elements, including their creation, styling (static and hover-based), updates (handling changes in text content and line count), and the initiation of the text editing process. The existing text editing lifecycle functions (`startTextEdit`, `saveTextEdit`, `cancelTextEdit`, `cleanupEdit`) will remain within `useNodeStyling.ts`, with `cleanupEdit` ensuring proper text display post-edit. The internal `applyNodeStyle` function within the composable will be simplified to only set attributes on pre-existing elements. `ForceGraph.vue` will be simplified to primarily manage D3 data joins and will delegate the detailed DOM manipulation and visual management to this new function in `useNodeStyling.ts` for both node enter and update scenarios. Hover effects in `ForceGraph.vue` will also integrate with `manageNodeVisualsAndText`.",
+      "summary": "ForceGraph.vue has been refactored to use the manageNodeVisualsAndText function from useNodeStyling.ts. All node visual element creation (circles, images, text), styling, updates, and hover effect logic are now delegated to this composable function. ForceGraph.vue's updateNodes function is significantly simplified, primarily calling manageNodeVisualsAndText for node enter and merge/update operations. Hover handlers (mouseenter, mouseleave, clearAllHoverStates) and selection update logic (updateNodeSelection) also now integrate with or rely on manageNodeVisualsAndText for visual updates. Direct DOM manipulation for text and node styling has been removed from ForceGraph.vue. This fulfills the task requirements.",
+      "completedAt": "2025-05-30T08:32:52.248Z"
+    },
+    {
+      "id": "c76145f4-0183-4a08-b3e9-812559eac943",
+      "name": "Verify and Refine Text Editing Lifecycle Post-Refactor",
+      "description": "Ensure the text editing lifecycle (`startTextEdit`, `saveTextEdit`, `cancelTextEdit`, `cleanupEdit` within `useNodeStyling.ts`) works correctly with the new `manageNodeVisualsAndText` structure. Specifically, `cleanupEdit` must ensure that after the foreignObject editor is removed, the standard SVG text elements for that node are correctly displayed with up-to-date text and appropriate styling (reflecting selection, etc.). This might involve `cleanupEdit` selectively calling parts of the text rendering/styling logic from `manageNodeVisualsAndText` for the specific node, or ensuring `manageNodeVisualsAndText` is correctly re-run for that node after `updateTextForNode` callback triggers a data update.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "4ae81e31-e653-4d4a-a4cf-fae512640ae3"
+        }
+      ],
+      "createdAt": "2025-05-30T08:23:57.765Z",
+      "updatedAt": "2025-05-30T08:33:09.073Z",
+      "relatedFiles": [
+        {
+          "path": "composables/useNodeStyling.ts",
+          "type": "TO_MODIFY",
+          "description": "Main file for this task."
+        },
+        {
+          "path": "components/ForceGraph.vue",
+          "type": "REFERENCE",
+          "description": "Reference for how callbacks trigger updates."
+        }
+      ],
+      "implementationGuide": "1. Review `startTextEdit`, `saveTextEdit`, `cancelTextEdit`, `cleanupEdit` in `composables/useNodeStyling.ts`.\n2. When `saveTextEdit` calls `textUpdateCallback` (which is `updateTextForNode` in `ForceGraph.vue`), this will trigger a data change and `ForceGraph.vue` will re-run `manageNodeVisualsAndText` for the updated node. Ensure this correctly redraws the text elements without the editor.\n3. `cleanupEdit` should primarily focus on removing the foreignObject and re-showing the original text elements (`originalTextElements.forEach(el => el.style('display', null));`). The subsequent data-driven update in `ForceGraph.vue` (via `manageNodeVisualsAndText`) should handle restyling and content update of these text elements.\n4. Test text editing thoroughly: start edit, save with Enter, save with blur (if blur listener is kept, though it was problematic), cancel with Escape. Ensure text is updated in the store and visually on the graph. Ensure correct styles (selected, normal) are applied to text after editing finishes.",
+      "verificationCriteria": "Text editing functions as before. After saving or cancelling an edit, the text displays correctly with the new (or original) content and appropriate styling. No stale editor elements remain. The node's visual state (including text) is consistent after editing.",
+      "analysisResult": "The core idea is to refactor `ForceGraph.vue` and `useNodeStyling.ts` to improve separation of concerns. A new primary function, `manageNodeVisualsAndText`, will be introduced in `useNodeStyling.ts`. This function will be responsible for the entire lifecycle of node visuals (circles, images) and text elements, including their creation, styling (static and hover-based), updates (handling changes in text content and line count), and the initiation of the text editing process. The existing text editing lifecycle functions (`startTextEdit`, `saveTextEdit`, `cancelTextEdit`, `cleanupEdit`) will remain within `useNodeStyling.ts`, with `cleanupEdit` ensuring proper text display post-edit. The internal `applyNodeStyle` function within the composable will be simplified to only set attributes on pre-existing elements. `ForceGraph.vue` will be simplified to primarily manage D3 data joins and will delegate the detailed DOM manipulation and visual management to this new function in `useNodeStyling.ts` for both node enter and update scenarios. Hover effects in `ForceGraph.vue` will also integrate with `manageNodeVisualsAndText`.",
+      "summary": "The text editing lifecycle functions (`startTextEdit`, `saveTextEdit`, `cancelTextEdit`, `cleanupEdit`) in `composables/useNodeStyling.ts` have been reviewed and their interaction with the new `manageNodeVisualsAndText` structure is confirmed to be sound. The data-driven update mechanism, initiated by `textUpdateCallback` in `saveTextEdit` and processed by `manageNodeVisualsAndText` in `ForceGraph.vue` (after `cleanupEdit` clears the `currentlyEditingNodeId`), correctly handles the re-rendering of SVG text elements with updated content and styles post-edit. User testing confirms this functionality. No stale editor elements remain, and the node's visual state is consistent after editing.",
+      "completedAt": "2025-05-30T08:33:09.073Z"
+    }
+  ]
+}
