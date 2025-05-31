@@ -11,7 +11,6 @@ let activeInput: HTMLInputElement | null = null;
 // Add a cleanup flag to prevent double-removal
 let isCleaningUp = false;
 
-
 export function useNodeStyling() {
   /**
    * Maps zone names to their gradient colors
@@ -346,59 +345,127 @@ export function useNodeStyling() {
     textElementsToHide: d3.Selection<SVGTextElement, unknown, any, any>[],
     textUpdateCallback: (nodeId: string, newText: string) => void
   ) {
-    console.log('Starting text edit for node:', d.id);
+    if (currentlyEditingNodeId || isCleaningUp) return;
     currentlyEditingNodeId = d.id;
-
+    let isEditorActive = true;
     textElementsToHide.forEach(el => el.style('display', 'none'));
 
-    let firstLineY = d.size / 2 + 6;
-    const approxInputHeight = 20;
-    const inputWidth = 100;
+    const inputHeight = 20;
+    const inputBaseWidth = 80; 
+    const buttonWidth = 20;    
+    const totalButtonsWidth = buttonWidth * 2;
+    const totalFOWidth = inputBaseWidth + totalButtonsWidth;
+    const firstLineY = d.size / 2 + 6;
 
-    const foreignObject = d3.select(nodeElement).append('foreignObject') // Append to the specific node element
+    const foreignObjectSelection = d3.select(nodeElement).append('foreignObject')
       .attr('class', 'node-text-editor-fo')
-      .attr('x', -inputWidth / 2)
+      .attr('x', -totalFOWidth / 2)
       .attr('y', firstLineY - 2)
-      .attr('width', inputWidth)
-      .attr('height', approxInputHeight)
+      .attr('width', totalFOWidth)
+      .attr('height', inputHeight)
       .style('overflow', 'visible');
 
-    const input = foreignObject.append('xhtml:input')
+    const editorContainer = foreignObjectSelection.append('xhtml:div')
+      .style('display', 'flex')
+      .style('align-items', 'center')
+      .style('width', '100%')
+      .style('height', '100%');
+
+    const cancelButton = editorContainer.append('xhtml:button')
+      .attr('class', 'p-button p-button-text p-button-icon-only node-edit-button cancel-button')
+      .style('width', `${buttonWidth}px`)
+      .style('height', `${inputHeight}px`)
+      .style('display', 'flex').style('align-items', 'center').style('justify-content', 'center')
+      .style('padding', '0')
+      .style('border', '1px solid #F44336')
+      .style('background-color', 'rgba(244, 67, 54, 0.1)')
+      .style('color', '#F44336')
+      .style('cursor', 'pointer')
+      .style('border-radius', '3px 0 0 3px')
+      .html('<i class="pi pi-times" style="font-size: 12px;"></i>');
+    cancelButton.on('click', (event: MouseEvent) => {
+      event.stopPropagation();
+      cancelTextEdit(foreignObjectSelection, textElementsToHide);
+    });
+
+    const input = editorContainer.append('xhtml:input')
       .attr('type', 'text')
       .attr('value', d.text)
-      .style('width', `${inputWidth}px`)
-      .style('height', `${approxInputHeight}px`)
-      .style('position', 'absolute')
-      .style('top', '0')
-      .style('left', '0')
+      .style('width', `${inputBaseWidth}px`)
+      .style('height', `${inputHeight}px`)
       .style('font-size', '10px')
       .style('text-align', 'center')
-      .style('border', '1px solid #ccc')
-      .style('border-radius', '3px')
+      .style('border', '1px solid #ccc') 
+      .style('border-left', 'none')
+      .style('border-right', 'none')
+      .style('border-radius', '0')
       .style('padding', '1px 3px')
       .style('box-shadow', '0 1px 3px rgba(0,0,0,0.1)')
       .style('color', 'rgba(0, 0, 0, 0.8)')
       .style('background-color', 'rgba(255, 255, 255, 0.95)')
+      .style('margin-left', '-1px')
+      .style('margin-right', '-1px')
+      .style('outline', 'none')
       .node() as HTMLInputElement;
-
     activeInput = input;
     input.focus();
     input.select();
 
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        saveTextEdit(d.id, input.value, foreignObject, textElementsToHide, textUpdateCallback);
-      } else if (e.key === 'Escape') {
-        cancelTextEdit(foreignObject, textElementsToHide);
-      }
+    const saveButton = editorContainer.append('xhtml:button')
+      .attr('class', 'p-button p-button-text p-button-icon-only node-edit-button save-button')
+      .style('width', `${buttonWidth}px`)
+      .style('height', `${inputHeight}px`)
+      .style('display', 'flex').style('align-items', 'center').style('justify-content', 'center')
+      .style('padding', '0')
+      .style('border', '1px solid #4CAF50')
+      .style('background-color', 'rgba(76, 175, 80, 0.1)')
+      .style('color', '#4CAF50')
+      .style('cursor', 'pointer')
+      .style('border-radius', '0 3px 3px 0')
+      .html('<i class="pi pi-check" style="font-size: 12px;"></i>');
+    saveButton.on('click', (event: MouseEvent) => {
+      event.stopPropagation();
+      saveTextEdit(d.id, input.value, foreignObjectSelection, textElementsToHide, textUpdateCallback);
     });
 
-    input.addEventListener('blur', () => {
-      if (currentlyEditingNodeId === d.id) {
-        cancelTextEdit(foreignObject, textElementsToHide);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        saveTextEdit(d.id, input.value, foreignObjectSelection, textElementsToHide, textUpdateCallback);
+      } else if (e.key === 'Escape') {
+        cancelTextEdit(foreignObjectSelection, textElementsToHide);
       }
-    });
+    };
+
+    input.addEventListener('keydown', handleKeyDown);
+    const currentInputRef = input;
+
+    const instanceDocumentClickHandler = (clickEvent: MouseEvent) => {
+      if (!isEditorActive) {
+        return;
+      }
+      if (isCleaningUp) {
+        return;
+      }
+      const foElement = foreignObjectSelection.node();
+      if (!foElement) {
+        return;
+      }
+      const isTargetOutsideFO = !foElement.contains(clickEvent.target as Node);
+      const isTargetNotSaveButton = clickEvent.target !== saveButton.node() && !(saveButton.node() as HTMLElement).contains(clickEvent.target as Node);
+      const isTargetNotCancelButton = clickEvent.target !== cancelButton.node() && !(cancelButton.node() as HTMLElement).contains(clickEvent.target as Node);
+      if (isTargetOutsideFO && isTargetNotSaveButton && isTargetNotCancelButton) {
+        cancelTextEdit(foreignObjectSelection, textElementsToHide);
+      }
+    };
+
+    document.addEventListener('click', instanceDocumentClickHandler, true);
+
+    (input as any).__cleanupListeners = () => {
+      isEditorActive = false;
+      currentInputRef.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('click', instanceDocumentClickHandler, true);
+    };
   }
 
   function saveTextEdit(
@@ -408,15 +475,13 @@ export function useNodeStyling() {
     originalTextElements: d3.Selection<SVGTextElement, unknown, any, any>[],
     textUpdateCallback: (nodeId: string, newText: string) => void
   ) {
-    console.log(`Saving text for ${nodeId}: ${newValue}`);
     if (isCleaningUp) return;
     isCleaningUp = true;
     textUpdateCallback(nodeId, newValue);
     try {
       cleanupEdit(foreignObject, originalTextElements);
     } catch (error) {
-      console.warn('Error during edit cleanup:', error);
-      currentlyEditingNodeId = null;
+      currentlyEditingNodeId = null; // Ensure reset even on error
       activeInput = null;
     } finally {
       isCleaningUp = false;
@@ -427,14 +492,13 @@ export function useNodeStyling() {
     foreignObject: Selection<any, unknown, null, undefined>,
     originalTextElements: d3.Selection<SVGTextElement, unknown, any, any>[]
   ) {
-    console.log(`Cancelling text edit for ${currentlyEditingNodeId}`);
+    const nodeIdForLog = currentlyEditingNodeId; // Capture before potential reset
     if (isCleaningUp) return;
     isCleaningUp = true;
     try {
       cleanupEdit(foreignObject, originalTextElements);
-    } catch (error) {
-      console.warn('Error during edit cleanup:', error);
-      currentlyEditingNodeId = null;
+    } catch (error) { 
+      currentlyEditingNodeId = null; // Ensure reset even on error
       activeInput = null;
     } finally {
       isCleaningUp = false;
@@ -445,7 +509,13 @@ export function useNodeStyling() {
     foreignObject: Selection<any, unknown, null, undefined>,
     originalTextElements: d3.Selection<SVGTextElement, unknown, any, any>[]
   ) {
+    const activeNodeIdForLog = currentlyEditingNodeId; // Capture for logging
     if (!foreignObject.empty()) {
+      const inputEl = foreignObject.select('input').node() as HTMLInputElement | null;
+      if (inputEl && (inputEl as any).__cleanupListeners) {
+        (inputEl as any).__cleanupListeners(); 
+        delete (inputEl as any).__cleanupListeners; 
+      }
       try {
         foreignObject.remove();
       } catch (error) {
