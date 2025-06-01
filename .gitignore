@@ -41,8 +41,7 @@ node_modules/
 *.sw?
 # OS specific
 # Task files
-tasks.json
-tasks/ 
+
 DreamSeed - Documentation.pdf
 composables/useZoom.ts
 repomix-output.xml
@@ -53,6 +52,4 @@ documentation.md
 scripts/prd.txt
 .roo/rules/tag-cloud-component.md
 .roo/rules/general-vue-ui-components.md
-.env-backup
-.env-backup
 .env-backup

@@ -1,0 +1,523 @@
+{
+  "tasks": [
+    {
+      "id": "f0891e4b-b8c3-4c1c-8f44-533534c8e9a0",
+      "name": "Add dream loading state to tagStore",
+      "description": "Add isDreamLoading reactive state to tagStore.ts to track when dream switching operations are in progress. This state will be used to control the visibility of the loading overlay.",
+      "notes": "Follow existing patterns used for isRequestInProgress. Ensure loading state is properly reset even if errors occur during dream loading.",
+      "status": "pending",
+      "dependencies": [],
+      "createdAt": "2025-05-31T03:35:32.770Z",
+      "updatedAt": "2025-05-31T03:35:32.770Z",
+      "relatedFiles": [
+        {
+          "path": "store/tagStore.ts",
+          "type": "TO_MODIFY",
+          "description": "Add isDreamLoading state and update loading functions",
+          "lineStart": 35,
+          "lineEnd": 45
+        },
+        {
+          "path": "store/tagStore.ts",
+          "type": "TO_MODIFY",
+          "description": "Update loadDreamState function",
+          "lineStart": 119,
+          "lineEnd": 210
+        },
+        {
+          "path": "store/tagStore.ts",
+          "type": "TO_MODIFY",
+          "description": "Update loadStateFromImageSnapshot function",
+          "lineStart": 312,
+          "lineEnd": 350
+        }
+      ],
+      "implementationGuide": "1. Add isDreamLoading ref(false) alongside existing isRequestInProgress state\\n2. Export isDreamLoading in the return statement\\n3. Update loadDreamState function to set isDreamLoading = true at start, false at completion\\n4. Update loadStateFromImageSnapshot function to set isDreamLoading = true at start, false at completion\\n5. Ensure proper error handling with finally blocks to always reset loading state",
+      "verificationCriteria": "isDreamLoading state is properly exported from tagStore, loading functions correctly set and reset the state, and error handling ensures state is always reset",
+      "analysisResult": "Implement a full-size loader overlay for dream switching functionality that covers the .main-zone container while dreams are being loaded. The solution leverages existing LoadingSpinner component and glass-card styling patterns, integrates with tagStore for state management, and follows established Vue 3 Composition API and PrimeVue patterns. The overlay will be subtle but visible, appearing during loadDreamState and loadStateFromImageSnapshot operations."
+    },
+    {
+      "id": "c7c46ab6-97d0-4870-a452-868ff0397b3d",
+      "name": "Create DreamLoadingOverlay component",
+      "description": "Create a new Vue component that displays a full-size loading overlay covering the .main-zone container. The component should use existing LoadingSpinner and follow glass-card styling patterns for visual consistency.",
+      "notes": "Use z-index 5000 to be above content but below menus (9999+). Follow project's glass-card visual patterns for consistency. Keep component simple and focused on single responsibility.",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "f0891e4b-b8c3-4c1c-8f44-533534c8e9a0"
+        }
+      ],
+      "createdAt": "2025-05-31T03:35:32.770Z",
+      "updatedAt": "2025-05-31T03:35:32.770Z",
+      "relatedFiles": [
+        {
+          "path": "components/DreamLoadingOverlay.vue",
+          "type": "CREATE",
+          "description": "New overlay component for dream loading state"
+        },
+        {
+          "path": "components/LoadingSpinner.vue",
+          "type": "REFERENCE",
+          "description": "Existing spinner component to reuse",
+          "lineStart": 1,
+          "lineEnd": 70
+        },
+        {
+          "path": "assets/scss/main.scss",
+          "type": "REFERENCE",
+          "description": "Glass-card styling patterns to follow",
+          "lineStart": 70,
+          "lineEnd": 95
+        }
+      ],
+      "implementationGuide": "1. Create components/DreamLoadingOverlay.vue with template, script setup, and style sections\\n2. Template: div with absolute positioning, backdrop-filter blur, centered LoadingSpinner and text\\n3. Script: Import LoadingSpinner, use Composition API with minimal props if needed\\n4. Style: Use glass-card patterns with backdrop-filter blur, z-index 5000, full coverage positioning\\n5. Follow existing component patterns from LoadingSpinner.vue and glass-card styling",
+      "verificationCriteria": "Component renders correctly with proper positioning, uses LoadingSpinner component, follows glass-card styling patterns, and has appropriate z-index for layering",
+      "analysisResult": "Implement a full-size loader overlay for dream switching functionality that covers the .main-zone container while dreams are being loaded. The solution leverages existing LoadingSpinner component and glass-card styling patterns, integrates with tagStore for state management, and follows established Vue 3 Composition API and PrimeVue patterns. The overlay will be subtle but visible, appearing during loadDreamState and loadStateFromImageSnapshot operations."
+    },
+    {
+      "id": "54dbda39-f231-4feb-846f-bebdf9ee9b0a",
+      "name": "Integrate overlay in TagCloud component",
+      "description": "Add the DreamLoadingOverlay component to TagCloud.vue with conditional rendering based on tagStore.isDreamLoading state. Position the overlay to cover the entire .main-zone container.",
+      "notes": "Place overlay as last child of .main-zone to ensure it covers all content. Use conditional rendering to minimize DOM impact when not loading. Ensure proper import and component registration.",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "f0891e4b-b8c3-4c1c-8f44-533534c8e9a0"
+        },
+        {
+          "taskId": "c7c46ab6-97d0-4870-a452-868ff0397b3d"
+        }
+      ],
+      "createdAt": "2025-05-31T03:35:32.770Z",
+      "updatedAt": "2025-05-31T03:35:32.770Z",
+      "relatedFiles": [
+        {
+          "path": "components/TagCloud.vue",
+          "type": "TO_MODIFY",
+          "description": "Add overlay component with conditional rendering",
+          "lineStart": 1,
+          "lineEnd": 50
+        },
+        {
+          "path": "components/TagCloud.vue",
+          "type": "TO_MODIFY",
+          "description": "Import and register DreamLoadingOverlay component",
+          "lineStart": 200,
+          "lineEnd": 250
+        },
+        {
+          "path": "components/DreamLoadingOverlay.vue",
+          "type": "DEPENDENCY",
+          "description": "New overlay component to import"
+        }
+      ],
+      "implementationGuide": "1. Import DreamLoadingOverlay component in TagCloud.vue\\n2. Add component to template as last child of .main-zone div\\n3. Use v-if=\\\"tagStore.isDreamLoading\\\" for conditional rendering\\n4. Ensure overlay covers entire .main-zone with proper positioning\\n5. Test that overlay appears during dream switching and disappears when complete",
+      "verificationCriteria": "Overlay appears when switching dreams, covers entire .main-zone area, disappears when loading completes, and doesn't interfere with existing functionality",
+      "analysisResult": "Implement a full-size loader overlay for dream switching functionality that covers the .main-zone container while dreams are being loaded. The solution leverages existing LoadingSpinner component and glass-card styling patterns, integrates with tagStore for state management, and follows established Vue 3 Composition API and PrimeVue patterns. The overlay will be subtle but visible, appearing during loadDreamState and loadStateFromImageSnapshot operations."
+    },
+    {
+      "id": "587657bb-6ad5-40ab-9835-19de1f2b6255",
+      "name": "Create Gallery API Endpoints",
+      "description": "Extend existing /api/images/ endpoints to support gallery functionality including pagination, search filters, and bulk operations for user image management.",
+      "notes": "Leverage existing authentication middleware and Prisma GeneratedImage model. Follow established error handling patterns from existing API routes.",
+      "status": "pending",
+      "dependencies": [],
+      "createdAt": "2025-05-31T04:15:32.770Z",
+      "updatedAt": "2025-05-31T04:15:32.770Z",
+      "relatedFiles": [
+        {
+          "path": "server/api/images/gallery.get.ts",
+          "type": "CREATE",
+          "description": "New gallery API endpoint with pagination and search"
+        },
+        {
+          "path": "server/api/images/[id].delete.ts",
+          "type": "CREATE",
+          "description": "Image deletion endpoint"
+        },
+        {
+          "path": "server/api/images/index.get.ts",
+          "type": "REFERENCE",
+          "description": "Reference for authentication and query patterns",
+          "lineStart": 1,
+          "lineEnd": 44
+        }
+      ],
+      "implementationGuide": "1. Create /api/images/gallery.get.ts endpoint following existing /api/images/index.get.ts patterns\\n2. Implement pagination using Prisma skip/take with default page size of 20\\n3. Add search functionality on promptText field using Prisma contains filter\\n4. Add date range filtering using Prisma gte/lte on createdAt\\n5. Add sorting options (newest, oldest, alphabetical by prompt)\\n6. Ensure proper authentication using getServerSession pattern\\n7. Filter by userId to ensure user only sees their own images\\n8. Create /api/images/[id].delete.ts for individual image deletion\\n9. Return structured response with images array, pagination metadata, and total count",
+      "verificationCriteria": "API endpoints return paginated results with proper authentication, search filters work correctly, deletion requires user ownership verification, and all responses follow established error handling patterns"
+    },
+    {
+      "id": "52b844fc-df86-4895-9731-de9df893bf67",
+      "name": "Create Gallery Page Component",
+      "description": "Implement /pages/gallery.vue as the main gallery page using Nuxt page structure with proper SEO metadata and responsive design.",
+      "notes": "Follow existing page patterns from login/register pages. Use PrimeVue components for consistency. Implement proper meta tags for SEO.",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "587657bb-6ad5-40ab-9835-19de1f2b6255"
+        }
+      ],
+      "createdAt": "2025-05-31T04:15:32.770Z",
+      "updatedAt": "2025-05-31T04:15:32.770Z",
+      "relatedFiles": [
+        {
+          "path": "pages/gallery.vue",
+          "type": "CREATE",
+          "description": "Main gallery page component"
+        },
+        {
+          "path": "pages/login.vue",
+          "type": "REFERENCE",
+          "description": "Reference for page structure and PrimeVue usage",
+          "lineStart": 1,
+          "lineEnd": 50
+        },
+        {
+          "path": "middleware/auth.global.ts",
+          "type": "REFERENCE",
+          "description": "Authentication middleware pattern"
+        }
+      ],
+      "implementationGuide": "1. Create pages/gallery.vue using Nuxt 3 page structure\\n2. Set page meta with title 'My Image Gallery' and description for SEO\\n3. Use default layout and add authentication middleware\\n4. Implement responsive design using Tailwind CSS grid classes\\n5. Add page header with title and summary statistics\\n6. Create search/filter section using PrimeVue InputText and Calendar components\\n7. Integrate with gallery API endpoints using useFetch composable\\n8. Implement proper loading states using existing LoadingSpinner component\\n9. Add empty state message when no images exist\\n10. Ensure mobile-responsive layout with proper breakpoints",
+      "verificationCriteria": "Page loads correctly with authentication, displays responsive grid layout, search/filter functionality works, and proper loading/empty states are shown"
+    },
+    {
+      "id": "7a0bd070-c176-40c5-b065-6cb9e6e10abc",
+      "name": "Implement Gallery Grid Component",
+      "description": "Create GalleryGrid.vue component for displaying image thumbnails in a responsive masonry or grid layout with hover effects and selection functionality.",
+      "notes": "Leverage existing ImageStrip patterns for thumbnail display. Use PrimeVue DataView for advanced grid functionality. Ensure performance optimization with virtual scrolling if needed.",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "587657bb-6ad5-40ab-9835-19de1f2b6255"
+        }
+      ],
+      "createdAt": "2025-05-31T04:15:32.770Z",
+      "updatedAt": "2025-05-31T04:15:32.770Z",
+      "relatedFiles": [
+        {
+          "path": "components/GalleryGrid.vue",
+          "type": "CREATE",
+          "description": "Grid component for displaying image thumbnails"
+        },
+        {
+          "path": "components/ImageStrip.vue",
+          "type": "REFERENCE",
+          "description": "Reference for image thumbnail patterns",
+          "lineStart": 1,
+          "lineEnd": 200
+        },
+        {
+          "path": "components/TagCloud.vue",
+          "type": "REFERENCE",
+          "description": "Reference for glass-card styling",
+          "lineStart": 54,
+          "lineEnd": 70
+        }
+      ],
+      "implementationGuide": "1. Create components/GalleryGrid.vue using PrimeVue DataView component\\n2. Implement responsive grid layout using CSS Grid with auto-fit columns\\n3. Create image thumbnail items with hover overlay effects\\n4. Add image selection functionality with visual feedback\\n5. Implement lazy loading for performance with large collections\\n6. Add transition effects for smooth user experience\\n7. Support different view modes (grid sizes: small, medium, large)\\n8. Include image metadata display (prompt text, creation date)\\n9. Integrate with existing ImageActions component for download/share\\n10. Follow glass-card styling patterns from existing components",
+      "verificationCriteria": "Grid displays images responsively, hover effects work smoothly, image selection provides visual feedback, lazy loading improves performance, and component integrates with existing styling patterns"
+    },
+    {
+      "id": "5e7633a1-983b-4dff-a2e7-7d744741a6de",
+      "name": "Add Search and Filter Controls",
+      "description": "Implement SearchFilters.vue component with search by prompt text, date range filtering, and sorting options using PrimeVue form components.",
+      "notes": "Use debounce utility for search input. Maintain filter state in URL for better UX. Follow PrimeVue component patterns from existing forms.",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "52b844fc-df86-4895-9731-de9df893bf67"
+        }
+      ],
+      "createdAt": "2025-05-31T04:15:32.770Z",
+      "updatedAt": "2025-05-31T04:15:32.770Z",
+      "relatedFiles": [
+        {
+          "path": "components/SearchFilters.vue",
+          "type": "CREATE",
+          "description": "Search and filter controls component"
+        },
+        {
+          "path": "pages/register.vue",
+          "type": "REFERENCE",
+          "description": "Reference for PrimeVue form patterns",
+          "lineStart": 10,
+          "lineEnd": 60
+        },
+        {
+          "path": "components/ZoneSelector.vue",
+          "type": "REFERENCE",
+          "description": "Reference for selection button patterns"
+        }
+      ],
+      "implementationGuide": "1. Create components/SearchFilters.vue with PrimeVue form components\\n2. Add InputText with search icon for prompt text search\\n3. Implement Calendar component for date range selection\\n4. Add Dropdown for sorting options (newest, oldest, by prompt)\\n5. Create toggle buttons for view mode selection (grid size)\\n6. Implement debounced search to avoid excessive API calls\\n7. Add clear filters functionality\\n8. Store filter state in URL parameters for bookmarking\\n9. Provide loading indicators during filter operations\\n10. Follow existing form patterns from login/register pages",
+      "verificationCriteria": "Search filters work correctly with debouncing, date range selection functions properly, sorting options update results, clear filters resets all inputs, and URL parameters maintain filter state"
+    },
+    {
+      "id": "98069968-4021-43a5-819b-4f7c5dc59c56",
+      "name": "Implement Gallery Image Modal",
+      "description": "Create ImageModal.vue component for detailed image viewing with metadata display, full-size image viewing, and integrated action buttons.",
+      "notes": "Integrate with existing ImageActions component. Use PrimeVue Dialog with proper focus management. Implement keyboard navigation for better UX.",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "7a0bd070-c176-40c5-b065-6cb9e6e10abc"
+        }
+      ],
+      "createdAt": "2025-05-31T04:15:32.770Z",
+      "updatedAt": "2025-05-31T04:15:32.770Z",
+      "relatedFiles": [
+        {
+          "path": "components/ImageModal.vue",
+          "type": "CREATE",
+          "description": "Modal component for detailed image viewing"
+        },
+        {
+          "path": "components/ImageActions.vue",
+          "type": "REFERENCE",
+          "description": "Existing image action buttons component"
+        },
+        {
+          "path": "layouts/default.vue",
+          "type": "REFERENCE",
+          "description": "Reference for modal and dialog patterns",
+          "lineStart": 116,
+          "lineEnd": 150
+        }
+      ],
+      "implementationGuide": "1. Create components/ImageModal.vue using PrimeVue Dialog component\\n2. Display full-size image with zoom and pan capabilities\\n3. Show image metadata (prompt text, creation date, dream title)\\n4. Integrate ImageActions component for download/share functionality\\n5. Add navigation arrows for previous/next image browsing\\n6. Implement keyboard navigation (arrow keys, escape)\\n7. Include delete functionality with confirmation dialog\\n8. Add responsive design for mobile viewing\\n9. Follow existing modal patterns from the application\\n10. Implement proper focus management for accessibility",
+      "verificationCriteria": "Modal displays images correctly with zoom functionality, metadata shows accurately, navigation works smoothly, delete confirmation prevents accidental deletion, and keyboard navigation enhances accessibility"
+    },
+    {
+      "id": "e840a09b-bf1f-4235-905b-dea9c8ca4670",
+      "name": "Add Gallery Navigation Integration",
+      "description": "Integrate gallery page into existing navigation structure and update sidebar with gallery link following established navigation patterns.",
+      "notes": "Follow existing navigation patterns from default layout. Use pi-images icon for gallery. Ensure proper active state styling.",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "52b844fc-df86-4895-9731-de9df893bf67"
+        }
+      ],
+      "createdAt": "2025-05-31T04:15:32.770Z",
+      "updatedAt": "2025-05-31T04:15:32.770Z",
+      "relatedFiles": [
+        {
+          "path": "layouts/default.vue",
+          "type": "TO_MODIFY",
+          "description": "Add gallery navigation item",
+          "lineStart": 14,
+          "lineEnd": 35
+        },
+        {
+          "path": "nuxt.config.ts",
+          "type": "REFERENCE",
+          "description": "PrimeIcons configuration reference"
+        }
+      ],
+      "implementationGuide": "1. Update layouts/default.vue to add Gallery navigation item\\n2. Place gallery link in logical position within existing nav structure\\n3. Use appropriate PrimeIcons icon (pi-images or pi-th-large)\\n4. Implement active state styling to match existing nav items\\n5. Add navigation item between existing Create and Library items\\n6. Update navigation aria-labels for accessibility\\n7. Ensure responsive behavior matches existing navigation\\n8. Test navigation on mobile devices\\n9. Add gallery item count badge if feasible\\n10. Follow existing navigation styling patterns",
+      "verificationCriteria": "Gallery link appears in sidebar navigation, active state styling works correctly, icon displays properly, responsive behavior matches existing items, and accessibility labels are appropriate"
+    },
+    {
+      "id": "462977a2-a1ae-4a02-ae3f-28d2e52d3793",
+      "name": "Implement Gallery State Management",
+      "description": "Create useGallery composable for managing gallery state, API interactions, and user actions following established composable patterns.",
+      "notes": "Follow existing composable patterns from useDreamManagement.ts. Implement proper error handling and loading states. Use debounce for search optimization.",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "587657bb-6ad5-40ab-9835-19de1f2b6255"
+        },
+        {
+          "taskId": "5e7633a1-983b-4dff-a2e7-7d744741a6de"
+        }
+      ],
+      "createdAt": "2025-05-31T04:15:32.770Z",
+      "updatedAt": "2025-05-31T04:15:32.770Z",
+      "relatedFiles": [
+        {
+          "path": "composables/useGallery.ts",
+          "type": "CREATE",
+          "description": "Gallery state management composable"
+        },
+        {
+          "path": "composables/useDreamManagement.ts",
+          "type": "REFERENCE",
+          "description": "Reference for composable patterns",
+          "lineStart": 1,
+          "lineEnd": 100
+        },
+        {
+          "path": "composables/useImageGeneration.ts",
+          "type": "REFERENCE",
+          "description": "Reference for image-related composable patterns"
+        }
+      ],
+      "implementationGuide": "1. Create composables/useGallery.ts following existing composable patterns\\n2. Implement reactive state for images, pagination, and filters\\n3. Create functions for fetchImages, searchImages, deleteImage\\n4. Add pagination logic with currentPage and totalPages\\n5. Implement filter state management (search term, date range, sort)\\n6. Add loading states for different operations\\n7. Implement error handling with proper error messages\\n8. Create functions for image selection and modal state\\n9. Add debounced search functionality\\n10. Follow patterns from useDreamManagement.ts composable",
+      "verificationCriteria": "Composable manages gallery state effectively, API interactions work correctly, error handling provides useful feedback, pagination functions properly, and search/filter state is maintained correctly"
+    },
+    {
+      "id": "c04260b4-311d-47c3-8d1a-35b14c6190f1",
+      "name": "Add Gallery Performance Optimizations",
+      "description": "Implement performance optimizations including image lazy loading, virtual scrolling, caching, and memory management for large image collections.",
+      "notes": "Focus on performance for large image collections. Use modern web APIs like Intersection Observer. Implement proper memory management to prevent leaks.",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "7a0bd070-c176-40c5-b065-6cb9e6e10abc"
+        },
+        {
+          "taskId": "462977a2-a1ae-4a02-ae3f-28d2e52d3793"
+        }
+      ],
+      "createdAt": "2025-05-31T04:15:32.770Z",
+      "updatedAt": "2025-05-31T04:15:32.770Z",
+      "relatedFiles": [
+        {
+          "path": "composables/useGallery.ts",
+          "type": "TO_MODIFY",
+          "description": "Add performance optimizations to gallery composable"
+        },
+        {
+          "path": "components/GalleryGrid.vue",
+          "type": "TO_MODIFY",
+          "description": "Add lazy loading and virtual scrolling"
+        },
+        {
+          "path": "components/ForceGraph.vue",
+          "type": "REFERENCE",
+          "description": "Reference for performance optimization patterns",
+          "lineStart": 600,
+          "lineEnd": 635
+        }
+      ],
+      "implementationGuide": "1. Implement lazy loading for image thumbnails using Intersection Observer\\n2. Add virtual scrolling for large collections using PrimeVue VirtualScroller\\n3. Implement image caching strategy with proper cache invalidation\\n4. Add progressive image loading with placeholder blur effect\\n5. Optimize API queries with proper indexing and selective field loading\\n6. Implement debouncing for search and filter operations\\n7. Add image preloading for next/previous navigation\\n8. Optimize memory usage by unloading off-screen images\\n9. Add performance monitoring and metrics\\n10. Implement proper cleanup in component unmount",
+      "verificationCriteria": "Large image collections load efficiently, memory usage remains stable, search/filter operations respond quickly, virtual scrolling works smoothly, and performance metrics show improvement over basic implementation"
+    },
+    {
+      "id": "ec7c1750-170f-4e5f-a143-33628af80ffa",
+      "name": "Integrate Hetzner Object Storage",
+      "description": "Set up an S3-compatible client in the backend to upload images to Hetzner Object Storage.",
+      "notes": "Ensure the bucket is configured for public read or generate presigned URLs.",
+      "status": "completed",
+      "dependencies": [],
+      "createdAt": "2025-06-01T04:28:35.570Z",
+      "updatedAt": "2025-06-01T05:26:43.595Z",
+      "relatedFiles": [
+        {
+          "path": "server/utils/storage.ts",
+          "type": "CREATE",
+          "description": "New utility for object storage client.",
+          "lineStart": 1,
+          "lineEnd": 50
+        },
+        {
+          "path": ".env.example",
+          "type": "TO_MODIFY",
+          "description": "Add storage env vars.",
+          "lineStart": 1,
+          "lineEnd": 50
+        }
+      ],
+      "implementationGuide": "Create a new file 'server/utils/storage.ts' using AWS SDK v3 (S3Client). Read HETZNER_S3_ENDPOINT, HETZNER_S3_ACCESS_KEY, HETZNER_S3_SECRET_KEY, HETZNER_S3_BUCKET from process.env. Export a function 'uploadImage(buffer: Buffer, key: string): Promise<string>' that uploads the buffer to the bucket and returns the public URL.",
+      "verificationCriteria": "Can call uploadImage with a local test buffer and confirm the image appears in the Hetzner bucket and returns a valid URL.",
+      "analysisResult": "",
+      "summary": "Hetzner Object Storage integration utility `server/utils/storage.ts` was created and the AWS SDK was installed as per the implementation guide. The utility reads necessary environment variables and provides an `uploadImage` function.",
+      "completedAt": "2025-06-01T05:26:43.594Z"
+    },
+    {
+      "id": "a14963ee-e135-41e5-b240-588b1b225ebc",
+      "name": "Add Object Storage Environment Variables",
+      "description": "Define required environment variables for Hetzner Object Storage credentials.",
+      "notes": "Values should match Hetzner Object Storage configuration.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "ec7c1750-170f-4e5f-a143-33628af80ffa"
+        }
+      ],
+      "createdAt": "2025-06-01T04:28:35.570Z",
+      "updatedAt": "2025-06-01T05:26:51.713Z",
+      "relatedFiles": [
+        {
+          "path": ".env.example",
+          "type": "TO_MODIFY",
+          "description": "Add storage env vars.",
+          "lineStart": 1,
+          "lineEnd": 50
+        }
+      ],
+      "implementationGuide": "In '.env' and '.env.example', add HETZNER_S3_ENDPOINT, HETZNER_S3_ACCESS_KEY, HETZNER_S3_SECRET_KEY, HETZNER_S3_BUCKET with placeholder values. Document their usage.",
+      "verificationCriteria": "The storage utility picks up these variables and can connect to the bucket without errors.",
+      "analysisResult": "",
+      "summary": "User confirmed that HETZNER_S3_ENDPOINT, HETZNER_S3_ACCESS_KEY, HETZNER_S3_SECRET_KEY, and HETZNER_S3_BUCKET environment variables were added to .env and .env.example. The storage utility `server/utils/storage.ts` is designed to pick up these variables.",
+      "completedAt": "2025-06-01T05:26:51.713Z"
+    },
+    {
+      "id": "0b5a6ad0-8270-4cc8-8214-add8c9103b63",
+      "name": "Modify Image Generation API to Use Object Storage",
+      "description": "Update the server-side image save endpoint to upload images to object storage instead of saving base64 in the database.",
+      "notes": "Remove or ignore any base64 fields in the database if necessary.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "ec7c1750-170f-4e5f-a143-33628af80ffa"
+        },
+        {
+          "taskId": "a14963ee-e135-41e5-b240-588b1b225ebc"
+        }
+      ],
+      "createdAt": "2025-06-01T04:28:35.570Z",
+      "updatedAt": "2025-06-01T05:26:59.610Z",
+      "relatedFiles": [
+        {
+          "path": "server/api/images/index.post.ts",
+          "type": "TO_MODIFY",
+          "description": "Update endpoint logic to upload to storage and save URL.",
+          "lineStart": 1,
+          "lineEnd": 200
+        }
+      ],
+      "implementationGuide": "In 'server/api/images/index.post.ts', import the storage uploadImage function. Decode the base64 image payload into a buffer, generate a unique key (e.g., using timestamp and UUID), call uploadImage, then store the returned URL in the Prisma 'GeneratedImage.imageUrl' field when creating the record.",
+      "verificationCriteria": "After making an image generation request, the image is stored in object storage and the database record's imageUrl points to the public URL. No base64 strings stored.",
+      "analysisResult": "",
+      "summary": "The image generation API endpoint `server/api/images/index.post.ts` was successfully modified. It now imports the `uploadImage` utility and `Buffer`. When an image is posted, the base64 `imageUrl` is decoded into a buffer, a unique filename is generated, and `uploadImage` is called to send it to Hetzner Object Storage. The URL returned by `uploadImage` is then saved in the `imageUrl` field of the `GeneratedImage` Prisma model. Error handling was also updated.",
+      "completedAt": "2025-06-01T05:26:59.610Z"
+    },
+    {
+      "id": "baba4178-744d-45ec-b9e7-f488f6e174b2",
+      "name": "Update Frontend Components to Use New Storage URLs",
+      "description": "Ensure all frontend image components use the new imageUrl property to load images from object storage.",
+      "notes": "Test loading multiple images and check performance.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "0b5a6ad0-8270-4cc8-8214-add8c9103b63"
+        }
+      ],
+      "createdAt": "2025-06-01T04:28:35.570Z",
+      "updatedAt": "2025-06-01T05:27:08.267Z",
+      "relatedFiles": [
+        {
+          "path": "components/ImageStrip.vue",
+          "type": "TO_MODIFY",
+          "description": "Ensure <img> src uses URL.",
+          "lineStart": 1,
+          "lineEnd": 100
+        },
+        {
+          "path": "components/UserImageGallery.vue",
+          "type": "TO_MODIFY",
+          "description": "Ensure <img> src uses URL.",
+          "lineStart": 1,
+          "lineEnd": 100
+        }
+      ],
+      "implementationGuide": "In 'components/ImageStrip.vue' and 'components/UserImageGallery.vue', verify that imageUrl (a URL) is used in <img> src. Remove any logic that handled base64 strings differently.",
+      "verificationCriteria": "Images in the strip and gallery load from object storage URLs quickly without base64 payload errors.",
+      "analysisResult": "",
+      "summary": "Verified that both `components/ImageStrip.vue` and `components/UserImageGallery.vue` already use the `imageUrl` property directly in the `src` attribute of their `<img>` tags. No changes were needed as they were already compatible with using URLs for images, which will now be the object storage URLs.",
+      "completedAt": "2025-06-01T05:27:08.267Z"
+    }
+  ]
+}

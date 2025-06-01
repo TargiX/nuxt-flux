@@ -926,18 +926,21 @@ async function handleNodeContextMenu(payload: { category: string; action: string
 const selectedTags = computed<Tag[]>(() => tagStore.tags.filter((t: Tag) => t.selected));
 
 // Remove a tag and its dependent child tags
-function removeTag(tag: Tag) {
+async function removeTag(tag: Tag) {
   if (isViewingSnapshot.value) {
     toast.add({ severity: 'info', summary: 'Read-only', detail: 'Cannot remove tags while viewing a snapshot. Exit snapshot view first.', life: 3000 });
     return;
   }
-  tagStore.toggleTag(tag.id);
-  // Recursively remove children
-  tagStore.tags.forEach((child: Tag) => {
-    if (child.selected && child.parentId === tag.id) {
-      removeTag(child);
-    }
-  });
+  // Toggle tag selection and wait for completion
+  await tagStore.toggleTag(tag.id);
+  // Recursively remove child tags that remain selected
+  for (const child of tagStore.tags.filter((t: Tag) => t.selected && t.parentId === tag.id)) {
+    await removeTag(child);
+  }
+  // Clear prompt cache for updated tags list
+  clearPromptCache(generatedPrompt.value);
+  // Trigger prompt regeneration for updated selection
+  triggerPromptGeneration();
 }
 
 // New handler to apply snapshot state as current live session
