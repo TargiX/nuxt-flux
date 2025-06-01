@@ -89,7 +89,7 @@ const __dirname  = _dirname(__filename);`
       GEMINI_API_KEY: process.env.GEMINI_API_KEY,
       FLUX_API_KEY: process.env.FLUX_API_KEY,
       authJs: {
-        baseUrl: process.env.NEXTAUTH_URL || (process.env.NODE_ENV === 'production' ? 'http://5.161.248.184:3000' : 'http://localhost:3000')
+        baseUrl: process.env.NEXTAUTH_URL || (process.env.NODE_ENV === 'production' ? 'https://dreamseed.co' : 'http://localhost:3000')
       }
     }
   },
