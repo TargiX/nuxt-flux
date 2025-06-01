@@ -16,8 +16,11 @@ if (!HETZNER_S3_ENDPOINT || !HETZNER_S3_ACCESS_KEY || !HETZNER_S3_SECRET_KEY || 
   // throw new Error('Missing Hetzner S3 configuration.');
 }
 
+const rawEndpoint = HETZNER_S3_ENDPOINT?.replace(/\/+$/, '')!;
+const normalizedEndpoint = /^https?:\/\//i.test(rawEndpoint) ? rawEndpoint : `https://${rawEndpoint}`;
+
 const s3Client = new S3Client({
-  endpoint: HETZNER_S3_ENDPOINT,
+  endpoint: normalizedEndpoint,
   region: HETZNER_S3_REGION, 
   credentials: {
     accessKeyId: HETZNER_S3_ACCESS_KEY!,
@@ -57,25 +60,7 @@ export async function uploadImage(
   try {
     await s3Client.send(new PutObjectCommand(params));
     // Construct the public URL. This might vary based on your Hetzner setup (e.g., if using a custom domain or CDN).
-    // The typical format is: https://<bucket>.<endpoint>/<key>
-    // Note: Hetzner endpoints often include the bucket name, so check their specific URL format.
-    // Example: https://your-bucket.your-region.objectstorage.hetzner.cloud/your-key
-    // For Hetzner, the endpoint might already be specific to the region, e.g., objectstorage.eu-central-1.hetzner.cloud
-    // So, the URL could be: https://<bucket>.<endpoint-domain-part>/<key>
-    // Or simply: https://<endpoint>/<bucket>/<key> if the endpoint is more generic.
-    // We need to be careful here. Let's assume endpoint is like 'fsn1.hetznerobjects.com' and region is 'eu-central-1' (which is part of endpoint or implicit).
-    // A common pattern is `https://<bucket>.<endpoint_host>/<key>`
-    // If HETZNER_S3_ENDPOINT = https://fsn1.hetznerobjects.com
-    // URL becomes https://YOUR_BUCKET.fsn1.hetznerobjects.com/uniquekey
-    
-    // A safer way, if your endpoint is specific like `your-bucket.your-region.host.com`
-    // then the URL is `https://${HETZNER_S3_ENDPOINT}/${uniqueKey}` (if endpoint includes bucket)
-    // OR if endpoint is just `your-region.host.com`, then `https://${HETZNER_S3_BUCKET}.${HETZNER_S3_ENDPOINT}/${uniqueKey}`
-
-    // Given Hetzner's structure, if HETZNER_S3_ENDPOINT is something like `s3.your-region.cloud.herzner.com`
-    // the URL pattern is typically `https://<bucket_name>.<HETZNER_S3_ENDPOINT>/<object_key>`
-    // Ensure HETZNER_S3_ENDPOINT does not include `https://` for this construction.
-    const endpointUrl = new URL(HETZNER_S3_ENDPOINT);
+    const endpointUrl = new URL(normalizedEndpoint);
     const publicUrl = `https://${HETZNER_S3_BUCKET}.${endpointUrl.host}/${uniqueKey}`;
     
     console.log(`[StorageUtil] Image uploaded successfully to: ${publicUrl}`);

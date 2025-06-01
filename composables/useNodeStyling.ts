@@ -206,7 +206,7 @@ export function useNodeStyling() {
   };
   
   /**
-   * Gets the gradient URL for a node based on its zone and state
+   * Gets the fill color for a node based on its state
    */
   const getNodeGradient = (node: GraphNode): string => {
     // Loading state - use a subtle pulsing effect
@@ -214,9 +214,9 @@ export function useNodeStyling() {
       return 'rgba(255, 255, 255, 0.4)';
     }
     
-    // Unselected nodes - subtle background
+    // Unselected nodes - solid custom color
     if (!node.selected) {
-      return 'rgba(255, 255, 255, 0.15)';
+      return '#565571';
     }
     
     // Selected nodes - full gradient based on zone

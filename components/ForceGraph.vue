@@ -39,8 +39,18 @@
           severity="secondary"
           size="small"
           class="!w-7 !h-7"
+          v-tooltip.top="'Reset Zoom'"
           aria-label="Reset Zoom"
           icon="pi pi-sync"
+        />
+        <!-- Normalize Graph Layout -->
+        <Button
+          @click="normalizeGraph"
+          severity="secondary"
+          size="small"
+          class="!w-7 !h-7"
+          icon="pi pi-wave-pulse"
+          v-tooltip.top="'Normalize Graph'"
         />
       </div>
       <div >
@@ -576,6 +586,17 @@ function zoomToFit() {
   const x = cw / 2 - k * ((minX + maxX) / 2);
   const y = ch / 2 - k * ((minY + maxY) / 2);
   applyViewportFn(svg, { x, y, k }, 350);
+}
+
+// Normalize graph layout by applying strong force then reverting
+function normalizeGraph() {
+  if (!simulation) return;
+  // Apply a strong restart to break overlaps
+  simulation!.alpha(1).restart();
+  // After a moment, revert to regular simulation energy
+  setTimeout(() => {
+    simulation!.alpha(0.3).restart();
+  }, 1000);
 }
 
 // Expose methods for parent component interaction

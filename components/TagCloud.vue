@@ -143,18 +143,21 @@
       <div class="flex justify-between items-center w-full mt-2"> 
         <!-- Selected tags badges with remove icon -->
         <div class="flex flex-wrap gap-1 flex-grow">
-          <div
+          <Tag
             v-for="tag in selectedTags"
             :key="tag.id"
-            class="selected-tag-badge flex items-center bg-blue-200 text-blue-800 text-xs rounded px-2 py-1 relative"
+            severity="info"
+            class="px-1"
           >
-            <span class="truncate max-w-[80px]">{{ tag.text }}</span>
-            <i
-              v-if="!isViewingSnapshot"
-              class="pi pi-times ml-1 selected-tag-remove-icon"
-              @click="removeTag(tag)"
-            />
-          </div>
+            <div class="flex items-center gap-2">
+              <span class=" truncate max-w-[80px]">{{ tag.text }}</span>
+              <i
+                v-if="!isViewingSnapshot"
+                class="pi pi-times cursor-pointer"
+                @click.stop="removeTag(tag)"
+              />
+            </div>
+          </Tag>
         </div>
         <div class="flex gap-2">
           <Button 
@@ -245,7 +248,7 @@ import ImageStrip from './ImageStrip.vue';
 import { generateImagePrompt, clearPromptCache } from '~/services/promptGenerationService';
 import { generateConceptTags, preselectConceptTag } from '~/services/tagSelectionService';
 import { useImageGeneration } from '~/composables/useImageGeneration';
-import type { Tag } from '~/types/tag';
+import type { Tag as TagType } from '~/types/tag';
 import type { ViewportState } from '~/composables/useZoom';
 import { useDreamManagement } from '~/composables/useDreamManagement';
 import LoadingSpinner from './LoadingSpinner.vue';
@@ -923,10 +926,10 @@ async function handleNodeContextMenu(payload: { category: string; action: string
 }
 
 // Compute currently selected tags
-const selectedTags = computed<Tag[]>(() => tagStore.tags.filter((t: Tag) => t.selected));
+const selectedTags = computed<TagType[]>(() => tagStore.tags.filter((t: TagType) => t.selected));
 
 // Remove a tag and its dependent child tags
-async function removeTag(tag: Tag) {
+async function removeTag(tag: TagType) {
   if (isViewingSnapshot.value) {
     toast.add({ severity: 'info', summary: 'Read-only', detail: 'Cannot remove tags while viewing a snapshot. Exit snapshot view first.', life: 3000 });
     return;
@@ -934,7 +937,7 @@ async function removeTag(tag: Tag) {
   // Toggle tag selection and wait for completion
   await tagStore.toggleTag(tag.id);
   // Recursively remove child tags that remain selected
-  for (const child of tagStore.tags.filter((t: Tag) => t.selected && t.parentId === tag.id)) {
+  for (const child of tagStore.tags.filter((t: TagType) => t.selected && t.parentId === tag.id)) {
     await removeTag(child);
   }
   // Clear prompt cache for updated tags list
