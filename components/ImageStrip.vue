@@ -87,6 +87,7 @@ const emit = defineEmits(['image-selected']);
 const images = ref<DreamImage[]>([]);
 const pending = ref(false);
 const error = ref<Error | null>(null);
+const lastPrependedImageId = ref<number | null>(null); // Added for tracking
 
 let fetchController: AbortController | null = null;
 
@@ -144,7 +145,13 @@ const refetchImages = () => {
 // New method to prepend an image to the list
 const prependImage = (newImage: DreamImage) => {
   if (newImage && newImage.id) {
-    images.value.unshift(newImage); // Add to the beginning of the array
+    // Check if image already exists to prevent duplicates if race conditions occur
+    if (!images.value.some(img => img.id === newImage.id)) {
+      images.value.unshift(newImage); // Add to the beginning of the array
+      lastPrependedImageId.value = newImage.id; // Set the flag
+    } else {
+      console.warn('[ImageStrip] Attempted to prepend an image that already exists:', newImage.id);
+    }
   } else {
     console.warn('[ImageStrip] Attempted to prepend invalid image data:', newImage);
   }
@@ -158,19 +165,37 @@ defineExpose({
 // Watch for changes to dreamId and fetch accordingly
 watch(() => props.dreamId, (newDreamId, oldDreamId) => {
   if (typeof newDreamId === 'number' && newDreamId > 0) {
-    // On first valid load or when switching to a new dream, clear old images immediately
-    if (newDreamId !== oldDreamId || oldDreamId === undefined) {
-      images.value = []; // clear previous session's images
-      fetchImages(newDreamId);
+    if (newDreamId !== oldDreamId) {
+      if (lastPrependedImageId.value && images.value.some(img => img.id === lastPrependedImageId.value)) {
+        // An image was just prepended, likely for this newDreamId.
+        // The list is already up-to-date locally.
+        // Reset the flag, don't clear and don't fetch.
+        console.log('[ImageStrip] DreamID changed from', oldDreamId, 'to', newDreamId, ', but an image was just prepended. Skipping fetch.');
+        lastPrependedImageId.value = null; 
+      } else {
+        // Standard dream switch: clear old images and fetch for the new one.
+        console.log('[ImageStrip] DreamID changed from', oldDreamId, 'to', newDreamId, '. Clearing images and fetching.');
+        images.value = []; 
+        fetchImages(newDreamId);
+      }
+    } else if ((oldDreamId === undefined || oldDreamId === null) && images.value.length === 0 && !pending.value && !error.value) {
+        // This condition handles the initial load for a valid newDreamId
+        // or if dreamId was previously null and is now set.
+        console.log('[ImageStrip] Initial load or dreamId set from null. Fetching for DreamID:', newDreamId);
+        fetchImages(newDreamId);
     }
-  } else if (oldDreamId !== null && newDreamId === null) {
-    // If dreamId explicitly becomes null (user returns to live session), clear images
-    images.value = [];
-    fetchImages(null);
-  } else if (oldDreamId === undefined && newDreamId === null) {
-    // Initial load with no dream, clear images
-    images.value = [];
-    fetchImages(null);
+  } else if (newDreamId === null) { 
+    // DreamId became null (e.g., returning to a new session from a loaded dream)
+    // Or initial load with dreamId as null
+    if (oldDreamId !== null || oldDreamId === undefined) { // ensure this runs on actual change to null or initial null
+        console.log('[ImageStrip] DreamID is null (changed from', oldDreamId, '). Clearing images.');
+        images.value = [];
+        lastPrependedImageId.value = null; // Clear flag here too
+        // fetchImages(null); // Effectively resets pending/error, no actual fetch
+        // We can simplify: if dreamId is null, pending should be false, error null.
+        pending.value = false;
+        error.value = null;
+    }
   }
 }, { immediate: true });
 
