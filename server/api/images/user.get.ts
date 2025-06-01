@@ -1,10 +1,11 @@
 import { getServerSession } from '#auth'
+import { authOptions } from '~/server/api/auth/[...]'
 import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
 export default defineEventHandler(async (event) => {
-  const session = await getServerSession(event)
+  const session = await getServerSession(event, authOptions)
 
   if (!session || !session.user || !session.user.id) {
     throw createError({
