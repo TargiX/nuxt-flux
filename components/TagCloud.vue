@@ -1,10 +1,22 @@
 <template>
-   <div class="main-zone grid grid-cols-2 tw-gap-4">
+   <div class="main-zone grid  tw-gap-4">
     
-    <!-- Top Left: Graph -->
+    <!-- Top: Graph/Image Container (Full Width) -->
     <div class="graph-container glass-card">
-      <h2 class="zone-title">{{ focusedZone }}</h2>
+      <div class="flex justify-between items-center w-full mb-4">
+        <h2 class="zone-title m-0">{{ currentViewMode === 'graph' ? focusedZone : 'Image Preview' }}</h2>
+        <SelectButton 
+          v-model="currentViewMode" 
+          :options="viewModeOptions" 
+          optionLabel="label" 
+          optionValue="value"
+          class="view-mode-toggle"
+        />
+      </div>
+      
+      <!-- Graph View -->
       <ForceGraph
+        v-if="currentViewMode === 'graph'"
         ref="forceGraphRef"
         :width="800"
         :height="600"
@@ -14,61 +26,69 @@
         @nodePositionsUpdated="handleNodePositionsUpdated"
         @nodeTextUpdated="handleNodeTextUpdated"
         @menu-action="handleNodeContextMenu"
+        class="w-full flex-grow"
       >
         <!-- Zone selector will be moved here via slot later -->
         <template #controls>
           <div class="zone-selector-container mt-4">
             <ZoneSelector
               v-model:modelValue="selectedZone"
-              :options="zoneOptions"
+              :options="zoneOptionsWithCounts" 
+              optionLabel="name" 
+              optionValue="name" 
             />
           </div>
         </template>
       </ForceGraph>
+      
+      <!-- Image Preview View -->
+      <div v-else class="image-preview-view w-full h-full flex flex-col items-center justify-center flex-grow">
+        <div class="flex justify-between items-center mb-2 w-full">
+          <h3>Current Image:</h3>
+          <Button 
+            v-if="tagStore.currentImageUrl"
+            @click="handleDownloadImage"
+            severity="secondary"
+            text
+            size="small"
+            class="w-8 h-8 !p-0 flex items-center justify-center"
+            v-tooltip.top="'Download image'"
+          >
+            <i class="pi pi-download text-sm"></i>
+          </Button>
+        </div>
+        <div class="large-image-container">
+          <img
+            v-if="tagStore.currentImageUrl"
+            :src="tagStore.currentImageUrl"
+            alt="Generated Image"
+            class="large-generated-image"
+          />
+          <div v-else class="large-placeholder-container">
+            <i class="pi pi-image text-6xl mb-4 opacity-50"></i>
+            <p class="text-lg opacity-75">No image generated yet</p>
+            <p class="text-sm opacity-50">Generate an image to see it here</p>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Top Right: Image Preview -->
-    <div class="image-preview-container glass-card">
-      <div class="flex justify-between items-center mb-2 w-full">
-        <h2>Image:</h2>
-        <Button 
-          v-if="tagStore.currentImageUrl"
-          @click="handleDownloadImage"
-          severity="secondary"
-          text
-          size="small"
-          class="w-8 h-8 !p-0 flex items-center justify-center"
-          v-tooltip.top="'Download image'"
-        >
-          <i class="pi pi-download text-sm"></i>
-        </Button>
-      </div>
-      <div class="image-container">
-        <img
-          v-if="tagStore.currentImageUrl"
-          :src="tagStore.currentImageUrl"
-          alt="Generated Image"
-          class="generated-image"
-        />
-        <div v-else class="placeholder-container"></div>
-      </div>
-            <!-- Image Strip moved here -->
-   
-    </div>
-
-    
-   <ImageStrip 
-      ref="imageStripRef" 
-      :dreamId="tagStore.loadedDreamId" 
-      @image-selected="handleImageSelectedFromStrip" 
-      :viewingSnapshotId="tagStore.viewingSnapshotImageId"
-    />
-     
-
+    <!-- Bottom Left: Prompt Area -->
     <div class="prompt-area-container glass-card">
       <div class="prompt-header flex justify-between items-start w-full">
           <h2>Generated Prompt:</h2>
           <div class="flex items-center gap-2">
+            <Button
+              v-if="isViewingSnapshot"
+              label="Apply Snapshot"
+              icon="pi pi-check-square"
+              severity="success"
+              text
+              size="small"
+              class="px-2 py-1 h-8"
+              @click="handleApplySnapshot"
+              v-tooltip.top="'Use this snapshot as your live session'"
+            />
             <Button 
               v-if="tagStore.stashedSessionState"
               label="Exit Snapshot View"
@@ -81,7 +101,7 @@
               v-tooltip.top="'Return to your live session'"
             />
             <Button 
-              v-if="!isManualMode && generatedPrompt && devMode"
+              v-if="!isManualMode && generatedPrompt && devMode && !isViewingSnapshot"
               icon="pi pi-refresh"
               severity="secondary"
               text
@@ -93,23 +113,24 @@
               v-tooltip.top="'Regenerate prompt'"
             />
             <ToggleButton 
+              v-if="!isViewingSnapshot"
               onLabel="Auto"
               class="px-1 py-1 h-8"
               offLabel="Manual"
               onIcon="pi pi-lock" 
               offIcon="pi pi-lock-open"
               v-model="isManualMode" 
+              :disabled="isViewingSnapshot"
             />
           </div>
         </div>
       <div class="prompt-box w-full max-h-[100px] overflow-y-auto">
-    
-        
         <Textarea
           v-if="isManualMode"
           v-model="manualPrompt"
           class="manual-prompt-input text-[var(--text-color-secondary)] h-[calc(100%-10px)] w-full p-2"
           placeholder="Enter your prompt..."
+          :disabled="isViewingSnapshot"
         ></Textarea>
         <p 
           class="text-white-palette prompt-text" 
@@ -118,13 +139,23 @@
         >
           {{ tagStore.currentGeneratedPrompt }}
         </p>
-        
-     
       </div>
       <div class="flex justify-between items-center w-full mt-2"> 
-        <p class="flex-grow !text-left text-xs selected-tags-display text-[#6d80a4]">
-          Selected Tags: <span class="font-bold">{{ generatedPrompt }}</span>
-        </p>
+        <!-- Selected tags badges with remove icon -->
+        <div class="flex flex-wrap gap-1 flex-grow">
+          <div
+            v-for="tag in selectedTags"
+            :key="tag.id"
+            class="selected-tag-badge flex items-center bg-blue-200 text-blue-800 text-xs rounded px-2 py-1 relative"
+          >
+            <span class="truncate max-w-[80px]">{{ tag.text }}</span>
+            <i
+              v-if="!isViewingSnapshot"
+              class="pi pi-times ml-1 selected-tag-remove-icon"
+              @click="removeTag(tag)"
+            />
+          </div>
+        </div>
         <div class="flex gap-2">
           <Button 
             @click="handleSaveDreamClick"
@@ -132,6 +163,7 @@
             :disabled="isSavingDisabled"
             class="flex items-center justify-center !w-8 !h-8 !p-0 !bg-blue-600 hover:!bg-blue-700 !border-blue-600 hover:!border-blue-700" 
             v-tooltip.top="'Save session'" 
+            v-if="!isViewingSnapshot"
           >
             <!-- Show spinner when saving, otherwise show floppy disk icon -->
             <LoadingSpinner
@@ -163,6 +195,7 @@
             severity="primary"
             :disabled="isGenerationDisabled"
             class="flex items-center gap-2 flex-nowrap whitespace-nowrap !h-8 px-3"
+            v-if="!isViewingSnapshot"
           >
             <!-- Show spinner when generating, otherwise show generate icon -->
             <LoadingSpinner
@@ -189,15 +222,18 @@
       </div>
     </div>
 
-
-  
-    <!-- Bottom Right: Prompt Area -->
-    
-
-    <!-- Full-width Image Strip below the top two sections -->
- 
+    <!-- Bottom Right: Vertical Image Strip -->
+    <div class="image-strip-container glass-card">
+      <ImageStrip 
+        ref="imageStripRef" 
+        :dreamId="tagStore.loadedDreamId" 
+        @image-selected="handleImageSelectedFromStrip" 
+        :viewingSnapshotId="tagStore.viewingSnapshotImageId"
+      />
+    </div>
 
   </div>
+  <ConfirmDialog></ConfirmDialog>
 </template>
 
 <script setup lang="ts">
@@ -213,9 +249,12 @@ import type { Tag } from '~/types/tag';
 import type { ViewportState } from '~/composables/useZoom';
 import { useDreamManagement } from '~/composables/useDreamManagement';
 import LoadingSpinner from './LoadingSpinner.vue';
+import ConfirmDialog from 'primevue/confirmdialog';
+import { useConfirm } from "primevue/useconfirm";
 
 const tagStore = useTagStore();
 const toast = useToast();
+const confirm = useConfirm();
 
 // Use the dream management composable
 const { 
@@ -234,11 +273,31 @@ const forceGraphRef = ref<InstanceType<typeof ForceGraph> | null>(null);
 const imageStripRef = ref<InstanceType<typeof ImageStrip> | null>(null);
 
 const focusedZone = computed(() => tagStore.focusedZone);
-const zoneOptions = ref([...tagStore.zones]);
 const graphNodes = computed(() => tagStore.graphNodes);
 const graphLinks = computed(() => tagStore.graphLinks);
 
 const selectedZone = ref(focusedZone.value);
+
+// Compute counts of selected nodes per zone
+const zoneSelectedNodeCounts = computed(() => {
+  const counts: Record<string, number> = {};
+  tagStore.zones.forEach(zone => counts[zone] = 0); // Initialize all zones with 0
+
+  tagStore.tags.forEach(tag => {
+    if (tag.selected && tag.zone && counts[tag.zone] !== undefined) {
+      counts[tag.zone]++;
+    }
+  });
+  return counts;
+});
+
+// Create options for ZoneSelector that include the counts
+const zoneOptionsWithCounts = computed(() => {
+  return tagStore.zones.map(zoneName => ({
+    name: zoneName,
+    count: zoneSelectedNodeCounts.value[zoneName] || 0,
+  }));
+});
 
 // First let's add a zone change tracking flag
 const isZoneSwitching = ref(false);
@@ -255,6 +314,8 @@ const manualPrompt = ref('')
 // const isGeneratingImage = ref(false) // REMOVED - Use from composable
 // const isImageCooldown = ref(false) // REMOVED - Use from composable
 const isGeneratingPrompt = ref(false);
+
+const isViewingSnapshot = computed(() => tagStore.viewingSnapshotImageId !== null);
 
 let promptRequestId = 0
 // let imageRequestId = 0 // REMOVED - Managed by composable
@@ -282,10 +343,6 @@ const generatedPrompt = computed(() => {
     .sort();
   return allSelectedTags.join(', ');
 })
-
-watch(() => tagStore.zones, () => {
-  zoneOptions.value = [...tagStore.zones];
-}, { deep: true });
 
 watch(focusedZone, (newZone) => {
   selectedZone.value = newZone;
@@ -378,6 +435,10 @@ onMounted(() => {
 
 // Update the handleNodeClick function to be aware of session state
 async function handleNodeClick(id: string) {
+  if (isViewingSnapshot.value) {
+    toast.add({ severity: 'info', summary: 'Read-only', detail: 'Currently viewing a snapshot. Exit snapshot view to make changes.', life: 3000 });
+    return;
+  }
   if (tagStore.isRequestInProgress) {
     return;
   }
@@ -567,6 +628,10 @@ watch(() => tagStore.sessionId, () => {
 // Placeholder for handling image selection from the strip
 const handleImageSelectedFromStrip = (image: any) => {
   if (image && image.imageUrl) {
+    if (tagStore.viewingSnapshotImageId === image.id) {
+      toast.add({ severity: 'info', summary: 'Snapshot Info', detail: 'This snapshot is already being viewed. Exit or apply it to continue.', life: 4000 });
+      return;
+    }
     // If we're not already viewing a snapshot, stash the current session.
     // If we are, the original session is already stashed.
     if (!tagStore.stashedSessionState) {
@@ -606,6 +671,11 @@ const handleImageSelectedFromStrip = (image: any) => {
 // New handler for the Generate Image button
 async function handleGenerateImageClick() {
   const promptText = isManualMode.value ? manualPrompt.value : tagStore.currentGeneratedPrompt;
+  
+  if (isViewingSnapshot.value) {
+    toast.add({ severity: 'info', summary: 'Read-only', detail: 'Cannot generate images while viewing a snapshot. Exit snapshot view first.', life: 3000 });
+    return;
+  }
   
   if (!promptText || 
       isGeneratingImageFromComposable.value || 
@@ -715,6 +785,10 @@ function handleNodePositionsUpdated(positions: { id: string; x: number; y: numbe
 }
 
 function handleNodeTextUpdated({ id, text }: { id: string; text: string }) {
+  if (isViewingSnapshot.value) {
+    toast.add({ severity: 'info', summary: 'Read-only', detail: 'Cannot edit tags while viewing a snapshot. Exit snapshot view first.', life: 3000 });
+    return;
+  }
   if (tagStore.stashedSessionState) {
     console.log("[TagCloud] Node text updated while viewing snapshot. Clearing stashed session.");
     tagStore.stashedSessionState = null; // Clear stash
@@ -733,6 +807,10 @@ watch(isManualMode, (isManual) => {
 
 // New handler for the refresh button
 function handleRefreshPrompt() {
+  if (isViewingSnapshot.value) {
+    toast.add({ severity: 'info', summary: 'Read-only', detail: 'Cannot refresh prompt while viewing a snapshot. Exit snapshot view first.', life: 3000 });
+    return;
+  }
   // Reset the prompt generation flag
   isGeneratingPrompt.value = false;
   // Clear cached prompt for current tags to force fresh generation
@@ -800,6 +878,11 @@ async function handleDownloadImage() {
 async function handleNodeContextMenu(payload: { category: string; action: string; nodeId: string }) {
   console.log(`[TagCloud] Context menu selection '${payload.category} -> ${payload.action}' for node '${payload.nodeId}'`);
   
+  if (isViewingSnapshot.value) {
+    toast.add({ severity: 'info', summary: 'Read-only', detail: 'Cannot modify graph while viewing a snapshot. Exit snapshot view first.', life: 3000 });
+    return;
+  }
+  
   if (tagStore.isRequestInProgress) {
     return;
   }
@@ -839,6 +922,67 @@ async function handleNodeContextMenu(payload: { category: string; action: string
   }
 }
 
+// Compute currently selected tags
+const selectedTags = computed<Tag[]>(() => tagStore.tags.filter((t: Tag) => t.selected));
+
+// Remove a tag and its dependent child tags
+function removeTag(tag: Tag) {
+  if (isViewingSnapshot.value) {
+    toast.add({ severity: 'info', summary: 'Read-only', detail: 'Cannot remove tags while viewing a snapshot. Exit snapshot view first.', life: 3000 });
+    return;
+  }
+  tagStore.toggleTag(tag.id);
+  // Recursively remove children
+  tagStore.tags.forEach((child: Tag) => {
+    if (child.selected && child.parentId === tag.id) {
+      removeTag(child);
+    }
+  });
+}
+
+// New handler to apply snapshot state as current live session
+async function handleApplySnapshot() {
+  if (!isViewingSnapshot.value || !tagStore.stashedSessionState) {
+    toast.add({ severity: 'warn', summary: 'No Snapshot', detail: 'No snapshot is currently being viewed or no live session to overwrite.', life: 3000 });
+    return;
+  }
+
+  confirm.require({
+    message: 'This will replace your current live session with this snapshot. Your previous live session will be lost. Are you sure?',
+    header: 'Apply Snapshot to Live Session',
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: 'Apply',
+    rejectLabel: 'Cancel',
+    accept: () => {
+      // The current snapshot's state is already loaded. We just need to clear the stashed session.
+      tagStore.stashedSessionState = null; 
+      tagStore.viewingSnapshotImageId = null; 
+      tagStore.hasUnsavedChanges = true; // Mark as dirty since it's now the live session
+      toast.add({ severity: 'success', summary: 'Snapshot Applied', detail: 'The snapshot is now your live session.', life: 3000 });
+      // Ensure the graph re-renders or updates if needed
+      nextTick(() => {
+        if (forceGraphRef.value) {
+          const currentViewport = tagStore.getZoneViewport(tagStore.focusedZone);
+           if (isValidViewport(currentViewport)) {
+            forceGraphRef.value.applyViewport(currentViewport);
+          } else {
+            forceGraphRef.value.applyViewport(); // Reset to default if invalid
+          }
+        }
+      });
+    },
+    reject: () => {
+      toast.add({ severity: 'info', summary: 'Cancelled', detail: 'Snapshot application cancelled.', life: 3000 });
+    }
+  });
+}
+
+const currentViewMode = ref('graph');
+const viewModeOptions = ref([
+  { label: 'Graph', value: 'graph' },
+  { label: 'Image Preview', value: 'image-preview' },
+]);
+
 </script>
 
 <style scoped>
@@ -873,5 +1017,45 @@ async function handleNodeContextMenu(payload: { category: string; action: string
 
 .fade-out {
   opacity: 0.5;
+}
+
+/* View mode toggle styling */
+.view-mode-toggle {
+  /* Ensure it's compact and fits well in the header */
+}
+
+/* Large image preview styles */
+.large-image-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  flex-grow: 1;
+}
+
+.large-generated-image {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 8px;
+  object-fit: contain;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.large-placeholder-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+}
+
+.image-preview-view {
+  flex-grow: 1;
+  min-height: 0;
 }
 </style>

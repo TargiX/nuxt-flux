@@ -1,6 +1,7 @@
 <template>
-  <div class="image-strip-container glass-card">
+  <div class="image-strip-container ">
     <h2 class="strip-title">
+      Images - 
       <span v-if="!tagStore.stashedSessionState">Current Session</span>
       <span v-else>Viewing Snapshot</span>
     </h2>
@@ -200,21 +201,25 @@ const handleCurrentSessionClick = () => {
 <style scoped>
 .image-scroll-area {
   display: flex;
-  overflow-x: auto;
-  padding-bottom: 10px;
+  flex-direction: column; /* Change to vertical */
+  overflow-y: auto; /* Change to vertical scroll */
+  overflow-x: hidden; /* Hide horizontal overflow */
+  padding-right: 10px; /* Add right padding for scrollbar */
   gap: 10px;
   min-height: 120px;
+  max-height: calc(100vh - 200px); /* Limit height for vertical scrolling */
 }
 
 .images-wrapper {
   display: flex;
+  flex-direction: column; /* Change to vertical */
   gap: 10px;
 }
 
 .image-thumbnail-item {
   flex-shrink: 0;
-  width: 120px;
-  height: 120px;
+  width: 100%; /* Take full width of container */
+  /* Remove fixed height to respect aspect ratio */
   border-radius: 6px;
   overflow: hidden;
   cursor: pointer;
@@ -234,8 +239,9 @@ const handleCurrentSessionClick = () => {
 
 .image-thumbnail-item img {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto; /* Let height adjust to maintain aspect ratio */
+  object-fit: contain; /* Maintain aspect ratio without cropping */
+  display: block; /* Remove any inline spacing */
 }
 
 .empty-strip-message, .loading-message, .error-message {
@@ -259,9 +265,9 @@ const handleCurrentSessionClick = () => {
   margin-bottom: 0.5rem;
 }
 
-/* Custom Scrollbar for Webkit browsers */
+/* Custom Scrollbar for Webkit browsers - vertical */
 .image-scroll-area::-webkit-scrollbar {
-  height: 8px;
+  width: 8px; /* Change from height to width */
 }
 
 .image-scroll-area::-webkit-scrollbar-track {
@@ -290,6 +296,7 @@ const handleCurrentSessionClick = () => {
   padding: 10px;
   box-sizing: border-box;
   transition: background-color 0.2s ease, border-color 0.2s ease;
+  height: 80px; /* Slightly smaller height for vertical layout */
 }
 
 .current-session-tile.clickable-to-return {
@@ -311,19 +318,19 @@ const handleCurrentSessionClick = () => {
 }
 
 .current-session-icon {
-  font-size: 2rem; 
-  margin-bottom: 0.5rem;
+  font-size: 1.5rem; /* Slightly smaller for vertical layout */
+  margin-bottom: 0.25rem;
 }
 
 .current-session-tile span {
-  font-size: 0.7rem;
+  font-size: 0.65rem; /* Slightly smaller text */
   font-weight: bold;
 }
 
-/* Styles for messages when they appear next to the current session tile */
+/* Styles for messages when they appear in vertical layout */
 .central-message {
-  /* To make these messages take up available space if they are the only thing besides the current session tile */
-  flex-grow: 1;
+  /* Full width in vertical layout */
+  width: 100%;
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -332,17 +339,17 @@ const handleCurrentSessionClick = () => {
 }
 
 .full-width-message {
-   width: calc(100% - 130px); /* Assuming current session tile + gap is around 130px */
+   width: 100%; /* Full width in vertical layout */
 }
 
 .image-strip-container {
   min-height: 170px; /* Ensure adequate height for title + content */
 }
 
-/* Image Pop Animation */
+/* Image Pop Animation - adjusted for vertical */
 .image-pop-enter-from {
   opacity: 0;
-  transform: scale(0.8) translateY(20px);
+  transform: scale(0.8) translateY(-20px); /* Come from top in vertical layout */
 }
 .image-pop-enter-active {
   transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1); /* Smoother ease-out-back like */

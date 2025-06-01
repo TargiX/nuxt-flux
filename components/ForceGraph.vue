@@ -25,6 +25,15 @@
         >
           -
         </Button>
+        <Button
+          @click="zoomToFit"
+          severity="secondary"
+          size="small"
+          class="!w-7 !h-7"
+          icon="pi pi-stop"
+          aria-label="Fit Graph"
+          v-tooltip.top="'Fit entire graph'"
+        />
         <Button 
           @click="() => svg && resetZoomFn(svg)"
           severity="secondary"
@@ -535,6 +544,38 @@ function handleContextMenuAction(payload: { action: string; nodeId: string }) {
   if (contextMenu.value) {
     contextMenu.value.hide();
   }
+}
+
+// Add zoomToFit function to compute bounding box and fit all nodes
+function zoomToFit() {
+  if (!svg || !simulation || !container.value) return;
+  const nodesArray = simulation.nodes() as Array<{ x?: number; y?: number }>;
+  if (!nodesArray.length) return;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  nodesArray.forEach(n => {
+    if (typeof n.x === 'number') {
+      minX = Math.min(minX, n.x);
+      maxX = Math.max(maxX, n.x);
+    }
+    if (typeof n.y === 'number') {
+      minY = Math.min(minY, n.y);
+      maxY = Math.max(maxY, n.y);
+    }
+  });
+  const bboxWidth = maxX - minX;
+  const bboxHeight = maxY - minY;
+  if (bboxWidth <= 0 || bboxHeight <= 0) return;
+  const rect = container.value.getBoundingClientRect();
+  const cw = rect.width;
+  const ch = rect.height;
+  const padding = 20;
+  const scaleX = (cw - padding * 2) / bboxWidth;
+  const scaleY = (ch - padding * 2) / bboxHeight;
+  let k = Math.min(scaleX, scaleY);
+  k = Math.max(0.1, Math.min(k, 8));
+  const x = cw / 2 - k * ((minX + maxX) / 2);
+  const y = ch / 2 - k * ((minY + maxY) / 2);
+  applyViewportFn(svg, { x, y, k }, 350);
 }
 
 // Expose methods for parent component interaction

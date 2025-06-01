@@ -3,13 +3,15 @@
     <SelectButton 
       :modelValue="modelValue" 
       :options="options" 
+      :optionLabel="props.optionLabel" 
+      :optionValue="props.optionValue" 
       severity="primary"
       class="zone-buttons"
       @update:modelValue="$emit('update:modelValue', $event)"
     >
       <template #option="slotProps">
-        <div :class="['zone-button-content', `zone-${slotProps.option.toLowerCase()}`]">
-          {{ slotProps.option }}
+        <div :class="['zone-button-content', `zone-${slotProps.option.name.toLowerCase()}`]">
+          {{ slotProps.option.name }} ({{ slotProps.option.count }})
         </div>
       </template>
     </SelectButton>
@@ -17,11 +19,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, nextTick } from 'vue';
+
+interface ZoneOption {
+  name: string;
+  count: number;
+}
 
 const props = defineProps<{
-  modelValue: string;
-  options: string[];
+  modelValue: string; // Stays as string
+  options: ZoneOption[]; // Now expects array of objects
+  optionLabel?: string; // For PrimeVue SelectButton
+  optionValue?: string; // For PrimeVue SelectButton
 }>();
 
 defineEmits(['update:modelValue']);
@@ -35,16 +44,17 @@ onMounted(() => {
 
 // Re-apply attributes when options change
 watch(() => props.options, () => {
-  setTimeout(addZoneAttributes, 0);
-});
+  // Use nextTick to ensure DOM is updated before trying to find buttons
+  nextTick(addZoneAttributes);
+}, { deep: true }); // Add deep watch if options objects might change internally without array replacement
 
 function addZoneAttributes() {
   if (!container.value) return;
   
-  const buttons = container.value.querySelectorAll('button');
+  const buttons = container.value.querySelectorAll('.zone-buttons button'); // Be more specific with selector
   buttons.forEach((button, index) => {
-    if (index < props.options.length) {
-      button.setAttribute('option-zone', props.options[index]);
+    if (index < props.options.length && props.options[index]) {
+      button.setAttribute('option-zone', props.options[index].name);
     }
   });
 }

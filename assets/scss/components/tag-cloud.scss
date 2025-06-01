@@ -9,7 +9,7 @@
 
 .main-zone {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   /* Let top row dominate height, bottom row adjusts */
   grid-template-rows: minmax(0, 1fr) auto; 
   gap: 0.5rem; /* Increased gap for better spacing */
@@ -43,18 +43,20 @@
   
 
   
-  .zone-title {
-    margin-bottom: 1rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  }
+ 
+}
+
+.zone-title, .strip-title {
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 /* Specific adjustments */
 .graph-container {
   padding-bottom: 0rem !important;
   grid-row: 1 / 2; 
-  grid-column: 1 / 2;
+  grid-column: 1 / 10; /* Take left 3/4 width, not full width */
   overflow: hidden; /* Graph container itself should not scroll */
   .force-graph-component {
     width: 100%;
@@ -68,49 +70,12 @@
 }
 
 .image-preview-container {
-  grid-row: 1 / 2; 
-  grid-column: 2 / 3; 
-  overflow: hidden; /* Image preview container should not scroll */
-  .image-container {
-    width: 100%;
-    max-width: 100%;
-    aspect-ratio: 4 / 3; 
-    margin-bottom: 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    flex-shrink: 0; 
-  }
-  
-  .generated-image {
-    max-width: 100%;
-    max-height: 100%;
-    border-radius: 8px;
-    object-fit: contain;
-  }
-  
-  .placeholder-container {
-    width: 100%;
-    height: 100%;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    
-    &::after {
-      content: 'Generate an image';
-      color: rgba(255, 255, 255, 0.5);
-      font-style: italic;
-    }
-  }
+  display: none; /* Hide completely */
 }
 
 .settings-container {
   grid-row: 2 / 3; 
-  grid-column: 1 / 2; 
+  grid-column: 1 / 7; /* Half width for settings */
   overflow-y: auto; /* Allow settings to scroll if needed */
   p {
     color: #ccc;
@@ -118,13 +83,21 @@
 }
 
 .image-strip-container {
-  grid-row: 2 / 3; 
-  grid-column: 2 / 3; 
+  grid-row: 1 / 3; /* Span both rows - full height */
+  grid-column: 10 / 13; /* Right side columns */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Container should not scroll, let inner scroll area handle it */
+  
+  h2 {
+    margin-bottom: 0.5rem;
+    flex-shrink: 0; /* Prevent title from shrinking */
+  }
 }
 
 .prompt-area-container {
   grid-row: 2 / 3; 
-  grid-column: 1 / 2; 
+  grid-column: 1 / 10; /* Take left 3/4 width */
   justify-content: flex-start; 
   overflow-y: auto; /* Allow prompt area to scroll if needed */
   
