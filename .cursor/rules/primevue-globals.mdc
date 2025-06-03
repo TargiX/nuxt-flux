@@ -1,0 +1,80 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# PrimeVue Global Components Usage
+
+## **Global Components Must Be Single Instance**
+
+- **ConfirmDialog**: Only import and use in [app.vue](mdc:app.vue)
+- **Toast**: Only import and use in [app.vue](mdc:app.vue) 
+- Other global overlay components should follow the same pattern
+
+## **✅ DO: Use composables for functionality**
+
+```vue
+<script setup>
+import { useConfirm } from 'primevue/useconfirm';
+import { useToast } from 'primevue/usetoast';
+
+const confirm = useConfirm();
+const toast = useToast();
+
+// Use confirm.require() and toast.add() methods
+</script>
+```
+
+## **❌ DON'T: Import global components in child components**
+
+```vue
+<!-- DON'T DO THIS -->
+<template>
+  <ConfirmDialog></ConfirmDialog> <!-- This creates duplicate instances -->
+</template>
+
+<script setup>
+import ConfirmDialog from 'primevue/confirmdialog'; // DON'T import in components
+</script>
+```
+
+## **Problem Prevention**
+
+- Multiple `<ConfirmDialog>` instances cause duplicate modals
+- Multiple `<Toast>` instances cause duplicate notifications
+- Always check [app.vue](mdc:app.vue) first before adding global components
+- Use `useConfirm()` and `useToast()` composables instead of component imports
+
+## **Global Component Checklist**
+
+Before adding any PrimeVue overlay/global component:
+1. Check if it's already in [app.vue](mdc:app.vue)
+2. If yes, use the corresponding composable
+3. If no, add to [app.vue](mdc:app.vue) and then use composable
+4. Never add global components to child components
+
+## **ConfirmDialog Button Styling**
+
+- **Always style reject buttons as secondary**: Add `rejectClass: 'p-button-secondary'` to avoid both buttons appearing as primary
+- **Consistent button hierarchy**: Accept button (primary action) should be prominent, reject button (secondary action) should be subdued
+
+```typescript
+// ✅ DO: Style reject button as secondary
+confirm.require({
+  message: 'Are you sure you want to proceed?',
+  header: 'Confirmation',
+  acceptLabel: 'Continue',
+  rejectLabel: 'Cancel',
+  rejectClass: 'p-button-secondary', // Makes cancel button secondary
+  accept: () => { /* handle accept */ },
+  reject: () => { /* handle reject */ }
+});
+
+// ❌ DON'T: Leave both buttons as primary (default)
+confirm.require({
+  message: 'Are you sure?',
+  acceptLabel: 'Yes',
+  rejectLabel: 'No'
+  // Missing rejectClass results in both buttons being primary
+});
+```

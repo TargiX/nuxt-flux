@@ -142,50 +142,59 @@ export function useDreamManagement() {
     }
   }
 
-  function loadDream(dream: Dream | null) {
-    const targetDreamId = dream ? dream.id : null;
-    if (tagStore.hasUnsavedChanges && tagStore.loadedDreamId !== targetDreamId) {
+  // Helper to unify unsaved changes confirmation
+  async function confirmUnsavedChanges(
+    message: string,
+    acceptLabel: string,
+    rejectLabel: string
+  ): Promise<boolean> {
+    return new Promise(resolve => {
       confirm.require({
-        message: 'You have unsaved changes. Do you want to save them before loading the new dream?',
+        message,
         header: 'Unsaved Changes',
         icon: 'pi pi-exclamation-triangle',
-        acceptLabel: 'Save & Load',
-        rejectLabel: 'Load Without Saving',
-        accept: async () => {
-          // Placeholder for actual save logic if it were to be implemented here
-          console.warn('Programmatic saving before load not implemented in composable. Loading without saving.');
-          proceedWithLoad(dream);
-        },
-        reject: () => {
-          proceedWithLoad(dream);
-        }
+        acceptLabel,
+        rejectLabel,
+        rejectClass: 'p-button-secondary p-button-outlined',
+        accept: () => resolve(true),
+        reject: () => resolve(false)
       });
+    });
+  }
+
+  async function loadDream(dream: Dream | null) {
+    const targetDreamId = dream ? dream.id : null;
+    if (tagStore.hasUnsavedChanges && tagStore.loadedDreamId !== targetDreamId) {
+      const shouldSave = await confirmUnsavedChanges(
+        'You have unsaved changes. Do you want to save them before loading the new dream?',
+        'Save & Load',
+        'Load Without Saving'
+      );
+      if (shouldSave) {
+        console.warn('Programmatic saving before load not implemented in composable. Loading without saving.');
+      }
+      proceedWithLoad(dream);
     } else {
       proceedWithLoad(dream);
     }
   }
   
-  function handleAddNewDream() {
+  async function handleAddNewDream() {
     const performReset = () => {
       tagStore.resetToCurrentSession({isNewDream: true}); // Explicitly a new dream
       isDreamsOpen.value = true; 
     };
 
     if (tagStore.hasUnsavedChanges) {
-      confirm.require({
-        message: 'You have unsaved changes. Do you want to save them before starting a new dream?',
-        header: 'Unsaved Changes',
-        icon: 'pi pi-exclamation-triangle',
-        acceptLabel: 'Save & Start New',
-        rejectLabel: 'Start New Without Saving',
-        accept: async () => {
-          console.warn('Programmatic saving before new dream not implemented in composable. Starting new without saving.');
-          performReset();
-        },
-        reject: () => {
-          performReset();
-        }
-      });
+      const shouldSave = await confirmUnsavedChanges(
+        'You have unsaved changes. Do you want to save them before starting a new dream?',
+        'Save & Start New',
+        'Start New Without Saving'
+      );
+      if (shouldSave) {
+        console.warn('Programmatic saving before new dream not implemented in composable. Starting new without saving.');
+      }
+      performReset();
     } else {
       performReset();
     }
@@ -253,6 +262,7 @@ export function useDreamManagement() {
         icon: 'pi pi-exclamation-triangle',
         acceptLabel: 'Update Existing',
         rejectLabel: 'Save as New Dream',
+        rejectClass: 'p-button-secondary p-button-outlined',
         accept: async () => {
           isSavingDream.value = true;
           try {

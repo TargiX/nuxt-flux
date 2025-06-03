@@ -31,10 +31,6 @@
           <i class="pi pi-bell"></i>
           <span>Notifications</span>
         </a> -->
-        <a href="#" class="nav-item">
-          <i class="pi pi-images"></i>
-          <span>Library</span>
-        </a>
         <NuxtLink to="/gallery" class="nav-item">
           <i class="pi pi-th-large"></i>
           <span>Gallery</span>

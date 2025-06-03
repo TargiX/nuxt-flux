@@ -232,11 +232,11 @@
         :dreamId="tagStore.loadedDreamId" 
         @image-selected="handleImageSelectedFromStrip" 
         :viewingSnapshotId="tagStore.viewingSnapshotImageId"
+        :isGeneratingImage="isGeneratingImageFromComposable"
       />
     </div>
 
   </div>
-  <ConfirmDialog></ConfirmDialog>
 </template>
 
 <script setup lang="ts">
@@ -252,12 +252,13 @@ import type { Tag as TagType } from '~/types/tag';
 import type { ViewportState } from '~/composables/useZoom';
 import { useDreamManagement } from '~/composables/useDreamManagement';
 import LoadingSpinner from './LoadingSpinner.vue';
-import ConfirmDialog from 'primevue/confirmdialog';
 import { useConfirm } from "primevue/useconfirm";
+import { useImageDownloader } from '~/composables/useImageDownloader';
 
 const tagStore = useTagStore();
 const toast = useToast();
 const confirm = useConfirm();
+const { downloadImage } = useImageDownloader();
 
 // Use the dream management composable
 const { 
@@ -824,55 +825,17 @@ function handleRefreshPrompt() {
 
 // New handler for downloading the image
 async function handleDownloadImage() {
-  if (!tagStore.currentImageUrl) {
+  // Generate filename based on current prompt or timestamp
+  const promptText = isManualMode.value ? manualPrompt.value : tagStore.currentGeneratedPrompt;
+  // Ensure tagStore.currentImageUrl is not null or undefined before calling
+  if (tagStore.currentImageUrl) {
+    await downloadImage(tagStore.currentImageUrl, promptText);
+  } else {
     toast.add({
       severity: 'warn',
       summary: 'No Image',
       detail: 'No image available to download.',
       life: 3000,
-    });
-    return;
-  }
-
-  try {
-    // Create a temporary anchor element to trigger download
-    const response = await fetch(tagStore.currentImageUrl);
-    const blob = await response.blob();
-    
-    // Create object URL
-    const url = window.URL.createObjectURL(blob);
-    
-    // Create temporary anchor element
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    
-    // Generate filename based on current prompt or timestamp
-    const promptText = isManualMode.value ? manualPrompt.value : tagStore.currentGeneratedPrompt;
-    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
-    const filename = promptText 
-      ? `dreamseed-${promptText.slice(0, 30).replace(/[^a-zA-Z0-9]/g, '_')}-${timestamp}.png`
-      : `dreamseed-image-${timestamp}.png`;
-    
-    anchor.download = filename;
-    
-    // Trigger download
-    document.body.appendChild(anchor);
-    anchor.click();
-    
-    // Cleanup
-    document.body.removeChild(anchor);
-    window.URL.revokeObjectURL(url);
-    
-    // Show success feedback with subtle animation instead of toast
-    // You can add a subtle animation here if needed
-    
-  } catch (error: any) {
-    console.error('Failed to download image:', error);
-    toast.add({
-      severity: 'error',
-      summary: 'Download Failed',
-      detail: error.message || 'Could not download image. Please try again.',
-      life: 5000,
     });
   }
 }
@@ -959,6 +922,7 @@ async function handleApplySnapshot() {
     icon: 'pi pi-exclamation-triangle',
     acceptLabel: 'Apply',
     rejectLabel: 'Cancel',
+    rejectClass: 'p-button-secondary',
     accept: () => {
       // The current snapshot's state is already loaded. We just need to clear the stashed session.
       tagStore.stashedSessionState = null; 

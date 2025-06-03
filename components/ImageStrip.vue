@@ -25,6 +25,18 @@
 
         <!-- Transition group ONLY for actual images -->
         <transition-group name="image-pop" tag="div" class="images-animation-wrapper" v-if="props.dreamId">
+          <!-- Loading placeholder for image being generated -->
+          <div
+            v-if="props.isGeneratingImage"
+            key="generating-placeholder"
+            class="image-thumbnail-item generating-placeholder"
+          >
+            <div class="generating-content">
+              <LoadingSpinner size="sm" strokeWidth="4" />
+              <span class="text-xs">Generating...</span>
+            </div>
+          </div>
+          
           <div
             v-for="image in images"
             :key="image.id"
@@ -81,6 +93,7 @@ interface DreamImage {
 const props = defineProps<{
   dreamId: number | null;
   viewingSnapshotId?: number | null; // New prop for selected image ID
+  isGeneratingImage?: boolean; // New prop for generating image
 }>();
 const emit = defineEmits(['image-selected']);
 
@@ -413,5 +426,28 @@ const handleCurrentSessionClick = () => {
 
 .images-animation-wrapper {
   display: contents;
+}
+
+/* Generating placeholder styles */
+.generating-placeholder {
+  border: 2px dashed var(--primary-color) !important;
+  background-color: rgba(var(--primary-color-rgb, 0, 123, 255), 0.1) !important;
+  cursor: default;
+  min-height: 80px;
+}
+
+.generating-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px;
+  color: var(--primary-color);
+}
+
+.generating-content span {
+  font-weight: 500;
+  opacity: 0.8;
 }
 </style> 

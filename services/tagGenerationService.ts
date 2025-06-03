@@ -30,15 +30,22 @@ export async function generateRelatedTags(
   }
 
   // Construct the prompt as a discovery journey
-  const generationPrompt = `You are a creative discovery guide for image generation. The user has navigated the tag path: ${ancestorChain.length ? ancestorChain.map(a => a.text).join(' > ') + ' > ' : ''}${parentTag.text}. Each step represents their evolving creative exploration.
+  const generationPrompt = `${pathContext}
 
-Now, suggest 6 new tags that deepen and enrich this visual narrative. Your suggestions should:
-- Build on the journey so far, offering a mix of familiar and unexpected ideas.
-- Be concise (1-2 words) and always capitalize the first letter.
-- Avoid duplicating existing tags: ${existingTexts.join(', ')}.
-- Fit within the "${parentTag.zone}" zone and reinforce its theme.
+Looking at this exploration path, I need to suggest 6 subcategories that logically drill deeper into "${parentTag.text}". 
 
-Return only a JSON array of strings, no additional text. Example: ["Silver Trinkets", "Moonlit Reflection", "Hidden Caches"].`;
+Based on the full context path (${ancestorChain.length ? ancestorChain.map(a => a.text).join(' > ') + ' > ' : ''}${parentTag.text}), suggest specific subtypes, variants, or specializations within "${parentTag.text}" that would be the natural next level of detail.
+
+Requirements:
+- Each suggestion should be 1-2 words, with each word capitalized
+- Avoid these existing tags: ${existingTexts.join(', ')}
+- Stay within the semantic domain established by the path
+- Think about what someone would logically want to explore next within "${parentTag.text}"
+
+Return only a JSON array of strings. Examples:
+- For "Vehicles": ["Car", "Truck", "Motorcycle", "Bus", "Bicycle", "Van"]
+- For "Businessman": ["CEO", "Manager", "Entrepreneur", "Consultant", "Executive", "Director"]
+- For "Trees": ["Oak", "Pine", "Maple", "Birch", "Willow", "Cedar"]`;
 
   // Define generation config
   const generationConfig = {
