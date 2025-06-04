@@ -18,7 +18,7 @@
           <i class="pi pi-plus"></i>
           <span>Create</span>
         </a>
-      
+      @
         <a href="#" class="nav-item">
           <i class="pi pi-compass"></i>
           <span>Explore</span>
@@ -46,8 +46,8 @@
           <ul class="dreams-list">
             <li 
               class="dream-item new-dream-item"
-              v-if="tagStore.hasUnsavedChanges || tagStore.loadedDreamId !== null" 
-              @click.stop="handleAddNewDream" 
+              v-if="tagStore.hasUnsavedChanges || tagStore.loadedDreamId !== null"
+              @click.stop="onSelectDream(null)"
             >
               <i class="pi pi-plus-circle mr-2 text-xs"></i>
               <span>New Dream</span>
@@ -56,7 +56,7 @@
               class="dream-item unsaved" 
               v-if="tagStore.loadedDreamId === null" 
               :class="{ 'active-dream': tagStore.loadedDreamId === null }" 
-              @click="loadDream(null)"
+              @click="onSelectDream(null)"
             >
               <i class="pi pi-pencil mr-2 text-xs"></i>
               <span>
@@ -79,7 +79,7 @@
                 :key="dream.id" 
                 class="dream-item saved" 
                 :class="{ 'active-dream': tagStore.loadedDreamId === dream.id }" 
-                @click="loadDream(dream)"
+                @click="onSelectDream(dream)"
             >
             <!-- Inline editing for dream title -->
             <template v-if="editingDreamId === dream.id">
@@ -135,7 +135,7 @@
           <Button 
             label="Sign in with Email" 
             icon="pi pi-envelope" 
-            @click="navigateTo('/login')"
+            @click="router.push('/login')"
             class="w-full mb-2" 
           />
           
@@ -161,20 +161,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'; // Removed watch, onMounted as they are in composable
-// import type { Dream } from '~/types/dream'; // Type usage is now within composable
+import { ref, watch, nextTick } from 'vue'; // removed onMounted as they are in composable
 import { useTagStore } from '~/store/tagStore'; 
 // PrimeVue components used in the template still need to be imported here.
 import Toast from 'primevue/toast'; 
-// ConfirmDialog is in app.vue, useConfirm is handled by composable
 import Menu from 'primevue/menu'; 
 import InputText from 'primevue/inputtext'; 
-// useToast is handled by composable
-
 import { useDreamManagement } from '~/composables/useDreamManagement';
+import { useRouter } from 'vue-router';
+import { useConfirm } from 'primevue/useconfirm';
+import type { Dream } from '~/types/dream';
 
-const { status, session, signIn, signOut } = useAuth(); // Keep auth related logic
-const tagStore = useTagStore(); // Still needed for direct template bindings if any (e.g., active-dream class)
+// useAuth is auto-imported by Nuxt Auth; no manual import needed
+const { status, session, signIn, signOut } = useAuth(); // auth logic
+const tagStore = useTagStore();
+
+const router = useRouter();
+const confirm = useConfirm();
 
 // Initialize dream management logic from composable
 const {
@@ -185,14 +188,31 @@ const {
   menuItems,
   editingDreamId,
   editingTitle,
-  // refreshDreamsListAPI, // Not directly called from template, store has the reference
-  handleAddNewDream,
-  loadDream,
   toggleDreamActionMenu,
-  // startEditingDreamTitle, // Called by menu item command within composable
   saveDreamTitle,
   cancelEditDreamTitle,
 } = useDreamManagement();
+
+// Navigate to dream session page, prompting save if needed via loadDream API
+async function onSelectDream(dream: Dream | null) {
+  if (tagStore.hasUnsavedChanges) {
+    const proceed = await new Promise(resolve => {
+      confirm.require({
+        message: 'You have unsaved changes. Leave without saving?',
+        header: 'Unsaved Changes',
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: 'Leave',
+        rejectLabel: 'Cancel',
+        rejectClass: 'p-button-secondary',
+        accept: () => resolve(true),
+        reject: () => resolve(false)
+      });
+    });
+    if (!proceed) return;
+  }
+  // Navigate to selected dream or new session
+  router.push(dream ? `/dream/${dream.id}` : '/dream/new');
+}
 
 // Ref for the Menu component instance - this needs to stay in the component that renders the Menu
 const dreamActionMenu = ref();

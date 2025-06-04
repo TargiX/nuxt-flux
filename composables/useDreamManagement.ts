@@ -5,10 +5,30 @@ import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 // Menu component instance methods like .toggle() are handled by passing the ref from the calling component
 
+// Add a module-level flag to track if we've fetched dreams list
+let dreamsListFetched = false;
+// console.log('[useDreamManagement] Module scope: dreamsListFetched initialized to', dreamsListFetched); // Keep for debugging if needed
+
 export function useDreamManagement() {
+  // console.log('[useDreamManagement] Function executed'); // Keep for debugging if needed
   const tagStore = useTagStore();
   const confirm = useConfirm();
   const toast = useToast();
+
+  const { 
+    data: savedDreams, 
+    pending, 
+    error, 
+    refresh: refreshDreamsListAPI 
+  } = useFetch<Dream[]>('/api/dreams', { 
+    lazy: true,
+    default: () => [],
+    watch: [], 
+    immediate: false, // Explicitly prevent immediate fetch
+    key: 'global-dreams-list' // Key for Nuxt to deduplicate this fetch
+  });
+
+  // console.log('[useDreamManagement] Instance: useFetch for /api/dreams set up with key global-dreams-list.'); // Keep for debugging
 
   // --- State for dreams list ---
   const isDreamsOpen = ref(false);
@@ -19,26 +39,20 @@ export function useDreamManagement() {
   });
   // -----------------------------
 
-  // --- Fetch saved dreams ---
-  const { data: savedDreams, pending, error, refresh: refreshDreamsListAPI } = useFetch<Dream[]>('/api/dreams', { 
-    lazy: true, 
-    default: () => [],
-    // Watch status from useAuth() to refetch if auth status changes.
-    // This needs useAuth() to be available or passed if we want to keep it here.
-    // For now, assuming it's implicitly handled or we rely on manual refresh triggers.
-    // If status is critical for auto-refresh, useAuth() would need to be called here.
-    // Let's get status from useAuth to ensure this works as before.
-    // const { status: authStatus } = useAuth(); // Assuming useAuth() can be called here
-    // watch: [authStatus] // This would require useAuth() in the composable.
-    // For simplicity now, we'll rely on manual refresh or initial load.
-    // The original code had `watch: [status]` where status came from useAuth in default.vue
-  });
-  // --------------------------
-
   // --- Inject refresh function into the store & load localStorage state for isDreamsOpen ---
   onMounted(() => {
+    // console.log('[useDreamManagement] onMounted hook executed.'); // Keep for debugging
     if (refreshDreamsListAPI) {
-      tagStore.setDreamsListRefresher(refreshDreamsListAPI);
+      tagStore.setDreamsListRefresher(refreshDreamsListAPI); // Set refresher in store
+      // console.log('[useDreamManagement] onMounted: dreamsListFetched is currently', dreamsListFetched); // Keep for debugging
+      if (!dreamsListFetched) {
+        // console.log('[useDreamManagement] onMounted: Fetching dreams list (keyed instance) because dreamsListFetched is false.'); // Keep for debugging
+        dreamsListFetched = true;
+        // console.log('[useDreamManagement] onMounted: dreamsListFetched set to true.'); // Keep for debugging
+        refreshDreamsListAPI(); // Call refresh only on the first mount globally
+      } else {
+        // console.log('[useDreamManagement] onMounted: Skipping dreams list fetch because dreamsListFetched is true.'); // Keep for debugging
+      }
     }
     const storedState = localStorage.getItem('dreamsListOpen');
     isDreamsOpen.value = storedState === 'true';
