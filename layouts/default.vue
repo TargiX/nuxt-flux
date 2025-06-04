@@ -31,13 +31,22 @@
           <i class="pi pi-bell"></i>
           <span>Notifications</span>
         </a> -->
-        <NuxtLink to="/gallery" class="nav-item">
+        <NuxtLink 
+          to="/gallery" 
+          class="nav-item"
+          :class="{ 'active': route.path === '/gallery' }"
+        >
           <i class="pi pi-th-large"></i>
           <span>Gallery</span>
         </NuxtLink>
 
         <!-- My Dreams Section -->
-        <a href="#" class="nav-item" @click.prevent="isDreamsOpen = !isDreamsOpen">
+        <a 
+          href="#" 
+          class="nav-item" 
+          :class="{ 'active': route.path.startsWith('/dream/') || route.path === '/' }"
+          @click.prevent="isDreamsOpen = !isDreamsOpen"
+        >
           <i :class="['pi', isDreamsOpen ? 'pi-folder-open' : 'pi-folder']"></i>
           <span>My Dreams</span>
            <i :class="['pi', 'ml-auto', 'text-xs', isDreamsOpen ? 'pi-chevron-down' : 'pi-chevron-right']"></i>
@@ -46,7 +55,8 @@
           <ul class="dreams-list">
             <li 
               class="dream-item new-dream-item"
-              v-if="tagStore.hasUnsavedChanges || tagStore.loadedDreamId !== null"
+              v-if="tagStore.hasUnsavedChanges || tagStore.loadedDreamId !== null" 
+              :class="{ 'active-dream': route.path === '/dream/new' && tagStore.loadedDreamId === null }"
               @click.stop="onSelectDream(null)"
             >
               <i class="pi pi-plus-circle mr-2 text-xs"></i>
@@ -55,7 +65,7 @@
             <li 
               class="dream-item unsaved" 
               v-if="tagStore.loadedDreamId === null" 
-              :class="{ 'active-dream': tagStore.loadedDreamId === null }" 
+              :class="{ 'active-dream': route.path === '/dream/new' }" 
               @click="onSelectDream(null)"
             >
               <i class="pi pi-pencil mr-2 text-xs"></i>
@@ -78,7 +88,7 @@
                 v-for="dream in savedDreams" 
                 :key="dream.id" 
                 class="dream-item saved" 
-                :class="{ 'active-dream': tagStore.loadedDreamId === dream.id }" 
+                :class="{ 'active-dream': route.path === `/dream/${dream.id}` }" 
                 @click="onSelectDream(dream)"
             >
             <!-- Inline editing for dream title -->
@@ -95,7 +105,7 @@
             </template>
             <template v-else>
               <span class="dream-title">{{ dream.title || 'Untitled Dream' }}</span>
-              <span v-if="tagStore.hasUnsavedChanges && tagStore.loadedDreamId === dream.id" class="unsaved-indicator">*</span>
+              <span v-if="tagStore.hasUnsavedChanges && tagStore.loadedDreamId === dream.id && route.path === `/dream/${dream.id}`" class="unsaved-indicator">*</span>
             </template>
             <Button 
                 icon="pi pi-ellipsis-v" 
@@ -168,7 +178,7 @@ import Toast from 'primevue/toast';
 import Menu from 'primevue/menu'; 
 import InputText from 'primevue/inputtext'; 
 import { useDreamManagement } from '~/composables/useDreamManagement';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useConfirm } from 'primevue/useconfirm';
 import type { Dream } from '~/types/dream';
 
@@ -177,6 +187,7 @@ const { status, session, signIn, signOut } = useAuth(); // auth logic
 const tagStore = useTagStore();
 
 const router = useRouter();
+const route = useRoute(); // Get the current route object
 const confirm = useConfirm();
 
 // Initialize dream management logic from composable
