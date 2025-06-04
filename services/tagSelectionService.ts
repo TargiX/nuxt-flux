@@ -44,18 +44,21 @@ export function unselectChildren(tag: Tag): void {
   }
 }
 
-export function unselectTopLevelSiblings(tag: Tag, allTags: Tag[]): void {
+export function unselectTopLevelSiblings(tag: Tag, allTags: Tag[]): Tag[] {
   if (!tag.parentId) {
+    let updated = allTags;
     allTags
       .filter(t => t.zone === tag.zone && !t.parentId && t.id !== tag.id)
       .forEach(t => {
         if (t.selected) {
-          allTags = removeDynamicChildren(t, allTags);
+          updated = removeDynamicChildren(t, updated);
         }
         t.selected = false;
         unselectChildren(t);
       });
+    return updated;
   }
+  return allTags;
 }
 
 export async function toggleTag(
@@ -71,7 +74,7 @@ export async function toggleTag(
   let updatedTags = [...allTags];
 
   if (!wasSelected) {
-    unselectTopLevelSiblings(tag, updatedTags);
+    updatedTags = unselectTopLevelSiblings(tag, updatedTags);
     tag.selected = true;
 
     if (tag.parentId) {
@@ -116,7 +119,7 @@ export async function generateConceptTags(
 
   // If tag is not selected, select it first (following same logic as toggleTag)
   if (!tag.selected) {
-    unselectTopLevelSiblings(tag, updatedTags);
+    updatedTags = unselectTopLevelSiblings(tag, updatedTags);
     tag.selected = true;
 
     if (tag.parentId) {
@@ -162,7 +165,7 @@ export function preselectConceptTag(
 
   // If tag is not selected, select it first and handle sibling logic
   if (!tag.selected) {
-    unselectTopLevelSiblings(tag, updatedTags);
+    updatedTags = unselectTopLevelSiblings(tag, updatedTags);
     tag.selected = true;
 
     if (tag.parentId) {
