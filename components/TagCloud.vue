@@ -1,5 +1,7 @@
 <template>
-   <div class="main-zone grid  tw-gap-4">
+  <!-- Log the computed value for debugging in template -->
+  <!-- <div>[TagCloud Template] isRestoring: {{ છેRestoringSessionDebug.value }}</div> -->
+  <div v-if="!isRestoringSessionForTemplate" class="main-zone grid tw-gap-4">
     
     <!-- Top: Graph/Image Container (Full Width) -->
     <div class="graph-container glass-card">
@@ -20,8 +22,8 @@
         ref="forceGraphRef"
         :width="800"
         :height="600"
-        :nodes="graphNodes"
-        :links="graphLinks"
+        :nodes="localGraphNodes"
+        :links="localGraphLinks"
         @nodeClick="handleNodeClick"
         @nodePositionsUpdated="handleNodePositionsUpdated"
         @nodeTextUpdated="handleNodeTextUpdated"
@@ -237,6 +239,10 @@
     </div>
 
   </div>
+  <div v-else class="loading-session-indicator">
+    <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="8" fill="var(--surface-ground)" animationDuration=".5s" aria-label="Loading session" />
+    <p>Loading session...</p>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -254,6 +260,7 @@ import { useDreamManagement } from '~/composables/useDreamManagement';
 import LoadingSpinner from './LoadingSpinner.vue';
 import { useConfirm } from "primevue/useconfirm";
 import { useImageDownloader } from '~/composables/useImageDownloader';
+import ProgressSpinner from 'primevue/progressspinner';
 
 const tagStore = useTagStore();
 const toast = useToast();
@@ -276,9 +283,36 @@ const {
 const forceGraphRef = ref<InstanceType<typeof ForceGraph> | null>(null);
 const imageStripRef = ref<InstanceType<typeof ImageStrip> | null>(null);
 
+console.log('[TagCloud setup] Initial value of tagStore.isRestoringSession:', tagStore.isRestoringSession);
+
+const localGraphNodes = ref<any[]>([]);
+const localGraphLinks = ref<any[]>([]);
+
+const isRestoringSessionForTemplate = computed(() => tagStore.isRestoringSession);
+
+watch(() => tagStore.isRestoringSession, (isRestoring) => {
+  if (isRestoring) {
+    localGraphNodes.value = [];
+    localGraphLinks.value = [];
+  } else {
+    localGraphNodes.value = tagStore.graphNodes;
+    localGraphLinks.value = tagStore.graphLinks;
+  }
+});
+
+// Watch for changes from the store to update local refs when not restoring
+watch(() => [tagStore.graphNodes, tagStore.graphLinks], ([newNodes, newLinks]) => {
+  if (!tagStore.isRestoringSession) {
+    // console.log('[TagCloud watch store.graphNodes/Links] Updating local refs.');
+    localGraphNodes.value = newNodes;
+    localGraphLinks.value = newLinks;
+  }
+});
+
 const focusedZone = computed(() => tagStore.focusedZone);
-const graphNodes = computed(() => tagStore.graphNodes);
-const graphLinks = computed(() => tagStore.graphLinks);
+// graphNodes and graphLinks computed are now replaced by localGraphNodes and localGraphLinks for the template
+// const graphNodes = computed(() => tagStore.graphNodes);
+// const graphLinks = computed(() => tagStore.graphLinks);
 
 const selectedZone = ref(focusedZone.value);
 
@@ -952,10 +986,29 @@ const viewModeOptions = ref([
   { label: 'Graph', value: 'graph' },
   { label: 'Image Preview', value: 'image-preview' },
 ]);
-
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+.main-zone {
+  // ... existing styles ...
+}
+
+.loading-session-indicator {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: calc(100vh - 100px); // Adjust height as needed, considering header/footer
+  text-align: center;
+  color: var(--text-color-secondary);
+
+  p {
+    margin-top: 1rem;
+    font-size: 1.1rem;
+  }
+}
+
 /* Component-specific styles are now in assets/scss/components/tag-cloud.scss */
 /* We keep this block for scoped styles as needed but don't add any until explicitly asked */
 .save-status {
