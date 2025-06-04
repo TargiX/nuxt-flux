@@ -16,10 +16,16 @@ export function distributeChildNodes(parentTag: Tag, radius: number): void {
 
 export function expandChildAwayFromParent(child: Tag, parent: Tag): void {
   if (!parent) return;
-  
+
   const dx = (child.x ?? 0) - (parent.x ?? 0);
   const dy = (child.y ?? 0) - (parent.y ?? 0);
   const distance = Math.sqrt(dx * dx + dy * dy);
+  if (distance === 0) {
+    // Avoid division by zero when child and parent positions are identical
+    child.x = (parent.x ?? 0) + 10;
+    child.y = parent.y ?? 0;
+    return;
+  }
   const newDistance = distance * 3; // Increase by factor of 3
   const ux = dx / distance;
   const uy = dy / distance;
