@@ -1,5 +1,5 @@
 import { ref, watch, onMounted, type Ref } from 'vue';
-import type { Dream } from '~/types/dream';
+import type { Dream, DreamSummary } from '~/types/dream';
 import { useTagStore } from '~/store/tagStore';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
@@ -20,7 +20,7 @@ export function useDreamManagement() {
     pending, 
     error, 
     refresh: refreshDreamsListAPI 
-  } = useFetch<Dream[]>('/api/dreams', { 
+  } = useFetch<DreamSummary[]>('/api/dreams', { 
     lazy: true,
     default: () => [],
     watch: [], 
@@ -60,7 +60,6 @@ export function useDreamManagement() {
   // ------------------------------------------------------------------------------------
 
   // --- Dream Actions Menu & Inline Editing State ---
-  const selectedDreamForMenu = ref<Dream | null>(null); // Tracks which dream's menu is targeted
   const editingDreamId = ref<number | null>(null);
   const editingTitle = ref('');
 
@@ -79,7 +78,7 @@ export function useDreamManagement() {
   // ----------------------------------------------
 
   // --- Functions for Menu and Inline Editing ---
-  function toggleDreamActionMenu(event: MouseEvent, dream: Dream, menuComponent: any) {
+  function toggleDreamActionMenu(event: MouseEvent, dream: DreamSummary, menuComponent: any) {
     selectedDreamForMenu.value = dream; // Set context for menu items
     if (menuComponent && typeof menuComponent.toggle === 'function') {
       menuComponent.toggle(event);
@@ -88,12 +87,12 @@ export function useDreamManagement() {
     }
   }
 
-  function startEditingDreamTitle(dream: Dream) {
+  function startEditingDreamTitle(dream: DreamSummary) {
     editingDreamId.value = dream.id;
     editingTitle.value = dream.title || '';
   }
 
-  async function saveDreamTitle(dream: Dream) {
+  async function saveDreamTitle(dream: DreamSummary) {
     if (editingDreamId.value === null || !dream) return;
     const originalTitle = dream.title;
     const newTitle = editingTitle.value.trim();
@@ -144,15 +143,9 @@ export function useDreamManagement() {
   // -----------------------------------------
 
   // --- Core Dream Operations ---
-  function proceedWithLoad(dream: Dream | null) { // Internal helper
-    const targetDreamId = dream ? dream.id : null;
-    if (targetDreamId !== tagStore.loadedDreamId) {
-      if (dream && dream.data) {
-        tagStore.loadDreamState(dream.data, dream.id); 
-      } else if (dream === null) {
-        tagStore.resetToCurrentSession({isNewDream: false}); // Resetting to an existing "current" session
-      }
-    } else {
+  function proceedWithLoad(dream: DreamSummary | null) { // Internal helper
+    if (dream === null) {
+      tagStore.resetToCurrentSession({ isNewDream: false });
     }
   }
 
@@ -176,7 +169,7 @@ export function useDreamManagement() {
     });
   }
 
-  async function loadDream(dream: Dream | null) {
+  async function loadDream(dream: DreamSummary | null) {
     const targetDreamId = dream ? dream.id : null;
     if (tagStore.hasUnsavedChanges && tagStore.loadedDreamId !== targetDreamId) {
       const shouldSave = await confirmUnsavedChanges(

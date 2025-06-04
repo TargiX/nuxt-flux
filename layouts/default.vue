@@ -180,7 +180,7 @@ import InputText from 'primevue/inputtext';
 import { useDreamManagement } from '~/composables/useDreamManagement';
 import { useRouter, useRoute } from 'vue-router';
 import { useConfirm } from 'primevue/useconfirm';
-import type { Dream } from '~/types/dream';
+import type { DreamSummary } from '~/types/dream';
 
 // useAuth is auto-imported by Nuxt Auth; no manual import needed
 const { status, session, signIn, signOut } = useAuth(); // auth logic
@@ -205,7 +205,7 @@ const {
 } = useDreamManagement();
 
 // Navigate to dream session page, prompting save if needed via loadDream API
-async function onSelectDream(dream: Dream | null) {
+async function onSelectDream(dream: DreamSummary | null) {
   if (tagStore.hasUnsavedChanges) {
     const proceed = await new Promise(resolve => {
       confirm.require({

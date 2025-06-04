@@ -17,9 +17,12 @@ export default defineEventHandler(async (event: H3Event) => {
     // Fetch dreams for the logged-in user
     const dreams = await prisma.dream.findMany({
       where: {
-        // Assuming your Dream model has a 'userId' field linked to the User model
-        // And session.user has an 'id' property (standard for Auth.js)
-        userId: session.user.id as string, // Cast if necessary based on your User model / session structure
+        userId: session.user.id as string,
+      },
+      select: {
+        id: true,
+        title: true,
+        createdAt: true,
       },
       orderBy: {
         createdAt: 'desc',
