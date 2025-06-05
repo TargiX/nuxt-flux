@@ -1,0 +1,144 @@
+<template>
+  <Dialog
+    v-model:visible="visibleInternal"
+    modal
+    :header="selectedImage?.promptText || 'Image Details'"
+    :style="{ width: '90vw', maxWidth: '1200px' }"
+    contentClass="p-0"
+    class="custom-image-dialog"
+    :pt="{ mask: { style: 'backdrop-filter: blur(2px)' }, header: { style: 'height: 90px;' } }"
+  >
+    <div v-if="selectedImage" class="image-modal-inner-content flex flex-col md:flex-row gap-4 items-start p-4 md:p-6 relative">
+      <div class="image-display-area flex-shrink-0 relative w-full md:w-2/3">
+        <img :src="selectedImage.imageUrl" :alt="selectedImage.promptText || 'Selected image'" class="large-gallery-image" />
+      </div>
+      <Button
+        icon="pi pi-chevron-left"
+        class="p-button-rounded p-button-secondary absolute top-1/2 -translate-y-1/2 z-20 modal-nav-button modal-nav-left"
+        @click="previousImage"
+        :disabled="images.length <= 1"
+        style="width: 3rem; height: 3rem;"
+      />
+      <Button
+        icon="pi pi-chevron-right"
+        class="p-button-rounded p-button-secondary absolute top-1/2 -translate-y-1/2 z-20 modal-nav-button modal-nav-right"
+        @click="nextImage"
+        :disabled="images.length <= 1"
+        style="width: 3rem; height: 3rem;"
+      />
+      <div class="info-container w-full md:w-1/3 md:pl-4">
+        <h3 class="text-lg font-semibold mb-2">Prompt:</h3>
+        <p class="prompt-modal-text text-sm mb-4 max-h-40 overflow-y-auto">{{ selectedImage.promptText || 'No prompt available' }}</p>
+        <h3 class="text-lg font-semibold mb-1">Created:</h3>
+        <p class="date-modal-text text-sm mb-4">{{ new Date(selectedImage.createdAt).toLocaleString() }}</p>
+        <Button label="Download Image" icon="pi pi-download" @click="handleDownload" class="p-button-sm mt-4 w-full" />
+      </div>
+    </div>
+    <div v-else class="text-center py-10">
+      <p>No image selected or image data is unavailable.</p>
+    </div>
+  </Dialog>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import Dialog from 'primevue/dialog';
+import Button from 'primevue/button';
+import { useImageDownloader } from '~/composables/useImageDownloader';
+
+interface GalleryImage {
+  id: number;
+  imageUrl: string;
+  promptText?: string | null;
+  createdAt: string;
+}
+
+const props = defineProps<{ images: GalleryImage[]; modelValue: boolean; startIndex?: number }>();
+const emit = defineEmits(['update:modelValue']);
+
+const { downloadImage } = useImageDownloader();
+
+const visibleInternal = computed({
+  get: () => props.modelValue,
+  set: (val: boolean) => emit('update:modelValue', val)
+});
+
+const currentIndex = ref(props.startIndex ?? 0);
+watch(() => props.startIndex, (v) => { if (typeof v === 'number') currentIndex.value = v; });
+
+const selectedImage = computed(() => {
+  if (props.images.length && currentIndex.value >= 0 && currentIndex.value < props.images.length) {
+    return props.images[currentIndex.value];
+  }
+  return null;
+});
+
+function nextImage() {
+  if (props.images.length) currentIndex.value = (currentIndex.value + 1) % props.images.length;
+}
+function previousImage() {
+  if (props.images.length) currentIndex.value = (currentIndex.value - 1 + props.images.length) % props.images.length;
+}
+function handleDownload() {
+  if (selectedImage.value) downloadImage(selectedImage.value.imageUrl, selectedImage.value.promptText);
+}
+
+function handleKeydown(event: KeyboardEvent) {
+  if (!visibleInternal.value) return;
+  if (event.key === 'ArrowRight') nextImage();
+  else if (event.key === 'ArrowLeft') previousImage();
+  else if (event.key === 'Escape') visibleInternal.value = false;
+}
+
+onMounted(() => window.addEventListener('keydown', handleKeydown));
+onUnmounted(() => window.removeEventListener('keydown', handleKeydown));
+</script>
+
+<style scoped>
+.large-gallery-image {
+  width: 100%;
+  max-height: calc(80vh - 100px);
+  object-fit: contain;
+  border-radius: 8px;
+}
+.modal-nav-button {
+  opacity: 0.7;
+  transition: opacity 0.2s, transform 0.2s, background-color 0.2s;
+  background-color: rgba(45,45,45,0.65) !important;
+  border: 1px solid rgba(255,255,255,0.2) !important;
+  color: white !important;
+}
+.modal-nav-button:hover {
+  opacity: 1;
+  transform: translateY(-50%) scale(1.05);
+  background-color: rgba(60,60,60,0.85) !important;
+}
+.modal-nav-button:disabled {
+  opacity: 0.3 !important;
+  cursor: not-allowed;
+  background-color: rgba(45,45,45,0.4) !important;
+}
+.modal-nav-left { left: -4rem; }
+.modal-nav-right { right: -4rem; }
+@media (max-width: 767px) {
+  .modal-nav-left { left: 0.5rem; }
+  .modal-nav-right { right: 0.5rem; }
+  .image-modal-inner-content { padding: 0.75rem; }
+  .info-container { padding-left: 0 !important; max-height: none; padding-top: 1rem; }
+  .large-gallery-image { max-height: 60vh; }
+}
+.custom-image-dialog .info-container {
+  color: var(--text-color-secondary, #d1d5db);
+  max-height: calc(80vh - 100px);
+  overflow-y: auto;
+}
+.custom-image-dialog .info-container h3 { color: var(--text-color, #f9fafb); }
+.custom-image-dialog .prompt-modal-text {
+  background-color: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--text-color, #f3f4f6);
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+}
+.image-display-area { min-height: 200px; }
+</style>
