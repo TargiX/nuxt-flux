@@ -449,7 +449,7 @@ function updateNodes() {
     .on('contextmenu', (event: MouseEvent, d: GraphNode) => {
       event.preventDefault();
       contextMenuNodeId.value = d.id;
-      if (contextMenu.value) contextMenu.value.show(event);
+      if (contextMenu.value) contextMenu.value.show(event, d.text);
       console.log('Node right-clicked:', d.id);
     });
   
