@@ -13,6 +13,7 @@
 <script setup lang="ts">
 import { ref, onBeforeUnmount } from 'vue';
 import TieredMenu from 'primevue/tieredmenu';
+import { getContextMenuOptions } from '~/services/contextMenuService';
 
 interface CmdPayload { category: string; action: string; nodeId: string; }
 // Props from parent component
@@ -25,8 +26,8 @@ const visible = ref(false);
 const x = ref(0);
 const y = ref(0);
 
-// Define nested menu model with test items
-const menuModel = ref([
+// Define static menu model
+const staticMenu = [
   {
     label: 'Attributes', icon: 'pi pi-fw pi-list', items: [
       { label: 'Role', icon: 'pi pi-fw pi-user', command: () => onSelect('Attributes', 'Role') },
@@ -58,7 +59,23 @@ const menuModel = ref([
       { label: 'City', icon: 'pi pi-fw pi-building', command: () => onSelect('Setting', 'City') }
     ]
   }
-]);
+];
+
+const menuModel = ref([...staticMenu]);
+
+async function loadDynamicMenu(text: string | null) {
+  if (!text) return;
+  const dynamic = await getContextMenuOptions(text);
+  const dynamicModel = dynamic.map(cat => ({
+    label: cat.category,
+    icon: 'pi pi-fw pi-compass',
+    items: cat.items.map(item => ({
+      label: item,
+      command: () => onSelect(cat.category, item)
+    }))
+  }));
+  menuModel.value = [...staticMenu, ...dynamicModel];
+}
 
 // Handler when a submenu is selected
 function onSelect(category: string, action: string) {
@@ -83,7 +100,9 @@ function handleClickOutside(event: MouseEvent) {
 // Expose show and hide for parent components
 const menu = ref<InstanceType<typeof TieredMenu> | null>(null);
 defineExpose({
-  show(event: MouseEvent) {
+  async show(event: MouseEvent, text: string | null) {
+    menuModel.value = [...staticMenu];
+    await loadDynamicMenu(text);
     x.value = event.clientX;
     y.value = event.clientY;
     visible.value = true;
