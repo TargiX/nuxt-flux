@@ -60,6 +60,7 @@ export function useDreamManagement() {
   // ------------------------------------------------------------------------------------
 
   // --- Dream Actions Menu & Inline Editing State ---
+  const selectedDreamForMenu = ref<DreamSummary | null>(null); // Tracks which dream's menu is targeted
   const editingDreamId = ref<number | null>(null);
   const editingTitle = ref('');
 
