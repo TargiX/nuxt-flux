@@ -38,13 +38,20 @@
           </div>
           
           <div
-            v-for="image in images"
+            v-for="(image, idx) in images"
             :key="image.id"
             class="image-thumbnail-item"
             :class="{ 'thumbnail-selected': image.id === props.viewingSnapshotId }"
-            @click="selectImage(image)"
+            @click="handleImageClick(image, idx)"
           >
             <img :src="image.imageUrl" :alt="image.promptText || 'Generated Image'" />
+            <div class="image-menu-wrapper">
+              <ActionMenu
+                :items="getMenuItems(image)"
+                buttonClass="image-menu-button"
+                @open="() => {}"
+              />
+            </div>
           </div>
         </transition-group>
 
@@ -77,6 +84,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
 import LoadingSpinner from './LoadingSpinner.vue'; // For loading state
+import ActionMenu from './ActionMenu.vue';
 import { useTagStore } from '~/store/tagStore'; // Import the tag store
 
 const tagStore = useTagStore(); // Initialize the store
@@ -95,7 +103,7 @@ const props = defineProps<{
   viewingSnapshotId?: number | null; // New prop for selected image ID
   isGeneratingImage?: boolean; // New prop for generating image
 }>();
-const emit = defineEmits(['image-selected']);
+const emit = defineEmits(['image-clicked', 'snapshot-requested']);
 
 const images = ref<DreamImage[]>([]);
 const pending = ref(false);
@@ -173,6 +181,7 @@ const prependImage = (newImage: DreamImage) => {
 defineExpose({
   refetchImages,
   prependImage, // Expose the new method
+  images,
 });
 
 // Watch for changes to dreamId and fetch accordingly
@@ -224,9 +233,17 @@ watch(() => tagStore.stashedSessionState, (isStashed) => {
   }
 });
 
-const selectImage = (image: DreamImage) => {
-  emit('image-selected', image);
+const handleImageClick = (image: DreamImage, index: number) => {
+  emit('image-clicked', { image, index });
 };
+
+const getMenuItems = (image: DreamImage) => [
+  {
+    label: 'View Snapshot',
+    icon: 'pi pi-eye',
+    command: () => emit('snapshot-requested', image)
+  }
+];
 
 const handleCurrentSessionClick = () => {
   if (tagStore.stashedSessionState) { // Only restore if a session IS stashed
@@ -255,6 +272,7 @@ const handleCurrentSessionClick = () => {
 }
 
 .image-thumbnail-item {
+  position: relative;
   flex-shrink: 0;
   width: 100%; /* Take full width of container */
   /* Remove fixed height to respect aspect ratio */
@@ -449,5 +467,16 @@ const handleCurrentSessionClick = () => {
 .generating-content span {
   font-weight: 500;
   opacity: 0.8;
+}
+
+.image-menu-wrapper {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+
+.image-menu-button {
+  width: 1.5rem;
+  height: 1.5rem;
 }
 </style> 
