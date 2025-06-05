@@ -107,17 +107,14 @@
               <span class="dream-title">{{ dream.title || 'Untitled Dream' }}</span>
               <span v-if="tagStore.hasUnsavedChanges && tagStore.loadedDreamId === dream.id && route.path === `/dream/${dream.id}`" class="unsaved-indicator">*</span>
             </template>
-            <Button 
-                icon="pi pi-ellipsis-v" 
-                class="p-button-text p-button-sm p-button-rounded dream-actions-button"
-                @click.stop="toggleDreamActionMenu($event, dream, dreamActionMenu)" 
-                aria-haspopup="true"
-                aria-controls="dream_action_menu"
-              />
+            <ActionMenu
+              :items="menuItems"
+              buttonClass="dream-actions-button"
+              @open="() => { selectedDreamForMenu.value = dream; }"
+            />
             </li>
             </template>
           </ul>
-          <Menu ref="dreamActionMenu" id="dream_action_menu" :model="menuItems" :popup="true" />
         </div>
         <!-- End My Dreams Section -->
 
@@ -175,8 +172,8 @@ import { ref, watch, nextTick } from 'vue'; // removed onMounted as they are in 
 import { useTagStore } from '~/store/tagStore'; 
 // PrimeVue components used in the template still need to be imported here.
 import Toast from 'primevue/toast'; 
-import Menu from 'primevue/menu'; 
-import InputText from 'primevue/inputtext'; 
+import ActionMenu from '~/components/ActionMenu.vue';
+import InputText from 'primevue/inputtext';
 import { useDreamManagement } from '~/composables/useDreamManagement';
 import { useRouter, useRoute } from 'vue-router';
 import { useConfirm } from 'primevue/useconfirm';
@@ -197,9 +194,9 @@ const {
   pending,
   error,
   menuItems,
+  selectedDreamForMenu,
   editingDreamId,
   editingTitle,
-  toggleDreamActionMenu,
   saveDreamTitle,
   cancelEditDreamTitle,
 } = useDreamManagement();
@@ -226,7 +223,6 @@ async function onSelectDream(dream: DreamSummary | null) {
 }
 
 // Ref for the Menu component instance - this needs to stay in the component that renders the Menu
-const dreamActionMenu = ref();
 const titleInputRef = ref<any>(null); // Ref for the InputText component
 
 // Watch for editingDreamId to change, then focus the input

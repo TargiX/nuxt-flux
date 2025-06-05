@@ -317,6 +317,7 @@ export function useDreamManagement() {
     pending,
     error,
     menuItems, // For the Menu component
+    selectedDreamForMenu,
     editingDreamId,
     editingTitle,
     isSavingDream, // Expose if needed externally

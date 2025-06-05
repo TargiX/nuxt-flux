@@ -229,16 +229,18 @@
 
     <!-- Bottom Right: Vertical Image Strip -->
     <div class="image-strip-container glass-card">
-      <ImageStrip 
-        ref="imageStripRef" 
-        :dreamId="tagStore.loadedDreamId" 
-        @image-selected="handleImageSelectedFromStrip" 
+      <ImageStrip
+        ref="imageStripRef"
+        :dreamId="tagStore.loadedDreamId"
+        @image-clicked="openImageViewerFromStrip"
+        @snapshot-requested="handleSnapshotRequestFromStrip"
         :viewingSnapshotId="tagStore.viewingSnapshotImageId"
         :isGeneratingImage="isGeneratingImageFromComposable"
       />
     </div>
 
   </div>
+  <ImageViewerModal v-model="viewerVisible" :images="viewerImages" :start-index="viewerStartIndex" />
   <div v-else class="loading-session-indicator">
     <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="8" fill="var(--surface-ground)" animationDuration=".5s" aria-label="Loading session" />
     <p>Loading session...</p>
@@ -251,6 +253,7 @@ import { useTagStore } from '~/store/tagStore';
 import ForceGraph from './ForceGraph.vue';
 import ZoneSelector from './ZoneSelector.vue';
 import ImageStrip from './ImageStrip.vue';
+import ImageViewerModal from './ImageViewerModal.vue';
 import { generateImagePrompt, clearPromptCache } from '~/services/promptGenerationService';
 import { generateConceptTags, preselectConceptTag } from '~/services/tagSelectionService';
 import { useImageGeneration } from '~/composables/useImageGeneration';
@@ -282,6 +285,9 @@ const {
 
 const forceGraphRef = ref<InstanceType<typeof ForceGraph> | null>(null);
 const imageStripRef = ref<InstanceType<typeof ImageStrip> | null>(null);
+const viewerVisible = ref(false);
+const viewerImages = ref<any[]>([]);
+const viewerStartIndex = ref(0);
 
 console.log('[TagCloud setup] Initial value of tagStore.isRestoringSession:', tagStore.isRestoringSession);
 
@@ -663,8 +669,8 @@ watch(() => tagStore.sessionId, () => {
   // skipPrompt.value = false;
 });
 
-// Placeholder for handling image selection from the strip
-const handleImageSelectedFromStrip = (image: any) => {
+// Handle request to view a snapshot from the strip
+const handleSnapshotRequestFromStrip = (image: any) => {
   if (image && image.imageUrl) {
     if (tagStore.viewingSnapshotImageId === image.id) {
       toast.add({ severity: 'info', summary: 'Snapshot Info', detail: 'This snapshot is already being viewed. Exit or apply it to continue.', life: 4000 });
@@ -705,6 +711,13 @@ const handleImageSelectedFromStrip = (image: any) => {
     }
   }
 };
+
+function openImageViewerFromStrip(payload: { image: any; index: number }) {
+  const imgs = imageStripRef.value?.images?.value || [];
+  viewerImages.value = imgs;
+  viewerStartIndex.value = payload.index;
+  viewerVisible.value = true;
+}
 
 // New handler for the Generate Image button
 async function handleGenerateImageClick() {
