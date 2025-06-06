@@ -115,6 +115,11 @@ async function handleLoadSnapshot() {
     tagStore.setPendingSnapshot(image); 
     await router.push(`/dream/${image.dreamId}`);
   } else if (props.context === 'dream-session') {
+    // Stash the current session if one isn't already stashed
+    if (!tagStore.stashedSessionState) {
+      tagStore.stashCurrentSession();
+    }
+    
     const snapshotPayload = {
       ...image,
       promptText: image.promptText ?? undefined,
