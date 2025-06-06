@@ -244,7 +244,12 @@
     <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="8" fill="var(--surface-ground)" animationDuration=".5s" aria-label="Loading session" />
     <p>Loading session...</p>
   </div>
-  <ImageViewerModal v-model="viewerVisible" :images="viewerImages" :start-index="viewerStartIndex" />
+  <ImageViewerModal 
+    v-model="viewerVisible" 
+    :images="viewerImages" 
+    :start-index="viewerStartIndex"
+    context="dream-session"
+  />
 </template>
 
 <script setup lang="ts">
@@ -470,7 +475,21 @@ watch(generatedPrompt, () => {
   }
 });
 
+function loadPendingSnapshot() {
+  const pendingSnap = tagStore.consumePendingSnapshot();
+  if (pendingSnap && pendingSnap.graphState) {
+    const snapshotPayload = {
+      ...pendingSnap,
+      promptText: pendingSnap.promptText ?? undefined,
+      graphState: pendingSnap.graphState,
+    };
+    tagStore.loadStateFromImageSnapshot(snapshotPayload);
+    tagStore.viewingSnapshotImageId = pendingSnap.id;
+  }
+}
+
 onMounted(() => {
+  loadPendingSnapshot();
   // Check isRestoringSession here as well for initial mount
   if (!tagStore.isRestoringSession) {
     triggerPromptGeneration();
@@ -713,7 +732,7 @@ const handleSnapshotRequestFromStrip = (image: any) => {
 };
 
 function openImageViewerFromStrip(payload: { image: any; index: number }) {
-  const imgs = imageStripRef.value?.images?.value || [];
+  const imgs = imageStripRef.value?.images || [];
   viewerImages.value = imgs;
   viewerStartIndex.value = payload.index;
   viewerVisible.value = true;

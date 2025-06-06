@@ -12,9 +12,10 @@ import type { Tag } from '~/types/tag';
 interface ReturnedDreamImage {
   id: number;
   imageUrl: string;
-  promptText?: string;
-  createdAt: string; // Or Date
-  // Potentially other fields like graphState might be returned by the API.
+  promptText: string;
+  createdAt: string;
+  dreamId: number;
+  graphState: any;
 }
 
 export function useImageGeneration() {

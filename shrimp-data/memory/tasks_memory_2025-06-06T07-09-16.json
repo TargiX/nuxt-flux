@@ -1,0 +1,67 @@
+{
+  "tasks": [
+    {
+      "id": "94cb9c9a-2660-4419-80c2-7468f8a84a83",
+      "name": "Fix ImageViewerModal in TagCloud",
+      "description": "Correct the data passing mechanism from ImageStrip to ImageViewerModal within TagCloud.vue. The modal currently opens but does not display any image or data because the image array is not being correctly retrieved from the ImageStrip component's exposed ref.",
+      "notes": "The primary evidence for this fix is the linter error provided in the user's context. This single line change is expected to resolve the bug completely.",
+      "status": "completed",
+      "dependencies": [],
+      "createdAt": "2025-06-06T06:46:42.409Z",
+      "updatedAt": "2025-06-06T06:47:27.110Z",
+      "relatedFiles": [
+        {
+          "path": "components/TagCloud.vue",
+          "type": "TO_MODIFY",
+          "description": "This file contains the bug where the image data is not correctly read from the `imageStripRef`.",
+          "lineStart": 716,
+          "lineEnd": 716
+        },
+        {
+          "path": "components/ImageStrip.vue",
+          "type": "REFERENCE",
+          "description": "This component exposes the `images` ref that `TagCloud.vue` consumes."
+        },
+        {
+          "path": "components/ImageViewerModal.vue",
+          "type": "REFERENCE",
+          "description": "The reusable modal component that is being incorrectly fed empty data."
+        }
+      ],
+      "implementationGuide": "1. Open `components/TagCloud.vue`. \n2. Locate the `openImageViewerFromStrip` function. \n3. Modify the line that accesses the images from `imageStripRef`. The linter error indicates that `imageStripRef.value.images` is already the array. \n   - Change `const imgs = imageStripRef.value?.images?.value || [];` to `const imgs = imageStripRef.value?.images || [];`\n4. No other changes should be needed for this part. The rest of the logic correctly passes the `imgs` array to `viewerImages.value`.",
+      "verificationCriteria": "1. Open the application and navigate to the `TagCloud` view. \n2. Click on any image thumbnail in the vertical `ImageStrip`. \n3. Verify that the `ImageViewerModal` opens. \n4. Verify that the modal correctly displays the clicked image, its prompt, and creation date. \n5. Verify that the navigation arrows (next/previous) in the modal function correctly.",
+      "summary": "The identified bug in `TagCloud.vue` was a single-line issue where an exposed `ref` from a child component was being accessed incorrectly. The linter error provided clear guidance, and the fix was to remove the `.value` from the expression `imageStripRef.value?.images?.value`. This correctly retrieves the image array, allowing it to be passed to the `ImageViewerModal`. The modal now receives the necessary props and should render the image and its details as expected. The fix is precise and directly addresses the root cause of the problem.",
+      "completedAt": "2025-06-06T06:47:27.110Z"
+    },
+    {
+      "id": "3f3b42f9-537d-4332-81a6-04609dc253c0",
+      "name": "Refactor UserImageGallery to Use ImageViewerModal",
+      "description": "Replace the custom PrimeVue Dialog implementation within UserImageGallery.vue with the reusable ImageViewerModal.vue component. This will remove duplicate code and ensure a consistent image viewing experience.",
+      "notes": "This is primarily a refactoring task. The goal is to delete a significant amount of code and replace it with a single component instance.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "94cb9c9a-2660-4419-80c2-7468f8a84a83"
+        }
+      ],
+      "createdAt": "2025-06-06T06:46:42.409Z",
+      "updatedAt": "2025-06-06T06:48:25.749Z",
+      "relatedFiles": [
+        {
+          "path": "components/UserImageGallery.vue",
+          "type": "TO_MODIFY",
+          "description": "This file contains the custom dialog implementation that needs to be replaced."
+        },
+        {
+          "path": "components/ImageViewerModal.vue",
+          "type": "REFERENCE",
+          "description": "The reusable component that will be integrated into UserImageGallery."
+        }
+      ],
+      "implementationGuide": "1. In `components/UserImageGallery.vue`, import `ImageViewerModal.vue`. \n2. Remove the entire `<Dialog>...</Dialog>` block from the template. \n3. In the `<script setup>` section, remove all state and functions related to the old dialog: `isModalVisible`, `currentImageInModalIndex`, `selectedImageForModal`, `nextImage`, `previousImage`, `onModalHide`, and `handleKeydown`. \n4. Add new state variables required by `ImageViewerModal`: `const viewerVisible = ref(false);` and `const viewerStartIndex = ref(0);`. \n5. The existing `images` ref should be passed directly to the modal. \n6. Modify the `openImageModal` function to set `viewerStartIndex.value = index;` and `viewerVisible.value = true;`. \n7. Add `<ImageViewerModal v-model=\"viewerVisible\" :images=\"images\" :start-index=\"viewerStartIndex\" />` to the template.",
+      "verificationCriteria": "1. Open the application and navigate to the page containing the `UserImageGallery`. \n2. Click on any image in the gallery grid. \n3. Verify that the `ImageViewerModal` opens. \n4. Verify that it correctly displays the clicked image and its associated data. \n5. Verify that navigation and download functionality within the modal work as expected. \n6. Verify that the old dialog code has been completely removed from `UserImageGallery.vue`.",
+      "summary": "The refactoring of `UserImageGallery.vue` is complete. The custom PrimeVue Dialog implementation has been successfully removed, along with all its associated state management, event handlers, and navigation logic (approximately 50 lines of script and 40 lines of template code). It has been replaced with a single line in the template: `<ImageViewerModal v-model=\\\"viewerVisible\\\" :images=\\\"images\\\" :start-index=\\\"viewerStartIndex\\\" />`. The script was simplified to only require two new `ref`s (`viewerVisible`, `viewerStartIndex`) and an updated `openImageModal` function. This change eliminates significant code duplication, centralizes the image viewing logic into the `ImageViewerModal` component, and ensures a consistent user experience across the application. The new implementation is cleaner, more maintainable, and directly follows the user's request.",
+      "completedAt": "2025-06-06T06:48:25.745Z"
+    }
+  ]
+}

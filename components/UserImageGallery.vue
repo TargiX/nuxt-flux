@@ -41,63 +41,14 @@
       </div>
     </div>
 
-    <Dialog 
-      v-model:visible="isModalVisible" 
-      modal 
-      :header="selectedImageForModal?.promptText || 'Image Details'" 
-      :style="{ width: '90vw', maxWidth: '1200px' }"
-      @hide="onModalHide"
-      contentClass="p-0" 
-      class="custom-image-dialog"
-      :pt="{
-        mask: { style: 'backdrop-filter: blur(2px)' },
-        header: { style: 'height: 90px;' }
-      }"
-    >
-      <div v-if="selectedImageForModal" class="image-modal-inner-content flex flex-col md:flex-row gap-4 items-start p-4 md:p-6 relative">
-        <div class="image-display-area flex-shrink-0 relative w-full md:w-2/3">
-          <img :src="selectedImageForModal.imageUrl" :alt="selectedImageForModal.promptText || 'Selected image'" class="large-gallery-image" />
-        </div>
-        
-        <Button 
-          icon="pi pi-chevron-left" 
-          class="p-button-rounded p-button-secondary absolute top-1/2 transform -translate-y-1/2 z-20 modal-nav-button modal-nav-left"
-          @click="previousImage"
-          :disabled="images.length <= 1"
-          style="width: 3rem; height: 3rem;"
-        />
-        <Button 
-          icon="pi pi-chevron-right" 
-          class="p-button-rounded p-button-secondary absolute top-1/2 transform -translate-y-1/2 z-20 modal-nav-button modal-nav-right"
-          @click="nextImage"
-          :disabled="images.length <= 1"
-          style="width: 3rem; height: 3rem;"
-        />
-
-        <div class="info-container w-full md:w-1/3 md:pl-4">
-          <h3 class="text-lg font-semibold mb-2">Prompt:</h3>
-          <p class="prompt-modal-text text-sm mb-4 max-h-40 overflow-y-auto">{{ selectedImageForModal.promptText || 'No prompt available' }}</p>
-          <h3 class="text-lg font-semibold mb-1">Created:</h3>
-          <p class="date-modal-text text-sm mb-4">{{ new Date(selectedImageForModal.createdAt).toLocaleString() }}</p>
-           <Button 
-            label="Download Image" 
-            icon="pi pi-download" 
-            @click="handleDownloadImage(selectedImageForModal.imageUrl, selectedImageForModal.promptText)" 
-            class="p-button-sm mt-4 w-full"
-          />
-        </div>
-      </div>
-       <div v-else class="text-center py-10">
-        <p>No image selected or image data is unavailable.</p>
-      </div>
-    </Dialog>
+    <ImageViewerModal v-model="viewerVisible" :images="images" :start-index="viewerStartIndex" context="gallery" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch, onUnmounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useImageDownloader } from '~/composables/useImageDownloader';
-import Dialog from 'primevue/dialog';
+import ImageViewerModal from './ImageViewerModal.vue';
 import Button from 'primevue/button';
 
 interface GalleryImage {
@@ -105,6 +56,8 @@ interface GalleryImage {
   imageUrl: string;
   promptText?: string | null;
   createdAt: string; // Or Date, adjust based on API response
+  dreamId: number;
+  graphState?: any;
   // Add other fields if needed from the API response, e.g., graphState
 }
 
@@ -114,8 +67,8 @@ const error = ref<any | null>(null);
 
 const { downloadImage } = useImageDownloader();
 
-const isModalVisible = ref(false);
-const currentImageInModalIndex = ref(0);
+const viewerVisible = ref(false);
+const viewerStartIndex = ref(0);
 
 async function fetchUserImages() {
   pending.value = true;
@@ -133,56 +86,16 @@ async function fetchUserImages() {
 
 onMounted(() => {
   fetchUserImages();
-  window.addEventListener('keydown', handleKeydown);
-});
-
-onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeydown);
-});
-
-const selectedImageForModal = computed(() => {
-  if (images.value.length > 0 && currentImageInModalIndex.value >= 0 && currentImageInModalIndex.value < images.value.length) {
-    return images.value[currentImageInModalIndex.value];
-  }
-  return null;
 });
 
 function openImageModal(index: number) {
-  currentImageInModalIndex.value = index;
-  isModalVisible.value = true;
+  viewerStartIndex.value = index;
+  viewerVisible.value = true;
 }
 
 function handleDownloadImage(imageUrl: string, promptText?: string | null) {
   downloadImage(imageUrl, promptText);
 }
-
-function nextImage() {
-  if (images.value.length === 0) return;
-  currentImageInModalIndex.value = (currentImageInModalIndex.value + 1) % images.value.length;
-}
-
-function previousImage() {
-  if (images.value.length === 0) return;
-  currentImageInModalIndex.value = (currentImageInModalIndex.value - 1 + images.value.length) % images.value.length;
-}
-
-function onModalHide() {
-  // Optional: Reset index or perform other cleanup if needed when modal is hidden
-  // currentImageInModalIndex.value = 0; // Example: reset to first image
-}
-
-function handleKeydown(event: KeyboardEvent) {
-  if (!isModalVisible.value) return;
-
-  if (event.key === 'ArrowRight') {
-    nextImage();
-  } else if (event.key === 'ArrowLeft') {
-    previousImage();
-  } else if (event.key === 'Escape') {
-    isModalVisible.value = false;
-  }
-}
-
 </script>
 
 <style scoped>

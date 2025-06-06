@@ -31,7 +31,19 @@
         <p class="prompt-modal-text text-sm mb-4 max-h-40 overflow-y-auto">{{ selectedImage.promptText || 'No prompt available' }}</p>
         <h3 class="text-lg font-semibold mb-1">Created:</h3>
         <p class="date-modal-text text-sm mb-4">{{ new Date(selectedImage.createdAt).toLocaleString() }}</p>
-        <Button label="Download Image" icon="pi pi-download" @click="handleDownload" class="p-button-sm mt-4 w-full" />
+        <Button 
+          v-if="selectedImage.graphState"
+          label="Load Snapshot" 
+          icon="pi pi-history" 
+          @click="handleLoadSnapshot" 
+          class="p-button-sm p-button-secondary mt-2 w-full" 
+        />
+        <Button 
+          label="Download Image" 
+          icon="pi pi-download" 
+          @click="handleDownload" 
+          class="p-button-sm mt-4 w-full" 
+        />
       </div>
     </div>
     <div v-else class="text-center py-10">
@@ -41,22 +53,33 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted, type PropType } from 'vue';
 import Dialog from 'primevue/dialog';
 import Button from 'primevue/button';
 import { useImageDownloader } from '~/composables/useImageDownloader';
+import { useTagStore } from '~/store/tagStore';
+import { useRouter } from 'vue-router';
 
 interface GalleryImage {
   id: number;
   imageUrl: string;
   promptText?: string | null;
   createdAt: string;
+  dreamId: number;
+  graphState?: any;
 }
 
-const props = defineProps<{ images: GalleryImage[]; modelValue: boolean; startIndex?: number }>();
+const props = defineProps<{ 
+  images: GalleryImage[]; 
+  modelValue: boolean; 
+  startIndex?: number;
+  context: 'gallery' | 'dream-session';
+}>();
 const emit = defineEmits(['update:modelValue']);
 
 const { downloadImage } = useImageDownloader();
+const tagStore = useTagStore();
+const router = useRouter();
 
 const visibleInternal = computed({
   get: () => props.modelValue,
@@ -81,6 +104,26 @@ function previousImage() {
 }
 function handleDownload() {
   if (selectedImage.value) downloadImage(selectedImage.value.imageUrl, selectedImage.value.promptText);
+}
+
+async function handleLoadSnapshot() {
+  if (!selectedImage.value || !selectedImage.value.graphState) return;
+  const image = selectedImage.value;
+
+  if (props.context === 'gallery' && image.dreamId) {
+    // This action needs to be created in the store
+    tagStore.setPendingSnapshot(image); 
+    await router.push(`/dream/${image.dreamId}`);
+  } else if (props.context === 'dream-session') {
+    const snapshotPayload = {
+      ...image,
+      promptText: image.promptText ?? undefined,
+      graphState: image.graphState,
+    };
+    tagStore.loadStateFromImageSnapshot(snapshotPayload);
+    tagStore.viewingSnapshotImageId = image.id;
+    visibleInternal.value = false; // Close modal after loading
+  }
 }
 
 function handleKeydown(event: KeyboardEvent) {

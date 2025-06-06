@@ -17,6 +17,16 @@ interface DreamData {
   zoneViewports?: Record<string, ViewportState>; // ADDED for saving/loading viewport states
 }
 
+// Interface for the image snapshot data
+interface ImageSnapshot {
+  id: number;
+  imageUrl: string;
+  promptText?: string | null;
+  createdAt: string;
+  dreamId: number;
+  graphState?: any;
+}
+
 export const useTagStore = defineStore('tags', () => {
   const tags = ref<Tag[]>([]);
   const zones = ref<string[]>(getAvailableZones());
@@ -33,6 +43,7 @@ export const useTagStore = defineStore('tags', () => {
   // State for stashing current session when viewing an image snapshot
   const stashedSessionState = ref<DreamData | null>(null);
   const viewingSnapshotImageId = ref<number | null>(null); // ID of the image snapshot currently being viewed
+  const pendingSnapshot = ref<ImageSnapshot | null>(null); // State to hold a snapshot pending a route change
   // ------------------------------------
 
   // Add session ID at the top with existing state
@@ -442,6 +453,18 @@ export const useTagStore = defineStore('tags', () => {
   }
   // -----------------------------------------------------------
 
+  // --- Actions for pending snapshot ---
+  function setPendingSnapshot(image: ImageSnapshot) {
+    pendingSnapshot.value = image;
+  }
+
+  function consumePendingSnapshot() {
+    const snap = pendingSnapshot.value;
+    pendingSnapshot.value = null;
+    return snap;
+  }
+  // ------------------------------------
+
   return {
     tags,
     zones,
@@ -474,5 +497,7 @@ export const useTagStore = defineStore('tags', () => {
     viewingSnapshotImageId,   // EXPOSE
     stashCurrentSession,      // EXPOSE ACTION
     restoreStashedSession,    // EXPOSE ACTION
+    setPendingSnapshot,       // EXPOSE ACTION
+    consumePendingSnapshot,   // EXPOSE ACTION
   };
 });

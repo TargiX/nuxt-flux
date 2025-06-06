@@ -1,0 +1,129 @@
+{
+  "tasks": [
+    {
+      "id": "ec7c1750-170f-4e5f-a143-33628af80ffa",
+      "name": "Integrate Hetzner Object Storage",
+      "description": "Set up an S3-compatible client in the backend to upload images to Hetzner Object Storage.",
+      "notes": "Ensure the bucket is configured for public read or generate presigned URLs.",
+      "status": "completed",
+      "dependencies": [],
+      "createdAt": "2025-06-01T04:28:35.570Z",
+      "updatedAt": "2025-06-01T05:26:43.595Z",
+      "relatedFiles": [
+        {
+          "path": "server/utils/storage.ts",
+          "type": "CREATE",
+          "description": "New utility for object storage client.",
+          "lineStart": 1,
+          "lineEnd": 50
+        },
+        {
+          "path": ".env.example",
+          "type": "TO_MODIFY",
+          "description": "Add storage env vars.",
+          "lineStart": 1,
+          "lineEnd": 50
+        }
+      ],
+      "implementationGuide": "Create a new file 'server/utils/storage.ts' using AWS SDK v3 (S3Client). Read HETZNER_S3_ENDPOINT, HETZNER_S3_ACCESS_KEY, HETZNER_S3_SECRET_KEY, HETZNER_S3_BUCKET from process.env. Export a function 'uploadImage(buffer: Buffer, key: string): Promise<string>' that uploads the buffer to the bucket and returns the public URL.",
+      "verificationCriteria": "Can call uploadImage with a local test buffer and confirm the image appears in the Hetzner bucket and returns a valid URL.",
+      "analysisResult": "",
+      "summary": "Hetzner Object Storage integration utility `server/utils/storage.ts` was created and the AWS SDK was installed as per the implementation guide. The utility reads necessary environment variables and provides an `uploadImage` function.",
+      "completedAt": "2025-06-01T05:26:43.594Z"
+    },
+    {
+      "id": "a14963ee-e135-41e5-b240-588b1b225ebc",
+      "name": "Add Object Storage Environment Variables",
+      "description": "Define required environment variables for Hetzner Object Storage credentials.",
+      "notes": "Values should match Hetzner Object Storage configuration.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "ec7c1750-170f-4e5f-a143-33628af80ffa"
+        }
+      ],
+      "createdAt": "2025-06-01T04:28:35.570Z",
+      "updatedAt": "2025-06-01T05:26:51.713Z",
+      "relatedFiles": [
+        {
+          "path": ".env.example",
+          "type": "TO_MODIFY",
+          "description": "Add storage env vars.",
+          "lineStart": 1,
+          "lineEnd": 50
+        }
+      ],
+      "implementationGuide": "In '.env' and '.env.example', add HETZNER_S3_ENDPOINT, HETZNER_S3_ACCESS_KEY, HETZNER_S3_SECRET_KEY, HETZNER_S3_BUCKET with placeholder values. Document their usage.",
+      "verificationCriteria": "The storage utility picks up these variables and can connect to the bucket without errors.",
+      "analysisResult": "",
+      "summary": "User confirmed that HETZNER_S3_ENDPOINT, HETZNER_S3_ACCESS_KEY, HETZNER_S3_SECRET_KEY, and HETZNER_S3_BUCKET environment variables were added to .env and .env.example. The storage utility `server/utils/storage.ts` is designed to pick up these variables.",
+      "completedAt": "2025-06-01T05:26:51.713Z"
+    },
+    {
+      "id": "0b5a6ad0-8270-4cc8-8214-add8c9103b63",
+      "name": "Modify Image Generation API to Use Object Storage",
+      "description": "Update the server-side image save endpoint to upload images to object storage instead of saving base64 in the database.",
+      "notes": "Remove or ignore any base64 fields in the database if necessary.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "ec7c1750-170f-4e5f-a143-33628af80ffa"
+        },
+        {
+          "taskId": "a14963ee-e135-41e5-b240-588b1b225ebc"
+        }
+      ],
+      "createdAt": "2025-06-01T04:28:35.570Z",
+      "updatedAt": "2025-06-01T05:26:59.610Z",
+      "relatedFiles": [
+        {
+          "path": "server/api/images/index.post.ts",
+          "type": "TO_MODIFY",
+          "description": "Update endpoint logic to upload to storage and save URL.",
+          "lineStart": 1,
+          "lineEnd": 200
+        }
+      ],
+      "implementationGuide": "In 'server/api/images/index.post.ts', import the storage uploadImage function. Decode the base64 image payload into a buffer, generate a unique key (e.g., using timestamp and UUID), call uploadImage, then store the returned URL in the Prisma 'GeneratedImage.imageUrl' field when creating the record.",
+      "verificationCriteria": "After making an image generation request, the image is stored in object storage and the database record's imageUrl points to the public URL. No base64 strings stored.",
+      "analysisResult": "",
+      "summary": "The image generation API endpoint `server/api/images/index.post.ts` was successfully modified. It now imports the `uploadImage` utility and `Buffer`. When an image is posted, the base64 `imageUrl` is decoded into a buffer, a unique filename is generated, and `uploadImage` is called to send it to Hetzner Object Storage. The URL returned by `uploadImage` is then saved in the `imageUrl` field of the `GeneratedImage` Prisma model. Error handling was also updated.",
+      "completedAt": "2025-06-01T05:26:59.610Z"
+    },
+    {
+      "id": "baba4178-744d-45ec-b9e7-f488f6e174b2",
+      "name": "Update Frontend Components to Use New Storage URLs",
+      "description": "Ensure all frontend image components use the new imageUrl property to load images from object storage.",
+      "notes": "Test loading multiple images and check performance.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "0b5a6ad0-8270-4cc8-8214-add8c9103b63"
+        }
+      ],
+      "createdAt": "2025-06-01T04:28:35.570Z",
+      "updatedAt": "2025-06-01T05:27:08.267Z",
+      "relatedFiles": [
+        {
+          "path": "components/ImageStrip.vue",
+          "type": "TO_MODIFY",
+          "description": "Ensure <img> src uses URL.",
+          "lineStart": 1,
+          "lineEnd": 100
+        },
+        {
+          "path": "components/UserImageGallery.vue",
+          "type": "TO_MODIFY",
+          "description": "Ensure <img> src uses URL.",
+          "lineStart": 1,
+          "lineEnd": 100
+        }
+      ],
+      "implementationGuide": "In 'components/ImageStrip.vue' and 'components/UserImageGallery.vue', verify that imageUrl (a URL) is used in <img> src. Remove any logic that handled base64 strings differently.",
+      "verificationCriteria": "Images in the strip and gallery load from object storage URLs quickly without base64 payload errors.",
+      "analysisResult": "",
+      "summary": "Verified that both `components/ImageStrip.vue` and `components/UserImageGallery.vue` already use the `imageUrl` property directly in the `src` attribute of their `<img>` tags. No changes were needed as they were already compatible with using URLs for images, which will now be the object storage URLs.",
+      "completedAt": "2025-06-01T05:27:08.267Z"
+    }
+  ]
+}
