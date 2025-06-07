@@ -1,34 +1,53 @@
 {
   "tasks": [
     {
-      "id": "18fb349b-5d3a-433b-947a-1d01d715f810",
-      "name": "Fix Snapshot Trapping Bug in ImageViewerModal",
-      "description": "Correct the logic in the `ImageViewerModal` component to prevent users from getting stuck in snapshot mode. The bug is caused by the component failing to save (stash) the current session before loading a snapshot's state. The fix ensures the session is stashed, making the 'Return to Current Session' button appear correctly.",
+      "id": "d7c587a4-3cbd-4093-a49f-5a2f2fcd7f49",
+      "name": "Update Store to Manage URL State",
+      "description": "Modify the `tagStore` to automatically manage the URL's query parameters when snapshot states are changed. This involves updating the `loadStateFromImageSnapshot` action to add `?snapshot=[id]` to the URL and the `restoreStashedSession` action to remove it.",
       "status": "completed",
       "dependencies": [],
-      "createdAt": "2025-06-06T08:19:13.650Z",
-      "updatedAt": "2025-06-06T08:19:39.171Z",
+      "createdAt": "2025-06-06T08:23:36.044Z",
+      "updatedAt": "2025-06-06T08:24:35.795Z",
       "relatedFiles": [
         {
-          "path": "components/ImageViewerModal.vue",
-          "type": "TO_MODIFY",
-          "description": "This file contains the faulty logic that needs to be corrected."
-        },
-        {
           "path": "store/tagStore.ts",
-          "type": "REFERENCE",
-          "description": "The store containing the `stashCurrentSession` action that needs to be called."
+          "type": "TO_MODIFY",
+          "description": "This is the central location for the state management logic that will be updated to control the URL."
+        }
+      ],
+      "implementationGuide": "1. Open `store/tagStore.ts`. \n2. Import `useRouter` from `vue-router`. \n3. Instantiate the router at the top of the store setup function: `const router = useRouter();`. \n4. In the `loadStateFromImageSnapshot` function, after the existing logic has successfully applied the snapshot, add the following line to update the URL without adding to the browser history: `router.replace({ query: { ...router.currentRoute.value.query, snapshot: imageSnapshot.id } });`. \n5. In the `restoreStashedSession` function, after the session has been restored, add logic to remove the snapshot query parameter: `const { snapshot, ...queryWithoutSnapshot } = router.currentRoute.value.query; router.replace({ query: queryWithoutSnapshot });`.",
+      "verificationCriteria": "1. Load a dream session. \n2. Trigger the `loadStateFromImageSnapshot` action (e.g., via the image strip menu). \n3. Verify the URL is updated to include `?snapshot=[id]`. \n4. Trigger the `restoreStashedSession` action. \n5. Verify the `?snapshot=[id]` query parameter is removed from the URL.",
+      "summary": "The `tagStore` has been successfully updated. I imported `useRouter` and instantiated it. I then modified the `loadStateFromImageSnapshot` action to add the snapshot ID to the URL as a query parameter upon loading a snapshot. I also updated the `restoreStashedSession` action to remove this query parameter when the user returns to the live session. This centralizes the URL management logic within the state store, ensuring consistency.",
+      "completedAt": "2025-06-06T08:24:35.795Z"
+    },
+    {
+      "id": "106b8a2c-006f-4e10-9e4b-10f39d5cbde1",
+      "name": "Implement Initial Snapshot Loading on Page Load",
+      "description": "Enhance the `TagCloud.vue` component to read the `snapshot` query parameter from the URL upon loading. If the parameter is present, it should wait for the dream's images to be fetched and then automatically apply the corresponding snapshot.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "d7c587a4-3cbd-4093-a49f-5a2f2fcd7f49"
+        }
+      ],
+      "createdAt": "2025-06-06T08:23:36.044Z",
+      "updatedAt": "2025-06-06T08:25:28.580Z",
+      "relatedFiles": [
+        {
+          "path": "components/TagCloud.vue",
+          "type": "TO_MODIFY",
+          "description": "This component is the main view for the dream page and will be responsible for reacting to the incoming URL."
         },
         {
           "path": "components/ImageStrip.vue",
           "type": "REFERENCE",
-          "description": "This component's 'Return to Current Session' button visibility depends on the fix."
+          "description": "The `images` ref exposed by this component is the data source the watcher will use to know when it's safe to load the snapshot."
         }
       ],
-      "implementationGuide": "1. Open the file `components/ImageViewerModal.vue`. \n2. Locate the `handleLoadSnapshot` function. \n3. Find the `else if (props.context === 'dream-session')` block. \n4. Inside this block, before the `loadStateFromImageSnapshot` call, add a conditional check: `if (!tagStore.stashedSessionState) { ... }`. \n5. Inside the `if` block, call `tagStore.stashCurrentSession();`. This will save the current session state, allowing the user to return to it.",
-      "verificationCriteria": "1. Navigate to a dream page that has generated images. \n2. Open an image in the viewer modal. \n3. Click the 'Load Snapshot' button inside the modal. \n4. The graph view should update, and the modal should close. \n5. Verify that the 'Current Session' tile in the `ImageStrip` now correctly reads 'Return to Current Session'. \n6. Click the 'Return to Current Session' button. \n7. Verify that the graph state returns to the live session and the button text reverts to 'Current Session'.",
-      "summary": "The bug causing users to be trapped in snapshot mode has been fixed. I located the issue in `ImageViewerModal.vue` where the `handleLoadSnapshot` function was not saving the current session before loading a snapshot. I added a check to see if `tagStore.stashedSessionState` exists, and if not, I call `tagStore.stashCurrentSession()`. This ensures that there is always a live session to revert to, making the 'Return to Current Session' button in the `ImageStrip` appear and function as expected. The fix is minimal, targeted, and resolves the core issue.",
-      "completedAt": "2025-06-06T08:19:39.171Z"
+      "implementationGuide": "1. Open `components/TagCloud.vue`. \n2. Import `useRoute` from `vue-router`. Instantiate it: `const route = useRoute();`. \n3. Create a new async function `handleInitialSnapshot()`. This function will read `route.query.snapshot`. If an ID exists, it will find the corresponding image in `imageStripRef.value.images`. If found, it will stash the current session and load the snapshot. \n4. Create a `watch`er that observes `imageStripRef.value?.images`. When the images array is populated, it should call `handleInitialSnapshot()`. Use `{ once: true }` to ensure it only runs a single time. \n5. Call `handleInitialSnapshot()` inside `onMounted` as well, to handle cases where the data might already be present.",
+      "verificationCriteria": "1. Manually navigate to a URL like `/dream/1?snapshot=123`. \n2. Verify that after the page loads, the graph view corresponds to the state of snapshot/image 123. \n3. Verify that the URL remains unchanged. \n4. Verify that the 'Return to Current Session' button is visible and functional, allowing the user to exit the linked snapshot view and return to the dream's live state.",
+      "summary": "The `TagCloud.vue` component has been successfully updated. It now reads the `snapshot` ID from the URL's query parameter on initial load. I implemented a `watch` effect that waits for the dream's images to be fetched from the `ImageStrip` component. Once the images are available, a handler function finds the specific snapshot and uses the `tagStore` to apply its graph state. This makes dream states shareable and linkable. I also fixed two linter errors related to Pinia's `$reset` syntax and TypeScript type compatibility for the snapshot object.",
+      "completedAt": "2025-06-06T08:25:28.580Z"
     }
   ]
 }

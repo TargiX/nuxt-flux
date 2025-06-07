@@ -1,6 +1,7 @@
 // stores/tagStore.ts
 import { defineStore } from 'pinia';
 import { ref, computed, nextTick } from 'vue';
+import { useRouter } from 'vue-router';
 import { useRuntimeConfig } from '#app';
 import type { Tag } from '~/types/tag';
 import { initializeTags, getAvailableZones } from '~/services/tagProcessingService';
@@ -28,6 +29,7 @@ interface ImageSnapshot {
 }
 
 export const useTagStore = defineStore('tags', () => {
+  const router = useRouter();
   const tags = ref<Tag[]>([]);
   const zones = ref<string[]>(getAvailableZones());
   const focusedZone = ref<string>(zones.value[0] || 'Subject');
@@ -298,6 +300,7 @@ export const useTagStore = defineStore('tags', () => {
 
   // --- Action to load state from an image snapshot ---
   function loadStateFromImageSnapshot(imageSnapshot: {
+    id: number;
     imageUrl: string;
     promptText?: string;
     graphState: any; // This will be the { focusedZone, tags } object
@@ -400,6 +403,7 @@ export const useTagStore = defineStore('tags', () => {
 
     nextTick(() => {
       isRestoringSession.value = false;
+      router.replace({ query: { ...router.currentRoute.value.query, snapshot: imageSnapshot.id } });
     });
   }
   // --------------------------------------------------
@@ -450,6 +454,9 @@ export const useTagStore = defineStore('tags', () => {
     // Clear the stash and viewing ID
     stashedSessionState.value = null;
     viewingSnapshotImageId.value = null;
+
+    const { snapshot, ...queryWithoutSnapshot } = router.currentRoute.value.query;
+    router.replace({ query: queryWithoutSnapshot });
   }
   // -----------------------------------------------------------
 
@@ -465,39 +472,54 @@ export const useTagStore = defineStore('tags', () => {
   }
   // ------------------------------------
 
+  function reset() {
+    tags.value = [];
+    focusedZone.value = 'core';
+    currentGeneratedPrompt.value = '';
+    currentImageUrl.value = null;
+    loadedDreamId.value = null;
+    stashedSessionState.value = null;
+    viewingSnapshotImageId.value = null;
+    hasUnsavedChanges.value = false;
+    isRestoringSession.value = false;
+    sessionId.value = generateSessionId();
+    zoneViewportStates.value = new Map<string, ViewportState>();
+  }
+
   return {
     tags,
     zones,
     focusedZone,
-    isRestoringSession, // Expose the new flag
-    zoneViewportStates, // Expose the raw map (or preferably through getters/setters if more control needed)
-    saveZoneViewport,   // Expose action to save viewport
-    getZoneViewport,    // Expose action/getter to retrieve viewport
+    isRestoringSession,
+    zoneViewportStates,
+    saveZoneViewport,
+    getZoneViewport,
     currentGeneratedPrompt,
     currentImageUrl,
     setFocusedZone,
     toggleTag: handleTagToggle,
     updateTagText,
-    loadDreamState,           // Expose action
-    resetToCurrentSession,    // Expose action
-    markAsSaved,              // Expose action
-    setCurrentGeneratedPrompt, // Expose action
-    setCurrentImageUrl,      // Expose action
+    loadDreamState,
+    resetToCurrentSession,
+    markAsSaved,
+    setCurrentGeneratedPrompt,
+    setCurrentImageUrl,
     graphNodes,
     graphLinks,
-    loadedDreamId,            // Expose state
-    hasUnsavedChanges,         // Expose state
-    sessionId,                // Expose session ID for coordination
-    isRequestInProgress,      // Expose request status
-    setDreamsListRefresher,    // Expose action
-    refreshDreamsList,         // Expose action
-    loadStateFromImageSnapshot, // Expose action
-    getAllZoneViewportsObject,  // Expose new getter
-    stashedSessionState,        // EXPOSE
-    viewingSnapshotImageId,   // EXPOSE
-    stashCurrentSession,      // EXPOSE ACTION
-    restoreStashedSession,    // EXPOSE ACTION
-    setPendingSnapshot,       // EXPOSE ACTION
-    consumePendingSnapshot,   // EXPOSE ACTION
+    loadedDreamId,
+    hasUnsavedChanges,
+    sessionId,
+    isRequestInProgress,
+    setDreamsListRefresher,
+    refreshDreamsList,
+    loadStateFromImageSnapshot,
+    getAllZoneViewportsObject,
+    stashedSessionState,
+    viewingSnapshotImageId,
+    stashCurrentSession,
+    restoreStashedSession,
+    setPendingSnapshot,
+    consumePendingSnapshot,
+    reset,
   };
 });

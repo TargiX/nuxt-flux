@@ -269,11 +269,13 @@ import LoadingSpinner from './LoadingSpinner.vue';
 import { useConfirm } from "primevue/useconfirm";
 import { useImageDownloader } from '~/composables/useImageDownloader';
 import ProgressSpinner from 'primevue/progressspinner';
+import { useRoute } from 'vue-router';
 
 const tagStore = useTagStore();
 const toast = useToast();
 const confirm = useConfirm();
 const { downloadImage } = useImageDownloader();
+const route = useRoute();
 
 // Use the dream management composable
 const { 
@@ -476,25 +478,63 @@ watch(generatedPrompt, () => {
 });
 
 function loadPendingSnapshot() {
-  const pendingSnap = tagStore.consumePendingSnapshot();
-  if (pendingSnap && pendingSnap.graphState) {
-    const snapshotPayload = {
-      ...pendingSnap,
-      promptText: pendingSnap.promptText ?? undefined,
-      graphState: pendingSnap.graphState,
-    };
-    tagStore.loadStateFromImageSnapshot(snapshotPayload);
-    tagStore.viewingSnapshotImageId = pendingSnap.id;
-  }
+  // This function is now replaced by the more robust handleInitialSnapshot
 }
 
 onMounted(() => {
-  loadPendingSnapshot();
-  // Check isRestoringSession here as well for initial mount
-  if (!tagStore.isRestoringSession) {
-    triggerPromptGeneration();
-  }
+  // The page component `[dreamId].vue` now handles all initial data loading.
+  // This component just needs to react to the store.
+  // We still need to check for a snapshot on mount.
+  handleInitialSnapshot();
 });
+
+// New, robust function to handle initial snapshot from URL
+async function handleInitialSnapshot() {
+  const snapshotIdStr = route.query.snapshot as string;
+  if (!snapshotIdStr) return;
+
+  // 1. Wait for the dream to be loaded by the parent page.
+  if (!tagStore.loadedDreamId) {
+    await new Promise(resolve => {
+      const unwatch = watch(() => tagStore.loadedDreamId, (newId) => {
+        if (newId) {
+          unwatch();
+          resolve(newId);
+        }
+      });
+    });
+  }
+
+  // 2. Wait for the image strip to contain images.
+  if (!imageStripRef.value?.images || imageStripRef.value.images.length === 0) {
+    await new Promise(resolve => {
+      const unwatch = watch(() => imageStripRef.value?.images, (newImages) => {
+        if (newImages && newImages.length > 0) {
+          unwatch();
+          resolve(newImages);
+        }
+      });
+    });
+  }
+
+  // 3. Now that data is ready, apply the snapshot.
+  const snapshotId = parseInt(snapshotIdStr, 10);
+  if (!imageStripRef.value) return; // Guard against null ref
+  const images = imageStripRef.value.images;
+  const snapshotImage = images.find(img => img.id === snapshotId);
+  
+  if (snapshotImage && snapshotImage.graphState) {
+    if (!tagStore.stashedSessionState) {
+      tagStore.stashCurrentSession();
+    }
+    tagStore.loadStateFromImageSnapshot({
+      id: snapshotImage.id,
+      imageUrl: snapshotImage.imageUrl,
+      promptText: snapshotImage.promptText,
+      graphState: snapshotImage.graphState,
+    });
+  }
+}
 
 // Update the handleNodeClick function to be aware of session state
 async function handleNodeClick(id: string) {

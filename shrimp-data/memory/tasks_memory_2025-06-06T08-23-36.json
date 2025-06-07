@@ -1,0 +1,34 @@
+{
+  "tasks": [
+    {
+      "id": "18fb349b-5d3a-433b-947a-1d01d715f810",
+      "name": "Fix Snapshot Trapping Bug in ImageViewerModal",
+      "description": "Correct the logic in the `ImageViewerModal` component to prevent users from getting stuck in snapshot mode. The bug is caused by the component failing to save (stash) the current session before loading a snapshot's state. The fix ensures the session is stashed, making the 'Return to Current Session' button appear correctly.",
+      "status": "completed",
+      "dependencies": [],
+      "createdAt": "2025-06-06T08:19:13.650Z",
+      "updatedAt": "2025-06-06T08:19:39.171Z",
+      "relatedFiles": [
+        {
+          "path": "components/ImageViewerModal.vue",
+          "type": "TO_MODIFY",
+          "description": "This file contains the faulty logic that needs to be corrected."
+        },
+        {
+          "path": "store/tagStore.ts",
+          "type": "REFERENCE",
+          "description": "The store containing the `stashCurrentSession` action that needs to be called."
+        },
+        {
+          "path": "components/ImageStrip.vue",
+          "type": "REFERENCE",
+          "description": "This component's 'Return to Current Session' button visibility depends on the fix."
+        }
+      ],
+      "implementationGuide": "1. Open the file `components/ImageViewerModal.vue`. \n2. Locate the `handleLoadSnapshot` function. \n3. Find the `else if (props.context === 'dream-session')` block. \n4. Inside this block, before the `loadStateFromImageSnapshot` call, add a conditional check: `if (!tagStore.stashedSessionState) { ... }`. \n5. Inside the `if` block, call `tagStore.stashCurrentSession();`. This will save the current session state, allowing the user to return to it.",
+      "verificationCriteria": "1. Navigate to a dream page that has generated images. \n2. Open an image in the viewer modal. \n3. Click the 'Load Snapshot' button inside the modal. \n4. The graph view should update, and the modal should close. \n5. Verify that the 'Current Session' tile in the `ImageStrip` now correctly reads 'Return to Current Session'. \n6. Click the 'Return to Current Session' button. \n7. Verify that the graph state returns to the live session and the button text reverts to 'Current Session'.",
+      "summary": "The bug causing users to be trapped in snapshot mode has been fixed. I located the issue in `ImageViewerModal.vue` where the `handleLoadSnapshot` function was not saving the current session before loading a snapshot. I added a check to see if `tagStore.stashedSessionState` exists, and if not, I call `tagStore.stashCurrentSession()`. This ensures that there is always a live session to revert to, making the 'Return to Current Session' button in the `ImageStrip` appear and function as expected. The fix is minimal, targeted, and resolves the core issue.",
+      "completedAt": "2025-06-06T08:19:39.171Z"
+    }
+  ]
+}

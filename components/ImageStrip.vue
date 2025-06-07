@@ -49,6 +49,7 @@
               <ActionMenu
                 :items="getMenuItems(image)"
                 buttonClass="image-menu-button"
+                buttonType="solid"
                 @open="() => {}"
               />
             </div>
@@ -232,7 +233,7 @@ const handleCurrentSessionClick = () => {
 };
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .image-scroll-area {
   display: flex;
   flex-direction: column; /* Change to vertical */
@@ -452,10 +453,22 @@ const handleCurrentSessionClick = () => {
   position: absolute;
   top: 4px;
   right: 4px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.image-thumbnail-item:hover .image-menu-wrapper {
+  opacity: 1;
+  visibility: visible;
 }
 
 .image-menu-button {
   width: 1.5rem;
   height: 1.5rem;
+  background-color: var(--surface-b);
+  border-radius: 4px;
+  padding: 4px;
+  border: 1px solid var(--surface-d);
 }
 </style> 
