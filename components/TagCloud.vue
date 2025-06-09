@@ -298,8 +298,8 @@ const viewerStartIndex = ref(0);
 
 console.log('[TagCloud setup] Initial value of tagStore.isRestoringSession:', tagStore.isRestoringSession);
 
-const localGraphNodes = ref<any[]>([]);
-const localGraphLinks = ref<any[]>([]);
+const localGraphNodes = ref<any[]>(tagStore.graphNodes);
+const localGraphLinks = ref<any[]>(tagStore.graphLinks);
 
 const isRestoringSessionForTemplate = computed(() => tagStore.isRestoringSession);
 
