@@ -2,7 +2,7 @@
   <Dialog
     v-model:visible="visibleInternal"
     modal
-    :header="selectedImage?.promptText || 'Image Details'"
+    :header="selectedImage?.promptText?.trim().substring(0, 200) + '...' || 'Image Details'"
     :style="{ width: '90vw', maxWidth: '1200px' }"
     contentClass="p-0"
     class="custom-image-dialog"
@@ -29,21 +29,37 @@
       <div class="info-container w-full md:w-1/3 md:pl-4">
         <h3 class="text-lg font-semibold mb-2">Prompt:</h3>
         <p class="prompt-modal-text text-sm mb-4 max-h-40 overflow-y-auto">{{ selectedImage.promptText || 'No prompt available' }}</p>
+        <h3 class="text-lg font-semibold mb-2">Graph:</h3>
+        <div v-if="snapshotGraphData" class="graph-wrapper mb-4">
+          <ForceGraph
+            :nodes="snapshotGraphData.nodes"
+            :links="snapshotGraphData.links"
+            :width="300"
+            :height="200"
+            :is-read-only="true"
+          />
+        </div>
+        <div v-else class="prompt-modal-text text-sm mb-4">
+          No graph available
+        </div>
         <h3 class="text-lg font-semibold mb-1">Created:</h3>
         <p class="date-modal-text text-sm mb-4">{{ new Date(selectedImage.createdAt).toLocaleString() }}</p>
+        
+        <div class="flex  gap-2">
         <Button 
           v-if="selectedImage.graphState"
           label="Load Snapshot" 
           icon="pi pi-history" 
           @click="handleLoadSnapshot" 
-          class="p-button-sm p-button-secondary mt-2 w-full" 
+          class="p-button-sm p-button-secondary mt-2 w-1/2" 
         />
         <Button 
-          label="Download Image" 
+          label="Download" 
           icon="pi pi-download" 
           @click="handleDownload" 
-          class="p-button-sm mt-4 w-full" 
+          class="p-button-sm w-1/2 mt-2" 
         />
+        </div>
       </div>
     </div>
     <div v-else class="text-center py-10">
@@ -59,6 +75,8 @@ import Button from 'primevue/button';
 import { useImageDownloader } from '~/composables/useImageDownloader';
 import { useTagStore } from '~/store/tagStore';
 import { useRouter } from 'vue-router';
+import ForceGraph from './ForceGraph.vue';
+import type { GraphNode, GraphLink } from '~/types/graph';
 
 interface GalleryImage {
   id: number;
@@ -92,6 +110,22 @@ watch(() => props.startIndex, (v) => { if (typeof v === 'number') currentIndex.v
 const selectedImage = computed(() => {
   if (props.images.length && currentIndex.value >= 0 && currentIndex.value < props.images.length) {
     return props.images[currentIndex.value];
+  }
+  return null;
+});
+
+const snapshotGraphData = computed<{ nodes: GraphNode[]; links: GraphLink[] } | null>(() => {
+  const state = selectedImage.value?.graphState;
+  if (state && Array.isArray(state.tags) && state.focusedZone) {5
+    // Treat tags array as GraphNode[] to include all required properties
+    const allTags = state.tags as GraphNode[];
+    // Filter nodes to the focused zone
+    const nodes: GraphNode[] = allTags.filter(tag => tag.zone === state.focusedZone);
+    // Construct links for parent-child relationships within the zone
+    const links: GraphLink[] = nodes
+      .filter(tag => typeof tag.parentId === 'string')
+      .map(tag => ({ source: tag.parentId as string, target: tag.id, value: 1 }));
+    return { nodes, links };
   }
   return null;
 });
@@ -177,7 +211,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown));
 }
 .custom-image-dialog .info-container {
   color: var(--text-color-secondary, #d1d5db);
-  max-height: calc(80vh - 100px);
+  height: calc(80vh - 100px);
   overflow-y: auto;
 }
 .custom-image-dialog .info-container h3 { color: var(--text-color, #f9fafb); }
@@ -189,4 +223,13 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown));
   border-radius: 6px;
 }
 .image-display-area { min-height: 200px; }
+
+.graph-wrapper {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  height: 200px; /* Or adjust as needed */
+  background-color: rgba(0,0,0,0.2);
+}
 </style>

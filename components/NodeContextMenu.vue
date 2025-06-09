@@ -71,6 +71,7 @@ async function loadDynamicMenu(text: string | null) {
     icon: 'pi pi-fw pi-compass',
     items: cat.items.map(item => ({
       label: item,
+      icon: 'pi pi-fw pi-bolt',
       command: () => onSelect(cat.category, item)
     }))
   }));

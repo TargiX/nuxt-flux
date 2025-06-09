@@ -3,7 +3,7 @@
     <!-- D3 SVG will be appended here -->
     
     <!-- Controls container -->
-    <div class="controls-overlay absolute bottom-4 justify-between items-center">
+    <div v-if="!isReadOnly" class="controls-overlay absolute bottom-4 justify-between items-center">
       <!-- Slot for additional controls like zone selector -->
           <!-- Existing Zoom controls -->
       <div class="zoom-controls flex justify-end flex-col gap-2 w-7 ml-auto mb-5">
@@ -60,7 +60,7 @@
      </div>
    
     </div>
-    <NodeContextMenu ref="contextMenu" :node-id="contextMenuNodeId" @menu-action="handleContextMenuAction" />
+    <NodeContextMenu v-if="!isReadOnly" ref="contextMenu" :node-id="contextMenuNodeId" @menu-action="handleContextMenuAction" />
   </div>
 </template>
 
@@ -80,6 +80,7 @@ const props = defineProps<{
   height: number;
   nodes: GraphNode[];
   links: GraphLink[];
+  isReadOnly?: boolean;
 }>();
 
 const emit = defineEmits(['nodeClick', 'nodePositionsUpdated', 'nodeTextUpdated', 'menuAction']);
@@ -146,8 +147,9 @@ let resizeObserver: ResizeObserver | null = null;
 // Batched structural watch to throttle multiple triggers into one per update cycle
 let pendingUpdate = false;
 watch(
-  () => [props.nodes.length, props.links.length],
+  () => [props.nodes?.length, props.links?.length],
   () => {
+    if (!props.nodes || !props.links) return;
     if (!pendingUpdate) {
       pendingUpdate = true;
       setTimeout(() => {
@@ -170,10 +172,11 @@ watch(
 
 // Watch for structural changes and increment version
 watch(
-  () => props.nodes.map(node => ({ id: node.id, text: node.text, selected: node.selected, isLoading: node.isLoading })),
+  () => props.nodes?.map(node => ({ id: node.id, text: node.text, selected: node.selected, isLoading: node.isLoading })),
   (newValues, oldValues) => {
+    if (!props.nodes) return;
     // Check if there are actual content changes
-    if (oldValues && newValues.length === oldValues.length) {
+    if (oldValues && newValues && newValues.length === oldValues.length) {
       const hasChanges = newValues.some((newNode, index) => {
         const oldNode = oldValues[index];
         return oldNode && (
@@ -251,7 +254,7 @@ onBeforeUnmount(() => {
 });
 
 function initializeGraph() {
-  if (!container.value) return;
+  if (!container.value || !props.nodes) return;
 
   const containerRect = container.value.getBoundingClientRect();
   const width = containerRect.width;
@@ -370,7 +373,7 @@ function initializeGraph() {
 }
 
 function updateGraph() {
-  if (!svg || !simulation || !container.value) return;
+  if (!svg || !simulation || !container.value || !props.nodes || !props.links) return;
   
   const containerRect = container.value.getBoundingClientRect();
   const width = containerRect.width;
@@ -431,27 +434,30 @@ function updateNodes() {
 
   const nodeEnter = node.enter()
     .append('g')
-    .attr('class', 'node')
-    .call(createDragBehavior(simulation))
-    .on('click', (event: MouseEvent, d: GraphNode) => {
-      const targetEl = event.target as Element;
-      if (targetEl.tagName.toLowerCase() === 'input') return; // Click on active editor input
-      console.log('Node clicked:', d.id);
-      emit('nodeClick', d.id);
-      updateNodeSelection(d.id);
-      if (svg) {
-        d.fx = d.x; d.fy = d.y;
-        centerOnNodeFn(svg, d);
-        setTimeout(() => { d.fx = null; d.fy = null; }, 750);
-      }
-      if (contextMenu.value) contextMenu.value.hide();
-    })
-    .on('contextmenu', (event: MouseEvent, d: GraphNode) => {
-      event.preventDefault();
-      contextMenuNodeId.value = d.id;
-      if (contextMenu.value) contextMenu.value.show(event, d.text);
-      console.log('Node right-clicked:', d.id);
-    });
+    .attr('class', 'node');
+
+  if (!props.isReadOnly) {
+    nodeEnter.call(createDragBehavior(simulation))
+      .on('click', (event: MouseEvent, d: GraphNode) => {
+        const targetEl = event.target as Element;
+        if (targetEl.tagName.toLowerCase() === 'input') return; // Click on active editor input
+        console.log('Node clicked:', d.id);
+        emit('nodeClick', d.id);
+        updateNodeSelection(d.id);
+        if (svg) {
+          d.fx = d.x; d.fy = d.y;
+          centerOnNodeFn(svg, d);
+          setTimeout(() => { d.fx = null; d.fy = null; }, 750);
+        }
+        if (contextMenu.value) contextMenu.value.hide();
+      })
+      .on('contextmenu', (event: MouseEvent, d: GraphNode) => {
+        event.preventDefault();
+        contextMenuNodeId.value = d.id;
+        if (contextMenu.value) contextMenu.value.show(event, d.text);
+        console.log('Node right-clicked:', d.id);
+      });
+  }
   
   nodeEnter.each(function(d) { // `this` is the <g class='node'> element
     manageNodeVisualsAndText(d3.select(this), true, { updateTextForNode }, false, svg!, null);
@@ -464,27 +470,30 @@ function updateNodes() {
   nodeMerge.each(function(d) { // `this` is the <g class='node'> element
     const isCurrentlyHovered = currentHoveredNodeId === d.id && !d.selected && !d.isLoading;
     manageNodeVisualsAndText(d3.select(this), false, { updateTextForNode }, isCurrentlyHovered, svg!, null);
-  })
-  .on('mouseenter', function(event: MouseEvent, d: GraphNode) {
-    if (event.target !== this) return;
-    if (hoverThrottleTimeout) clearTimeout(hoverThrottleTimeout);
-    hoverThrottleTimeout = window.setTimeout(() => {
-      clearAllHoverStates();
-      if (!d.selected && !d.isLoading) {
-        currentHoveredNodeId = d.id;
-        manageNodeVisualsAndText(d3.select(this), false, { updateTextForNode }, true, svg!, null);
-      }
-      hoverThrottleTimeout = null;
-    }, 50);
-  })
-  .on('mouseleave', function(event: MouseEvent, d: GraphNode) {
-    if (event.target !== this) return;
-    if (hoverThrottleTimeout) { clearTimeout(hoverThrottleTimeout); hoverThrottleTimeout = null; }
-    if (currentHoveredNodeId === d.id && !d.selected && !d.isLoading) {
-      currentHoveredNodeId = null;
-      manageNodeVisualsAndText(d3.select(this), false, { updateTextForNode }, false, svg!, null);
-    }
   });
+  
+  if (!props.isReadOnly) {
+    nodeMerge.on('mouseenter', function(event: MouseEvent, d: GraphNode) {
+      if (event.target !== this) return;
+      if (hoverThrottleTimeout) clearTimeout(hoverThrottleTimeout);
+      hoverThrottleTimeout = window.setTimeout(() => {
+        clearAllHoverStates();
+        if (!d.selected && !d.isLoading) {
+          currentHoveredNodeId = d.id;
+          manageNodeVisualsAndText(d3.select(this), false, { updateTextForNode }, true, svg!, null);
+        }
+        hoverThrottleTimeout = null;
+      }, 50);
+    })
+    .on('mouseleave', function(event: MouseEvent, d: GraphNode) {
+      if (event.target !== this) return;
+      if (hoverThrottleTimeout) { clearTimeout(hoverThrottleTimeout); hoverThrottleTimeout = null; }
+      if (currentHoveredNodeId === d.id && !d.selected && !d.isLoading) {
+        currentHoveredNodeId = null;
+        manageNodeVisualsAndText(d3.select(this), false, { updateTextForNode }, false, svg!, null);
+      }
+    });
+  }
 
   if (svg) {
     svg.on('mouseleave', () => {
@@ -548,9 +557,9 @@ function updateVisualElements() {
   updateNodes();
 }
 
-function handleContextMenuAction(payload: { action: string; nodeId: string }) {
+function handleContextMenuAction(payload: { category: string; action: string; nodeId: string }) {
   console.log(`Context menu action '${payload.action}' on node '${payload.nodeId}'`);
-  // Handle specific actions here if needed, or emit further up
+  emit('menuAction', payload); // Emit the full payload
   if (contextMenu.value) {
     contextMenu.value.hide();
   }

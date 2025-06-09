@@ -110,7 +110,7 @@
             <ActionMenu
               :items="menuItems"
               buttonClass="dream-actions-button"
-              @open="() => { selectedDreamForMenu.value = dream; }"
+              @open="() => { selectedDreamForMenu = dream; }"
             />
             </li>
             </template>

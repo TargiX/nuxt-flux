@@ -166,7 +166,7 @@ export function useForceSimulation() {
     }
 
     // Restart simulation with your original alpha
-    simulation.alpha(0.3).restart();
+    simulation.alpha(0.05).restart();
     
     return simulation;
   };

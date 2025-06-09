@@ -4,3 +4,4 @@ globs:
 alwaysApply: true
 ---
 prime vue components don't need to be imported, we use autoimport
+never user .value for accessing vue refs in template, its always available directly according to vue 3 convention

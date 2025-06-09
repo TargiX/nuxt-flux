@@ -10,18 +10,23 @@
       <div class="images-wrapper"> <!-- This is the main flex container -->
         <!-- Current Session Tile - Always Visible -->
         <div
-          key="current-session-tile"
-          class="image-thumbnail-item current-session-tile"
-          :class="{
-            'live-session-active': !tagStore.stashedSessionState,
-            'clickable-to-return': tagStore.stashedSessionState
-          }"
-          @click="handleCurrentSessionClick"
-          :title="!tagStore.stashedSessionState ? 'This is your current session' : 'Return to your current session'"
+          v-if="!tagStore.stashedSessionState"
+          key="current-session-tile-session"
+          class="image-thumbnail-item current-session-tile live-session-active"
+          :title="'This is your current session'"
         >
-          <i :class="['current-session-icon', !tagStore.stashedSessionState ? 'pi pi-desktop' : 'pi pi-undo']"></i>
-          <span>{{ !tagStore.stashedSessionState ? 'Current Session' : 'Return to Current Session' }}</span>
+          <i class="current-session-icon pi pi-desktop"></i>
+          <span>Current Session</span>
         </div>
+        <Button 
+            v-else
+            key="current-session-tile-return"
+            label="Return to Current Session" 
+            icon="pi pi-undo" 
+            severity="primary"
+            class="w-full p-button-secondary google-button mt-4" 
+            @click="handleCurrentSessionClick"
+           />
 
         <!-- Transition group ONLY for actual images -->
         <transition-group name="image-pop" tag="div" class="images-animation-wrapper" v-if="props.dreamId">
