@@ -298,30 +298,12 @@ const viewerStartIndex = ref(0);
 
 console.log('[TagCloud setup] Initial value of tagStore.isRestoringSession:', tagStore.isRestoringSession);
 
-const localGraphNodes = ref<any[]>([]);
-const localGraphLinks = ref<any[]>([]);
+const localGraphNodes = computed(() => tagStore.isRestoringSession ? [] : tagStore.graphNodes);
+const localGraphLinks = computed(() => tagStore.isRestoringSession ? [] : tagStore.graphLinks);
 
 const isRestoringSessionForTemplate = computed(() => tagStore.isRestoringSession);
 
-watch(() => tagStore.isRestoringSession, (isRestoring) => {
-  if (isRestoring) {
-    localGraphNodes.value = [];
-    localGraphLinks.value = [];
-  }
-});
-
-// Watch for changes from the store to update local refs when not restoring
-watch(() => [tagStore.graphNodes, tagStore.graphLinks], ([newNodes, newLinks]) => {
-  if (!tagStore.isRestoringSession) {
-    localGraphNodes.value = newNodes;
-    localGraphLinks.value = newLinks;
-  }
-}, { immediate: true });
-
 const focusedZone = computed(() => tagStore.focusedZone);
-// graphNodes and graphLinks computed are now replaced by localGraphNodes and localGraphLinks for the template
-// const graphNodes = computed(() => tagStore.graphNodes);
-// const graphLinks = computed(() => tagStore.graphLinks);
 
 const selectedZone = ref(focusedZone.value);
 
