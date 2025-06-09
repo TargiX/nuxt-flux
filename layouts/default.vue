@@ -55,8 +55,7 @@
           <ul class="dreams-list">
             <li 
               class="dream-item new-dream-item"
-              v-if="tagStore.hasUnsavedChanges || tagStore.loadedDreamId !== null" 
-              :class="{ 'active-dream': route.path === '/dream/new' && tagStore.loadedDreamId === null }"
+              v-if="tagStore.loadedDreamId !== null" 
               @click.stop="onSelectDream(null)"
             >
               <i class="pi pi-plus-circle mr-2 text-xs"></i>
@@ -217,6 +216,10 @@ async function onSelectDream(dream: DreamSummary | null) {
       });
     });
     if (!proceed) return;
+  }
+  // Reset store for new dream sessions
+  if (dream === null) {
+    tagStore.resetToCurrentSession({ isNewDream: true });
   }
   // Navigate to selected dream or new session
   router.push(dream ? `/dream/${dream.id}` : '/dream/new');
