@@ -111,12 +111,12 @@ export const authOptions: AuthConfig = {
               }
               console.log('[Auth JWT CB] Google token updated with user ID:', token.id)
             } else {
-              console.error('[Auth JWT CB] Google user not found in database')
-              return {};
+              console.error('[Auth JWT CB] Google user not found in database, keeping existing token')
+              // Don't return empty object - keep existing token
             }
           } catch (dbError) {
             console.error('[Auth JWT CB] Database error:', dbError)
-            return {};
+            // Don't return empty object - keep existing token in case of DB errors
           }
         } else if (user?.id) { 
           token.id = String(user.id);
@@ -128,8 +128,8 @@ export const authOptions: AuthConfig = {
           }
           console.log('[Auth JWT CB] Credentials token updated with user ID:', token.id)
         } else {
-          console.error('[Auth JWT CB] No user data available')
-          return {};
+          console.error('[Auth JWT CB] No user data available, keeping existing token')
+          // Don't return empty object - keep existing token
         }
       }
       
@@ -148,7 +148,7 @@ export const authOptions: AuthConfig = {
       } else {
         if (!token?.id) {
           console.error('[Auth Session CB] No token ID available')
-          return { user: {}, expires: session.expires };
+          // Return the session as-is instead of empty user
         }
       }
 
