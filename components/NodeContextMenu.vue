@@ -1,8 +1,6 @@
 <template>
   <div
-    
     class="node-context-menu"
-    
     :style="{ top: y + 'px', left: x + 'px' }"
     @click.stop
   >
@@ -25,6 +23,7 @@ const emit = defineEmits<{ (e: 'menuAction', payload: CmdPayload): void }>();
 const visible = ref(false);
 const x = ref(0);
 const y = ref(0);
+const isLoadingDynamic = ref(false);
 
 // Define static menu model
 const staticMenu = [
@@ -61,21 +60,90 @@ const staticMenu = [
   }
 ];
 
+// Create loading indicator menu item
+const createLoadingItem = () => ({
+  label: 'Loading AI suggestions...',
+  icon: 'pi pi-fw pi-spinner',
+  disabled: true,
+  class: 'loading-item',
+  style: {
+    borderTop: '1px solid var(--surface-border)',
+    marginTop: '8px',
+    paddingTop: '8px',
+    fontStyle: 'italic',
+    opacity: '0.8'
+  }
+});
+
 const menuModel = ref([...staticMenu]);
 
+// Cache for dynamic menu items to avoid redundant API calls
+const dynamicMenuCache = new Map<string, any[]>();
+let currentLoadingText: string | null = null;
+
 async function loadDynamicMenu(text: string | null) {
-  if (!text) return;
-  const dynamic = await getContextMenuOptions(text);
-  const dynamicModel = dynamic.map(cat => ({
-    label: cat.category,
-    icon: 'pi pi-fw pi-compass',
-    items: cat.items.map(item => ({
-      label: item,
-      icon: 'pi pi-fw pi-bolt',
-      command: () => onSelect(cat.category, item)
-    }))
-  }));
-  menuModel.value = [...staticMenu, ...dynamicModel];
+  if (!text || text.trim().length === 0) return;
+  
+  // Check cache first
+  if (dynamicMenuCache.has(text)) {
+    const cachedDynamic = dynamicMenuCache.get(text)!;
+    menuModel.value = [...staticMenu, ...cachedDynamic];
+    return;
+  }
+  
+  // Prevent duplicate requests for the same text
+  if (currentLoadingText === text) return;
+  currentLoadingText = text;
+  
+  // Add loading indicator
+  isLoadingDynamic.value = true;
+  menuModel.value = [...staticMenu, createLoadingItem()];
+  
+  try {
+    const dynamic = await getContextMenuOptions(text);
+    const dynamicModel = dynamic.map(cat => ({
+      label: cat.category,
+      icon: 'pi pi-fw pi-compass',
+      items: cat.items.map(item => ({
+        label: item,
+        icon: 'pi pi-fw pi-bolt',
+        command: () => onSelect(cat.category, item)
+      }))
+    }));
+    
+    // Cache the result for future use
+    dynamicMenuCache.set(text, dynamicModel);
+    
+    // Only update if we're still loading the same text (prevent race conditions)
+    if (currentLoadingText === text) {
+      menuModel.value = [...staticMenu, ...dynamicModel];
+    }
+  } catch (error) {
+    console.error('Error loading dynamic menu items:', error);
+    // Only show error state if we're still loading the same text
+    if (currentLoadingText === text) {
+      const errorItem = {
+        label: 'Failed to load AI suggestions',
+        icon: 'pi pi-fw pi-exclamation-triangle',
+        disabled: true,
+        class: 'error-item',
+        style: {
+          borderTop: '1px solid var(--surface-border)',
+          marginTop: '8px',
+          paddingTop: '8px',
+          fontStyle: 'italic',
+          opacity: '0.7',
+          color: 'var(--red-500)'
+        }
+      };
+      menuModel.value = [...staticMenu, errorItem];
+    }
+  } finally {
+    if (currentLoadingText === text) {
+      isLoadingDynamic.value = false;
+      currentLoadingText = null;
+    }
+  }
 }
 
 // Handler when a submenu is selected
@@ -88,6 +156,8 @@ function onSelect(category: string, action: string) {
 
 function hide() {
   visible.value = false;
+  isLoadingDynamic.value = false;
+  currentLoadingText = null;
   document.removeEventListener('click', handleClickOutside, true);
 }
 
@@ -98,19 +168,28 @@ function handleClickOutside(event: MouseEvent) {
   }
 }
 
+// Clear cache for dynamic menu items
+function clearCache() {
+  dynamicMenuCache.clear();
+}
+
 // Expose show and hide for parent components
 const menu = ref<InstanceType<typeof TieredMenu> | null>(null);
 defineExpose({
-  async show(event: MouseEvent, text: string | null) {
+  show(event: MouseEvent, text: string | null) {
+    // Show menu immediately with static items
     menuModel.value = [...staticMenu];
-    await loadDynamicMenu(text);
     x.value = event.clientX;
     y.value = event.clientY;
     visible.value = true;
     event.preventDefault();
     document.addEventListener('click', handleClickOutside, true);
+    
+    // Load dynamic items asynchronously (non-blocking)
+    loadDynamicMenu(text);
   },
-  hide
+  hide,
+  clearCache
 });
 
 onBeforeUnmount(() => {
@@ -122,5 +201,47 @@ onBeforeUnmount(() => {
 .node-context-menu {
   position: fixed;
   z-index: 9999;
+}
+
+/* Custom styles for loading and error indicators */
+:deep(.p-menuitem.loading-item .p-menuitem-text),
+:deep(.p-menuitem.error-item .p-menuitem-text) {
+  font-style: italic !important;
+  opacity: 0.8 !important;
+}
+
+:deep(.p-menuitem.loading-item),
+:deep(.p-menuitem.error-item) {
+  border-top: 1px solid var(--surface-border) !important;
+  margin-top: 8px !important;
+  padding-top: 8px !important;
+}
+
+:deep(.p-menuitem.error-item .p-menuitem-text) {
+  color: var(--red-500) !important;
+}
+
+/* Spinner animation */
+:deep(.pi-spinner) {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Dynamic menu items styling */
+:deep(.p-menuitem-link) {
+  transition: background-color 0.2s ease;
+}
+
+:deep(.p-menuitem-link:hover) {
+  background-color: var(--highlight-bg);
+}
+
+/* Ensure proper spacing for dynamic categories */
+:deep(.p-submenu-list) {
+  min-width: 200px;
 }
 </style> 
