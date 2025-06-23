@@ -40,6 +40,16 @@
           <span>Gallery</span>
         </NuxtLink>
 
+        <!-- Help/Tutorial -->
+        <a 
+          href="#" 
+          class="nav-item"
+          @click.prevent="showTutorial"
+        >
+          <i class="pi pi-question-circle"></i>
+          <span>Help</span>
+        </a>
+
         <!-- My Dreams Section -->
         <a 
           href="#" 
@@ -244,6 +254,16 @@ watch(editingDreamId, (newId) => {
     });
   }
 });
+
+// Show tutorial function
+const showTutorial = () => {
+  // Emit an event that the main page can listen to
+  // Since this is a layout, we'll use a global event bus or store
+  // For now, let's use localStorage to trigger it
+  localStorage.removeItem('hasSeenTutorial')
+  // Force reload to show tutorial
+  window.location.reload()
+}
 
 // Any other component-specific logic for default.vue that was not moved...
 

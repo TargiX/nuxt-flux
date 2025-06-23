@@ -1,6 +1,7 @@
 <template>
   <!-- Log the computed value for debugging in template -->
   <!-- <div>[TagCloud Template] isRestoring: {{ છેRestoringSessionDebug.value }}</div> -->
+  <OnboardingTutorial ref="tutorialRef" />
   <div v-if="!isRestoringSessionForTemplate" class="main-zone grid tw-gap-4">
     <!-- Top: Graph/Image Container (Full Width) -->
     <div class="graph-container glass-card">
@@ -285,6 +286,7 @@ import type { Tag as TagType } from '~/types/tag'
 import type { ViewportState } from '~/composables/useZoom'
 import { useDreamManagement } from '~/composables/useDreamManagement'
 import LoadingSpinner from './LoadingSpinner.vue'
+import OnboardingTutorial from './OnboardingTutorial.vue'
 import { useConfirm } from 'primevue/useconfirm'
 import { useImageDownloader } from '~/composables/useImageDownloader'
 import ProgressSpinner from 'primevue/progressspinner'
