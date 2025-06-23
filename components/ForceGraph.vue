@@ -146,10 +146,21 @@ let resizeObserver: ResizeObserver | null = null;
 
 // Batched structural watch to throttle multiple triggers into one per update cycle
 let pendingUpdate = false;
+let lastNodeCount = 0;
+let lastLinkCount = 0;
 watch(
   () => [props.nodes?.length, props.links?.length],
-  () => {
+  ([nodeCount, linkCount]) => {
     if (!props.nodes || !props.links) return;
+    
+    // Skip if lengths haven't actually changed (prevents double initialization)
+    if (nodeCount === lastNodeCount && linkCount === lastLinkCount) {
+      return;
+    }
+    
+    lastNodeCount = nodeCount || 0;
+    lastLinkCount = linkCount || 0;
+    
     if (!pendingUpdate) {
       pendingUpdate = true;
       setTimeout(() => {
@@ -171,10 +182,19 @@ watch(
 );
 
 // Watch for structural changes and increment version
+let lastContentChecksum = '';
 watch(
   () => props.nodes?.map(node => ({ id: node.id, text: node.text, selected: node.selected, isLoading: node.isLoading })),
   (newValues, oldValues) => {
     if (!props.nodes) return;
+    
+    // Create a simple checksum to avoid redundant processing
+    const currentChecksum = JSON.stringify(newValues);
+    if (currentChecksum === lastContentChecksum) {
+      return;
+    }
+    lastContentChecksum = currentChecksum;
+    
     // Check if there are actual content changes
     if (oldValues && newValues && newValues.length === oldValues.length) {
       const hasChanges = newValues.some((newNode, index) => {
@@ -199,8 +219,13 @@ watch(
         graphVersion.value++;
       }
     } else {
-      // Length changed or first run
-      console.log('Graph structure changed (length or first run)');
+      // Length changed or first run - but only if not already handled by length watcher
+      if (oldValues && newValues && newValues.length !== oldValues.length) {
+        // This case is already handled by the length watcher above, skip it
+        console.log('Graph structure length change already handled by length watcher');
+        return;
+      }
+      console.log('Graph structure changed (first run or content-only change)');
       graphVersion.value++;
     }
   },
@@ -255,6 +280,12 @@ onBeforeUnmount(() => {
 
 function initializeGraph() {
   if (!container.value || !props.nodes) return;
+  
+  // Guard against double initialization
+  if (svg && simulation) {
+    console.log('Graph already initialized, skipping initializeGraph');
+    return;
+  }
 
   const containerRect = container.value.getBoundingClientRect();
   const width = containerRect.width;
@@ -373,7 +404,14 @@ function initializeGraph() {
 }
 
 function updateGraph() {
-  if (!svg || !simulation || !container.value || !props.nodes || !props.links) return;
+  if (!container.value || !props.nodes || !props.links) return;
+  
+  // If graph hasn't been initialized yet, initialize it instead of updating
+  if (!svg || !simulation) {
+    console.log('Graph not initialized, calling initializeGraph instead');
+    initializeGraph();
+    return;
+  }
   
   const containerRect = container.value.getBoundingClientRect();
   const width = containerRect.width;
@@ -513,7 +551,7 @@ function clearAllHoverStates() {
   
   nodeGroup.selectAll<SVGGElement, GraphNode>('g.node')
     .each(function(d) {
-      if (d.id === previouslyHoveredNodeId || !d.selected && !d.isLoading) {
+      if (d.id === previouslyHoveredNodeId || (!d.selected && !d.isLoading)) {
          manageNodeVisualsAndText(d3.select(this), false, { updateTextForNode }, false, svg!, null);
       }
     });

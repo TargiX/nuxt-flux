@@ -7,13 +7,13 @@
     <div class="graph-container glass-card">
       <div class="flex justify-between items-center w-full mb-4">
         <h2 class="zone-title m-0">{{ currentViewMode === 'graph' ? focusedZone : 'Image Preview' }}</h2>
-        <SelectButton 
+        <!-- <SelectButton 
           v-model="currentViewMode" 
           :options="viewModeOptions" 
           optionLabel="label" 
           optionValue="value"
           class="view-mode-toggle"
-        />
+        /> -->
       </div>
       
       <!-- Graph View -->
@@ -1034,7 +1034,7 @@ async function handleApplySnapshot() {
 const currentViewMode = ref('graph');
 const viewModeOptions = ref([
   { label: 'Graph', value: 'graph' },
-  { label: 'Image Preview', value: 'image-preview' },
+  // { label: 'Image Preview', value: 'image-preview' },
 ]);
 </script>
 
