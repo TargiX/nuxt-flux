@@ -186,7 +186,7 @@ let lastContentChecksum = '';
 watch(
   () => props.nodes?.map(node => ({ id: node.id, text: node.text, selected: node.selected, isLoading: node.isLoading })),
   (newValues, oldValues) => {
-    if (!props.nodes) return;
+    if (!props.nodes || props.isGraphLoading) return; // Added isGraphLoading check
     
     // Create a simple checksum to avoid redundant processing
     const currentChecksum = JSON.stringify(newValues);

@@ -27,6 +27,7 @@
         :height="600"
         :nodes="localGraphNodes"
         :links="localGraphLinks"
+        :isGraphLoading="tagStore.isRestoringSession"
         @nodeClick="handleNodeClick"
         @nodePositionsUpdated="handleNodePositionsUpdated"
         @nodeTextUpdated="handleNodeTextUpdated"
@@ -320,8 +321,8 @@ console.log(
   tagStore.isRestoringSession
 )
 
-const localGraphNodes = computed(() => (tagStore.isRestoringSession ? [] : tagStore.graphNodes))
-const localGraphLinks = computed(() => (tagStore.isRestoringSession ? [] : tagStore.graphLinks))
+const localGraphNodes = computed(() => tagStore.isRestoringSession ? [] : tagStore.graphNodes);
+const localGraphLinks = computed(() => tagStore.graphLinks);
 
 const isRestoringSessionForTemplate = computed(() => tagStore.isRestoringSession)
 

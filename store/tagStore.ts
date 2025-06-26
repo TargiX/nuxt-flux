@@ -131,28 +131,15 @@ export const useTagStore = defineStore('tags', () => {
   const graphLinks = computed(() => computeGraphData(tags.value, focusedZone.value).links)
 
   // --- Action to load a saved dream state ---
-  function loadDreamState(dreamData: DreamData, dreamId: number | null) {
-    console.log(`[LOAD] === STARTING loadDreamState ===`)
-    console.log(`[LOAD] dreamId: ${dreamId}`)
-    console.log(`[LOAD] dreamData.tags length: ${dreamData.tags.length}`)
-
-    // Check for transformed tags in incoming data
-    const incomingTransformed = dreamData.tags.filter((tag) => tag.isTransformed)
-    console.log(`[LOAD] Incoming transformed tags: ${incomingTransformed.length}`)
-    incomingTransformed.forEach((tag) => {
-      console.log(
-        `[LOAD] Incoming transformed tag: ${tag.id} - "${tag.originalText}" -> "${tag.text}"`
-      )
-    })
-
-    isRestoringSession.value = true
-    tags.value = []
-    currentGeneratedPrompt.value = ''
-    currentImageUrl.value = null
-    loadedDreamId.value = null
-    hasUnsavedChanges.value = false
-    sessionId.value = generateSessionId()
-    zoneViewportStates.value = new Map<string, ViewportState>()
+  async function loadDreamState(dreamData: DreamData, dreamId: number | null) {
+    isRestoringSession.value = true;
+    tags.value = [];
+    currentGeneratedPrompt.value = '';
+    currentImageUrl.value = null;
+    loadedDreamId.value = null;
+    hasUnsavedChanges.value = false;
+    sessionId.value = generateSessionId();
+    zoneViewportStates.value = new Map<string, ViewportState>();
 
     if (dreamData.zoneViewports) {
       for (const [zoneName, viewportState] of Object.entries(dreamData.zoneViewports)) {
@@ -285,25 +272,10 @@ export const useTagStore = defineStore('tags', () => {
     hasUnsavedChanges.value = false
 
     // Delay tag assignment to allow loader to display
-    nextTick(() => {
-      console.log(`[LOAD] === SETTING TAGS ===`)
-      tags.value = reconstructedTags
-
-      console.log(`[LOAD] === AFTER SETTING TAGS ===`)
-      console.log(`[LOAD] tags.value length: ${tags.value.length}`)
-      const postLoadTransformed = tags.value.filter((tag) => tag.isTransformed)
-      console.log(`[LOAD] Transformed tags after setting: ${postLoadTransformed.length}`)
-      postLoadTransformed.forEach((tag) => {
-        console.log(
-          `[LOAD] Post-set transformed tag: ${tag.id} - "${tag.originalText}" -> "${tag.text}"`
-        )
-      })
-
-      nextTick(() => {
-        isRestoringSession.value = false
-        console.log(`[LOAD] === LOAD COMPLETE ===`)
-      })
-    })
+    await nextTick();
+    tags.value = reconstructedTags;
+    await nextTick();
+    isRestoringSession.value = false;
   }
   // ------------------------------------------
 
@@ -318,18 +290,16 @@ export const useTagStore = defineStore('tags', () => {
   }
 
   // --- Action to reset to initial/current state ---
-  function resetToCurrentSession({ isNewDream = false }: { isNewDream?: boolean } = {}) {
-    isRestoringSession.value = true
-    tags.value = []
-    sessionId.value = generateSessionId()
-    zoneViewportStates.value = new Map<string, ViewportState>()
-    loadedDreamId.value = null
-    currentGeneratedPrompt.value = ''
-    currentImageUrl.value = null
-
-    const freshTagsData = isNewDream
-      ? initializeTags()
-      : JSON.parse(JSON.stringify(initialTagsState))
+  async function resetToCurrentSession({isNewDream = false}: {isNewDream?: boolean} = {}) {
+    isRestoringSession.value = true;
+    tags.value = [];
+    sessionId.value = generateSessionId();
+    zoneViewportStates.value = new Map<string, ViewportState>();
+    loadedDreamId.value = null;
+    currentGeneratedPrompt.value = '';
+    currentImageUrl.value = null;
+    
+    const freshTagsData = isNewDream ? initializeTags() : JSON.parse(JSON.stringify(initialTagsState));
     freshTagsData.forEach((tag: Tag) => {
       delete tag.x
       delete tag.y
@@ -345,12 +315,10 @@ export const useTagStore = defineStore('tags', () => {
     hasUnsavedChanges.value = false
 
     // Delay tag assignment
-    nextTick(() => {
-      tags.value = freshTagsData
-      nextTick(() => {
-        isRestoringSession.value = false
-      })
-    })
+    await nextTick();
+    tags.value = freshTagsData;
+    await nextTick();
+    isRestoringSession.value = false;
   }
   // ----------------------------------------------
 
@@ -395,11 +363,11 @@ export const useTagStore = defineStore('tags', () => {
   // -------------------------------
 
   // --- Action to load state from an image snapshot ---
-  function loadStateFromImageSnapshot(imageSnapshot: {
-    id: number
-    imageUrl: string
-    promptText?: string
-    graphState: any // This will be the { focusedZone, tags } object
+  async function loadStateFromImageSnapshot(imageSnapshot: {
+    id: number;
+    imageUrl: string;
+    promptText?: string;
+    graphState: any; // This will be the { focusedZone, tags } object
   }) {
     isRestoringSession.value = true
     currentGeneratedPrompt.value = ''
@@ -507,10 +475,9 @@ export const useTagStore = defineStore('tags', () => {
     // or the initial state of a *new session*.
     hasUnsavedChanges.value = true
 
-    nextTick(() => {
-      isRestoringSession.value = false
-      router.replace({ query: { ...router.currentRoute.value.query, snapshot: imageSnapshot.id } })
-    })
+    await nextTick();
+    isRestoringSession.value = false;
+    router.replace({ query: { ...router.currentRoute.value.query, snapshot: imageSnapshot.id } });
   }
   // --------------------------------------------------
 
@@ -632,5 +599,5 @@ export const useTagStore = defineStore('tags', () => {
     setPendingSnapshot,
     consumePendingSnapshot,
     reset,
-  }
-})
+  };
+});

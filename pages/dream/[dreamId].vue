@@ -36,27 +36,28 @@ const isPageLoading = ref(false);
 
 async function initializeSession() {
   const dreamIdParam = route.params.dreamId as string;
+  console.log(`[initializeSession] Route param dreamId: ${dreamIdParam}`);
   isPageLoading.value = true;
 
   if (dreamIdParam === 'new') {
-    tagStore.resetToCurrentSession({ isNewDream: true });
-    // Wait for store to finish applying reset
-    await nextTick();
+    console.log('[initializeSession] Handling new dream session.');
+    await tagStore.resetToCurrentSession({ isNewDream: true });
     isPageLoading.value = false;
     return;
   }
 
   const idNum = parseInt(dreamIdParam, 10);
   if (!isNaN(idNum)) {
+    console.log(`[initializeSession] Loading existing dream with ID: ${idNum}`);
     try {
       const dreamData = await $fetch<DreamData>(`/api/dreams/${idNum}`);
-      tagStore.loadDreamState(dreamData, idNum);
-      // Wait for store to apply loaded state
-      await nextTick();
-    } catch {
+      await tagStore.loadDreamState(dreamData, idNum);
+    } catch (e) {
+      console.error(`[initializeSession] Failed to load dream ${idNum}:`, e);
       router.replace('/dream/new');
     }
   } else {
+    console.warn(`[initializeSession] Invalid dream ID param: ${dreamIdParam}. Redirecting to new dream.`);
     router.replace('/dream/new');
   }
 

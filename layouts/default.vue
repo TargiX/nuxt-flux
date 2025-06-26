@@ -227,12 +227,10 @@ async function onSelectDream(dream: DreamSummary | null) {
     });
     if (!proceed) return;
   }
-  // Reset store for new dream sessions
-  if (dream === null) {
-    tagStore.resetToCurrentSession({ isNewDream: true });
-  }
   // Navigate to selected dream or new session
-  router.push(dream ? `/dream/${dream.id}` : '/dream/new');
+  const targetPath = dream ? `/dream/${dream.id}` : '/dream/new';
+  console.log(`[onSelectDream] Navigating to: ${targetPath}`);
+  router.push(targetPath);
 }
 
 // Ref for the Menu component instance - this needs to stay in the component that renders the Menu
