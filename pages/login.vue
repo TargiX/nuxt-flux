@@ -15,6 +15,9 @@
             <div class="form-field w-full">
               <label for="password">Password</label>
               <Password :inputStyle="{ width: '100%' }"  id="password" v-model="password" required toggleMask :feedback="false"  />
+              <div class="text-right mt-1">
+                <NuxtLink to="/forgot-password" class="text-sm text-blue-400 hover:underline">Forgot password?</NuxtLink>
+              </div>
             </div>
 
             <div v-if="errorMsg" class="form-field">

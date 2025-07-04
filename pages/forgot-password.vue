@@ -31,50 +31,55 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useToast } from 'primevue/usetoast';
-import InputText from 'primevue/inputtext';
-import Button from 'primevue/button';
+import { ref } from 'vue'
+import { useToast } from 'primevue/usetoast'
 
-const email = ref('');
-const loading = ref(false);
-const emailError = ref<string | null>(null);
-const toast = useToast();
+const toast = useToast()
+const email = ref('')
+const loading = ref(false)
+const emailError = ref('')
 
 const handleSubmit = async () => {
-  emailError.value = null;
-  loading.value = true;
+  loading.value = true
+  emailError.value = ''
 
   try {
-    const response = await $fetch<{ message: string }>('/api/auth/forgot-password', {
+    const { data } = await $fetch('/api/auth/forgot-password', {
       method: 'POST',
       body: { email: email.value },
-    });
+    })
+
     toast.add({
       severity: 'success',
       summary: 'Success',
-      detail: response.message,
+      detail: data?.message || 'Password reset link sent successfully',
       life: 5000,
-    });
+    })
+
+    email.value = ''
   } catch (error: any) {
-    console.error('Forgot password error:', error);
-    emailError.value = error.data?.errors?.[0]?.message || error.data?.message || 'An unexpected error occurred.';
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: emailError.value,
-      life: 5000,
-    });
+    console.error('Forgot password error:', error)
+    
+    if (error.data?.errors) {
+      const emailErr = error.data.errors.find((err: any) => err.field === 'email')
+      if (emailErr) {
+        emailError.value = emailErr.message
+      }
+    } else {
+      toast.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: error.data?.message || 'Failed to send reset link',
+        life: 5000,
+      })
+    }
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 
-useHead({
-  title: 'Forgot Password',
-});
+useSeoMeta({
+  title: 'Forgot Password - DreamSeed',
+  description: 'Reset your DreamSeed account password',
+})
 </script>
-
-<style scoped>
-/* Add any specific styles for this page here if needed */
-</style>

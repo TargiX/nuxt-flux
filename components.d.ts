@@ -24,7 +24,7 @@ declare module 'vue' {
     Toast: typeof import('primevue/toast')['default']
     ToggleButton: typeof import('primevue/togglebutton')['default']
   }
-  export interface ComponentCustomProperties {
+  export interface GlobalDirectives {
     Tooltip: typeof import('primevue/tooltip')['default']
   }
 }
