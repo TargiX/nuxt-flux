@@ -3,11 +3,9 @@
     <div class="tutorial-container" @click.stop>
       <div class="tutorial-header">
         <h2>Welcome to DreamSeed! 🎨</h2>
-        <Button
-          icon="pi pi-times"
-          class="p-button-text p-button-rounded tutorial-close"
-          @click="closeTutorial"
-        />
+        <button class="p-button-text p-button-rounded tutorial-close" @click="closeTutorial">
+          <i class="pi pi-times"></i>
+        </button>
       </div>
 
       <div class="tutorial-content">
@@ -80,12 +78,10 @@
           <h3>Ready to Create!</h3>
           <p>You're all set! Start by selecting some tags and generating your first image.</p>
           <div class="tutorial-actions">
-            <Button
-              label="Start Creating"
-              icon="pi pi-arrow-right"
-              class="p-button-primary"
-              @click="closeTutorial"
-            />
+            <button class="p-button p-button-primary" @click="closeTutorial">
+              <i class="pi pi-arrow-right"></i>
+              <span>Start Creating</span>
+            </button>
           </div>
         </div>
       </div>
@@ -93,29 +89,26 @@
       <div class="tutorial-footer">
         <div class="tutorial-dots">
           <span
-            v-for="i in totalSteps"
-            :key="i"
+            v-for="(_, index) in Array(totalSteps)"
+            :key="index"
             class="dot"
-            :class="{ active: currentStep === i - 1 }"
-            @click="currentStep = i - 1"
+            :class="{ active: currentStep === index }"
+            @click="currentStep = index"
           ></span>
         </div>
         <div class="tutorial-nav">
-          <Button
-            v-if="currentStep > 0"
-            label="Previous"
-            icon="pi pi-chevron-left"
-            class="p-button-text"
-            @click="previousStep"
-          />
-          <Button
+          <button v-if="currentStep > 0" class="p-button p-button-text" @click="previousStep">
+            <i class="pi pi-chevron-left"></i>
+            <span>Previous</span>
+          </button>
+          <button
             v-if="currentStep < totalSteps - 1"
-            label="Next"
-            icon="pi pi-chevron-right"
-            icon-pos="right"
-            class="p-button-primary"
+            class="p-button p-button-primary"
             @click="nextStep"
-          />
+          >
+            <span>Next</span>
+            <i class="pi pi-chevron-right"></i>
+          </button>
         </div>
       </div>
     </div>
@@ -124,7 +117,6 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import Button from 'primevue/button'
 
 const showTutorial = ref(false)
 const currentStep = ref(0)
@@ -158,7 +150,7 @@ const closeTutorial = () => {
   emit('complete')
 }
 
-const handleOverlayClick = (e: MouseEvent) => {
+const handleOverlayClick = () => {
   // Close on overlay click
   closeTutorial()
 }

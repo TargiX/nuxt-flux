@@ -3,10 +3,6 @@ import { definePreset } from '@primeuix/themes'
 import Components from 'unplugin-vue-components/vite'
 import { PrimeVueResolver } from '@primevue/auto-import-resolver'
 import { resolve } from 'node:path'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-
-const root = dirname(fileURLToPath(import.meta.url))
 
 const MyPreset = definePreset(Aura, {
   semantic: {
@@ -36,6 +32,20 @@ export default defineNuxtConfig({
     '@sentry/nuxt/module',
   ],
 
+  experimental: {
+    payloadExtraction: false,
+    renderJsonPayloads: true,
+    typedPages: false,
+  },
+
+  router: {
+    options: {
+      strict: false,
+      sensitive: false,
+    },
+  },
+
+  ssr: false,
 
   nitro: {
     preset: 'node-server',
@@ -137,5 +147,4 @@ const __dirname  = _dirname(__filename);`,
       autoprefixer: {},
     },
   },
-
 })
