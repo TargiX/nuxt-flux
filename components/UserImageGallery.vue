@@ -15,23 +15,27 @@
     </div>
     <div v-else class="image-grid">
       <div v-for="(image, index) in images" :key="image.id" class="image-card glass-card-hoverable">
-        <img 
-          :src="image.imageUrl" 
-          :alt="image.promptText || 'User generated image'" 
-          class="gallery-image cursor-pointer" 
+        <img
+          :src="image.imageUrl"
+          :alt="image.promptText || 'User generated image'"
+          class="gallery-image cursor-pointer"
           @click="openImageModal(index)"
         />
         <div class="image-info p-3">
           <div class="flex justify-between items-center">
-            <p v-if="image.promptText" class="prompt-text text-xs truncate flex-grow mr-2" :title="image.promptText">
+            <p
+              v-if="image.promptText"
+              class="prompt-text text-xs truncate flex-grow mr-2"
+              :title="image.promptText"
+            >
               {{ image.promptText }}
             </p>
-            <Button 
-              icon="pi pi-download" 
-              @click="handleDownloadImage(image.imageUrl, image.promptText)" 
-              class="p-button-text p-button-secondary p-button-sm flex items-center justify-center" 
-              style="width: 2.25rem; height: 2.25rem;"
+            <Button
               v-tooltip.top="'Download image'"
+              icon="pi pi-download"
+              class="p-button-text p-button-secondary p-button-sm flex items-center justify-center"
+              style="width: 2.25rem; height: 2.25rem"
+              @click="handleDownloadImage(image.imageUrl, image.promptText)"
             />
           </div>
           <p class="date-text text-xs text-gray-400 mt-1">
@@ -41,60 +45,65 @@
       </div>
     </div>
 
-    <ImageViewerModal v-model="viewerVisible" :images="images" :start-index="viewerStartIndex" context="gallery" />
+    <ImageViewerModal
+      v-model="viewerVisible"
+      :images="images"
+      :start-index="viewerStartIndex"
+      context="gallery"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { useImageDownloader } from '~/composables/useImageDownloader';
-import ImageViewerModal from './ImageViewerModal.vue';
-import Button from 'primevue/button';
+import { ref, onMounted } from 'vue'
+import { useImageDownloader } from '~/composables/useImageDownloader'
+import ImageViewerModal from './ImageViewerModal.vue'
+import Button from 'primevue/button'
 
 interface GalleryImage {
-  id: number;
-  imageUrl: string;
-  promptText?: string | null;
-  createdAt: string; // Or Date, adjust based on API response
-  dreamId: number;
-  graphState?: any;
+  id: number
+  imageUrl: string
+  promptText?: string | null
+  createdAt: string // Or Date, adjust based on API response
+  dreamId: number
+  graphState?: any
   // Add other fields if needed from the API response, e.g., graphState
 }
 
-const images = ref<GalleryImage[]>([]);
-const pending = ref(true);
-const error = ref<any | null>(null); 
+const images = ref<GalleryImage[]>([])
+const pending = ref(true)
+const error = ref<any | null>(null)
 
-const { downloadImage } = useImageDownloader();
+const { downloadImage } = useImageDownloader()
 
-const viewerVisible = ref(false);
-const viewerStartIndex = ref(0);
+const viewerVisible = ref(false)
+const viewerStartIndex = ref(0)
 
 async function fetchUserImages() {
-  pending.value = true;
-  error.value = null;
+  pending.value = true
+  error.value = null
   try {
-    const fetchedImages = await $fetch<GalleryImage[]>('/api/images/user');
-    images.value = fetchedImages;
+    const fetchedImages = await $fetch<GalleryImage[]>('/api/images/user')
+    images.value = fetchedImages
   } catch (err: any) {
-    console.error('Failed to fetch user images for gallery:', err);
-    error.value = err; 
+    console.error('Failed to fetch user images for gallery:', err)
+    error.value = err
   } finally {
-    pending.value = false;
+    pending.value = false
   }
 }
 
 onMounted(() => {
-  fetchUserImages();
-});
+  fetchUserImages()
+})
 
 function openImageModal(index: number) {
-  viewerStartIndex.value = index;
-  viewerVisible.value = true;
+  viewerStartIndex.value = index
+  viewerVisible.value = true
 }
 
 function handleDownloadImage(imageUrl: string, promptText?: string | null) {
-  downloadImage(imageUrl, promptText);
+  downloadImage(imageUrl, promptText)
 }
 </script>
 
@@ -112,23 +121,23 @@ function handleDownloadImage(imageUrl: string, promptText?: string | null) {
 .image-card {
   border-radius: 8px;
   overflow: hidden;
-  transition:  box-shadow 0.2s ease-in-out;
+  transition: box-shadow 0.2s ease-in-out;
   position: relative; /* For positioning download button if needed more precisely */
 }
 
 .image-card:hover {
-  box-shadow: 0 10px 20px rgba(0,0,0,0.2); /* Enhanced shadow on hover */
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2); /* Enhanced shadow on hover */
 }
 
 .gallery-image {
   width: 100%;
   height: 200px; /* Fixed height for uniform card size */
-  object-fit: cover; 
+  object-fit: cover;
   display: block;
 }
 
 .image-info {
-  background-color: rgba(0,0,0,0.1); 
+  background-color: rgba(0, 0, 0, 0.1);
 }
 
 .prompt-text {
@@ -146,7 +155,7 @@ function handleDownloadImage(imageUrl: string, promptText?: string | null) {
 }
 
 .glass-card-hoverable {
-  background: rgba(255, 255, 255, 0.05); 
+  background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(5px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
@@ -164,9 +173,9 @@ function handleDownloadImage(imageUrl: string, promptText?: string | null) {
 .modal-nav-button {
   opacity: 0.7;
   transition: opacity 0.2s, transform 0.2s, background-color 0.2s;
-  background-color: rgba(45, 45, 45, 0.65) !important; 
-  border: 1px solid rgba(255,255,255,0.2) !important; 
-  color: white !important; 
+  background-color: rgba(45, 45, 45, 0.65) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
 }
 .modal-nav-button:hover {
   opacity: 1;
@@ -176,7 +185,7 @@ function handleDownloadImage(imageUrl: string, promptText?: string | null) {
 .modal-nav-button:disabled {
   opacity: 0.3 !important;
   cursor: not-allowed;
-  background-color: rgba(45,45,45,0.4) !important;
+  background-color: rgba(45, 45, 45, 0.4) !important;
 }
 
 .modal-nav-left {
@@ -199,7 +208,7 @@ function handleDownloadImage(imageUrl: string, promptText?: string | null) {
 
 .custom-image-dialog .info-container {
   color: var(--text-color-secondary, #d1d5db);
-  max-height: calc(80vh - 100px); 
+  max-height: calc(80vh - 100px);
   overflow-y: auto;
 }
 .custom-image-dialog .info-container h3 {
@@ -207,32 +216,32 @@ function handleDownloadImage(imageUrl: string, promptText?: string | null) {
 }
 .custom-image-dialog .prompt-modal-text {
   background-color: rgba(255, 255, 255, 0.04); /* Very subtle background for the prompt box */
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   color: var(--text-color, #f3f4f6);
   padding: 0.5rem 0.75rem;
   border-radius: 6px;
 }
 
 .image-display-area {
-   min-height: 200px; 
+  min-height: 200px;
 }
 
-@media (max-width: 767px) { 
+@media (max-width: 767px) {
   .modal-nav-left {
-    left: 0.5rem; 
+    left: 0.5rem;
   }
   .modal-nav-right {
-    right: 0.5rem; 
+    right: 0.5rem;
   }
   .custom-image-dialog .image-modal-inner-content {
-    padding: 0.75rem; 
+    padding: 0.75rem;
   }
   .custom-image-dialog .info-container {
-     padding-left: 0 !important; 
-     max-height: none;
-     padding-top: 1rem; 
+    padding-left: 0 !important;
+    max-height: none;
+    padding-top: 1rem;
   }
-   .large-gallery-image {
+  .large-gallery-image {
     max-height: 60vh;
   }
 }
@@ -247,6 +256,6 @@ function handleDownloadImage(imageUrl: string, promptText?: string | null) {
   color: var(--red-400, #f87171); /* Assuming you have color utils or direct hex */
 }
 .error-state i {
-   color: var(--red-500, #ef4444);
+  color: var(--red-500, #ef4444);
 }
-</style> 
+</style>

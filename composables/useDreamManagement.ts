@@ -271,7 +271,7 @@ export function useDreamManagement() {
   function handleSaveError(error: any, operation: string, toastInstance: any) {
     // Pass toast instance
     let errorMessage = `Could not ${operation} dream due to an unknown error.`
-    let errorContext: any = { operation }
+    const errorContext: any = { operation }
 
     if (error.data && error.data.message) {
       errorMessage = error.data.message

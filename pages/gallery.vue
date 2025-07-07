@@ -6,12 +6,12 @@
 </template>
 
 <script setup lang="ts">
-import UserImageGallery from '~/components/UserImageGallery.vue';
+import UserImageGallery from '~/components/UserImageGallery.vue'
 
 // Add any page-specific logic or metadata here if needed in the future
 useHead({
   title: 'My Image Gallery',
-});
+})
 </script>
 
 <style scoped>
@@ -19,4 +19,4 @@ useHead({
   max-width: 1200px;
   margin: 0 auto;
 }
-</style> 
+</style>

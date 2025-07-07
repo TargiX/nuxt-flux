@@ -4,7 +4,7 @@
     modal
     :header="selectedImage?.promptText?.trim().substring(0, 200) + '...' || 'Image Details'"
     :style="{ width: '90vw', maxWidth: '1200px' }"
-    contentClass="p-0"
+    content-class="p-0"
     class="custom-image-dialog"
     :pt="{ mask: { style: 'backdrop-filter: blur(2px)' }, header: { style: 'height: 90px;' } }"
   >
@@ -22,16 +22,16 @@
       <Button
         icon="pi pi-chevron-left"
         class="p-button-rounded p-button-secondary absolute top-1/2 -translate-y-1/2 z-20 modal-nav-button modal-nav-left"
-        @click="previousImage"
         :disabled="images.length <= 1"
         style="width: 3rem; height: 3rem"
+        @click="previousImage"
       />
       <Button
         icon="pi pi-chevron-right"
         class="p-button-rounded p-button-secondary absolute top-1/2 -translate-y-1/2 z-20 modal-nav-button modal-nav-right"
-        @click="nextImage"
         :disabled="images.length <= 1"
         style="width: 3rem; height: 3rem"
+        @click="nextImage"
       />
       <div class="info-container w-full md:w-1/3 md:pl-4">
         <h3 class="text-lg font-semibold mb-2">Prompt:</h3>
@@ -61,14 +61,14 @@
             v-if="selectedImage.graphState"
             label="Load Snapshot"
             icon="pi pi-history"
-            @click="handleLoadSnapshot"
             class="p-button-sm p-button-secondary mt-2 w-1/2"
+            @click="handleLoadSnapshot"
           />
           <Button
             label="Download"
             icon="pi pi-download"
-            @click="handleDownload"
             class="p-button-sm w-1/2 mt-2"
+            @click="handleDownload"
           />
         </div>
       </div>
@@ -80,9 +80,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, type PropType } from 'vue'
-import Dialog from 'primevue/dialog'
-import Button from 'primevue/button'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useImageDownloader } from '~/composables/useImageDownloader'
 import { useTagStore } from '~/store/tagStore'
 import { useRouter } from 'vue-router'

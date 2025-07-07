@@ -1,64 +1,89 @@
 <template>
-  <div
-    class="node-context-menu"
-    :style="{ top: y + 'px', left: x + 'px' }"
-    @click.stop
-  >
-    <TieredMenu v-if="visible" :autoZIndex="true" :baseZIndex="9999" appendTo="body" ref="menu" :model="menuModel" />
+  <div class="node-context-menu" :style="{ top: y + 'px', left: x + 'px' }" @click.stop>
+    <TieredMenu
+      v-if="visible"
+      ref="menu"
+      :auto-z-index="true"
+      :base-z-index="9999"
+      append-to="body"
+      :model="menuModel"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onBeforeUnmount } from 'vue';
-import TieredMenu from 'primevue/tieredmenu';
-import { getContextMenuOptions } from '~/services/contextMenuService';
+import { ref, onBeforeUnmount } from 'vue'
+import TieredMenu from 'primevue/tieredmenu'
+import { getContextMenuOptions } from '~/services/contextMenuService'
 
-interface CmdPayload { category: string; action: string; nodeId: string; }
+interface CmdPayload {
+  category: string
+  action: string
+  nodeId: string
+}
 // Props from parent component
-const props = defineProps<{ nodeId: string | null }>();
+const props = defineProps<{ nodeId: string | null }>()
 // Emit event when menu item selected
-const emit = defineEmits<{ (e: 'menuAction', payload: CmdPayload): void }>();
+const emit = defineEmits<{ (e: 'menuAction', payload: CmdPayload): void }>()
 
 // Position and visibility tracking
-const visible = ref(false);
-const x = ref(0);
-const y = ref(0);
-const isLoadingDynamic = ref(false);
+const visible = ref(false)
+const x = ref(0)
+const y = ref(0)
+const isLoadingDynamic = ref(false)
 
 // Define static menu model
 const staticMenu = [
   {
-    label: 'Attributes', icon: 'pi pi-fw pi-list', items: [
+    label: 'Attributes',
+    icon: 'pi pi-fw pi-list',
+    items: [
       { label: 'Role', icon: 'pi pi-fw pi-user', command: () => onSelect('Attributes', 'Role') },
-      { label: 'Color', icon: 'pi pi-fw pi-palette', command: () => onSelect('Attributes', 'Color') },
-      { label: 'Size', icon: 'pi pi-fw pi-arrows-alt', command: () => onSelect('Attributes', 'Size') }
-    ]
+      {
+        label: 'Color',
+        icon: 'pi pi-fw pi-palette',
+        command: () => onSelect('Attributes', 'Color'),
+      },
+      {
+        label: 'Size',
+        icon: 'pi pi-fw pi-arrows-alt',
+        command: () => onSelect('Attributes', 'Size'),
+      },
+    ],
   },
   {
-    label: 'Activity', icon: 'pi pi-fw pi-refresh', items: [
+    label: 'Activity',
+    icon: 'pi pi-fw pi-refresh',
+    items: [
       { label: 'Run', icon: 'pi pi-fw pi-play', command: () => onSelect('Activity', 'Run') },
-      { label: 'Jump', icon: 'pi pi-fw pi-arrow-up', command: () => onSelect('Activity', 'Jump') }
-    ]
+      { label: 'Jump', icon: 'pi pi-fw pi-arrow-up', command: () => onSelect('Activity', 'Jump') },
+    ],
   },
   {
-    label: 'Aesthetics', icon: 'pi pi-fw pi-star', items: [
+    label: 'Aesthetics',
+    icon: 'pi pi-fw pi-star',
+    items: [
       { label: 'Shiny', icon: 'pi pi-fw pi-globe', command: () => onSelect('Aesthetics', 'Shiny') },
-      { label: 'Matte', icon: 'pi pi-fw pi-image', command: () => onSelect('Aesthetics', 'Matte') }
-    ]
-  },
-   {
-    label: 'Mood', icon: 'pi pi-fw pi-smile', items: [
-      { label: 'Happy', icon: 'pi pi-fw pi-thumbs-up', command: () => onSelect('Mood', 'Happy') },
-      { label: 'Sad', icon: 'pi pi-fw pi-thumbs-down', command: () => onSelect('Mood', 'Sad') }
-    ]
+      { label: 'Matte', icon: 'pi pi-fw pi-image', command: () => onSelect('Aesthetics', 'Matte') },
+    ],
   },
   {
-    label: 'Setting', icon: 'pi pi-fw pi-map', items: [
+    label: 'Mood',
+    icon: 'pi pi-fw pi-smile',
+    items: [
+      { label: 'Happy', icon: 'pi pi-fw pi-thumbs-up', command: () => onSelect('Mood', 'Happy') },
+      { label: 'Sad', icon: 'pi pi-fw pi-thumbs-down', command: () => onSelect('Mood', 'Sad') },
+    ],
+  },
+  {
+    label: 'Setting',
+    icon: 'pi pi-fw pi-map',
+    items: [
       { label: 'Forest', icon: 'pi pi-fw pi-tree', command: () => onSelect('Setting', 'Forest') },
-      { label: 'City', icon: 'pi pi-fw pi-building', command: () => onSelect('Setting', 'City') }
-    ]
-  }
-];
+      { label: 'City', icon: 'pi pi-fw pi-building', command: () => onSelect('Setting', 'City') },
+    ],
+  },
+]
 
 // Create loading indicator menu item
 const createLoadingItem = () => ({
@@ -71,55 +96,55 @@ const createLoadingItem = () => ({
     marginTop: '8px',
     paddingTop: '8px',
     fontStyle: 'italic',
-    opacity: '0.8'
-  }
-});
+    opacity: '0.8',
+  },
+})
 
-const menuModel = ref([...staticMenu]);
+const menuModel = ref([...staticMenu])
 
 // Cache for dynamic menu items to avoid redundant API calls
-const dynamicMenuCache = new Map<string, any[]>();
-let currentLoadingText: string | null = null;
+const dynamicMenuCache = new Map<string, any[]>()
+let currentLoadingText: string | null = null
 
 async function loadDynamicMenu(text: string | null) {
-  if (!text || text.trim().length === 0) return;
-  
+  if (!text || text.trim().length === 0) return
+
   // Check cache first
   if (dynamicMenuCache.has(text)) {
-    const cachedDynamic = dynamicMenuCache.get(text)!;
-    menuModel.value = [...staticMenu, ...cachedDynamic];
-    return;
+    const cachedDynamic = dynamicMenuCache.get(text)!
+    menuModel.value = [...staticMenu, ...cachedDynamic]
+    return
   }
-  
+
   // Prevent duplicate requests for the same text
-  if (currentLoadingText === text) return;
-  currentLoadingText = text;
-  
+  if (currentLoadingText === text) return
+  currentLoadingText = text
+
   // Add loading indicator
-  isLoadingDynamic.value = true;
-  menuModel.value = [...staticMenu, createLoadingItem()];
-  
+  isLoadingDynamic.value = true
+  menuModel.value = [...staticMenu, createLoadingItem()]
+
   try {
-    const dynamic = await getContextMenuOptions(text);
-    const dynamicModel = dynamic.map(cat => ({
+    const dynamic = await getContextMenuOptions(text)
+    const dynamicModel = dynamic.map((cat) => ({
       label: cat.category,
       icon: 'pi pi-fw pi-compass',
-      items: cat.items.map(item => ({
+      items: cat.items.map((item) => ({
         label: item,
         icon: 'pi pi-fw pi-bolt',
-        command: () => onSelect(cat.category, item)
-      }))
-    }));
-    
+        command: () => onSelect(cat.category, item),
+      })),
+    }))
+
     // Cache the result for future use
-    dynamicMenuCache.set(text, dynamicModel);
-    
+    dynamicMenuCache.set(text, dynamicModel)
+
     // Only update if we're still loading the same text (prevent race conditions)
     if (currentLoadingText === text) {
-      menuModel.value = [...staticMenu, ...dynamicModel];
+      menuModel.value = [...staticMenu, ...dynamicModel]
     }
   } catch (error) {
-    console.error('Error loading dynamic menu items:', error);
+    console.error('Error loading dynamic menu items:', error)
     // Only show error state if we're still loading the same text
     if (currentLoadingText === text) {
       const errorItem = {
@@ -133,15 +158,15 @@ async function loadDynamicMenu(text: string | null) {
           paddingTop: '8px',
           fontStyle: 'italic',
           opacity: '0.7',
-          color: 'var(--red-500)'
-        }
-      };
-      menuModel.value = [...staticMenu, errorItem];
+          color: 'var(--red-500)',
+        },
+      }
+      menuModel.value = [...staticMenu, errorItem]
     }
   } finally {
     if (currentLoadingText === text) {
-      isLoadingDynamic.value = false;
-      currentLoadingText = null;
+      isLoadingDynamic.value = false
+      currentLoadingText = null
     }
   }
 }
@@ -149,52 +174,52 @@ async function loadDynamicMenu(text: string | null) {
 // Handler when a submenu is selected
 function onSelect(category: string, action: string) {
   if (props.nodeId) {
-    emit('menuAction', { category, action, nodeId: props.nodeId });
+    emit('menuAction', { category, action, nodeId: props.nodeId })
   }
-  hide();
+  hide()
 }
 
 function hide() {
-  visible.value = false;
-  isLoadingDynamic.value = false;
-  currentLoadingText = null;
-  document.removeEventListener('click', handleClickOutside, true);
+  visible.value = false
+  isLoadingDynamic.value = false
+  currentLoadingText = null
+  document.removeEventListener('click', handleClickOutside, true)
 }
 
 function handleClickOutside(event: MouseEvent) {
-  const menuElement = document.querySelector('.node-context-menu');
+  const menuElement = document.querySelector('.node-context-menu')
   if (menuElement && !menuElement.contains(event.target as Node)) {
-    hide();
+    hide()
   }
 }
 
 // Clear cache for dynamic menu items
 function clearCache() {
-  dynamicMenuCache.clear();
+  dynamicMenuCache.clear()
 }
 
 // Expose show and hide for parent components
-const menu = ref<InstanceType<typeof TieredMenu> | null>(null);
+const menu = ref<InstanceType<typeof TieredMenu> | null>(null)
 defineExpose({
   show(event: MouseEvent, text: string | null) {
     // Show menu immediately with static items
-    menuModel.value = [...staticMenu];
-    x.value = event.clientX;
-    y.value = event.clientY;
-    visible.value = true;
-    event.preventDefault();
-    document.addEventListener('click', handleClickOutside, true);
-    
+    menuModel.value = [...staticMenu]
+    x.value = event.clientX
+    y.value = event.clientY
+    visible.value = true
+    event.preventDefault()
+    document.addEventListener('click', handleClickOutside, true)
+
     // Load dynamic items asynchronously (non-blocking)
-    loadDynamicMenu(text);
+    loadDynamicMenu(text)
   },
   hide,
-  clearCache
-});
+  clearCache,
+})
 
 onBeforeUnmount(() => {
-  document.removeEventListener('click', handleClickOutside, true);
-});
+  document.removeEventListener('click', handleClickOutside, true)
+})
 </script>
 
 <style scoped>
@@ -227,8 +252,12 @@ onBeforeUnmount(() => {
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Dynamic menu items styling */
@@ -244,4 +273,4 @@ onBeforeUnmount(() => {
 :deep(.p-submenu-list) {
   min-width: 200px;
 }
-</style> 
+</style>

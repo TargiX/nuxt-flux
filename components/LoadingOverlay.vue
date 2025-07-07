@@ -1,11 +1,11 @@
 <template>
   <div v-if="visible" class="loading-overlay">
     <div class="loading-content">
-      <ProgressSpinner 
-        :style="{ width: spinnerSize, height: spinnerSize }" 
-        strokeWidth="4" 
-        fill="var(--surface-ground)" 
-        animationDuration=".8s" 
+      <ProgressSpinner
+        :style="{ width: spinnerSize, height: spinnerSize }"
+        stroke-width="4"
+        fill="var(--surface-ground)"
+        animation-duration=".8s"
       />
       <p v-if="message" class="loading-message">{{ message }}</p>
       <p v-if="showProgress && progress" class="loading-progress">{{ progress }}%</p>
@@ -29,14 +29,14 @@ const props = withDefaults(defineProps<Props>(), {
   visible: false,
   size: 'medium',
   showProgress: false,
-  progress: 0
+  progress: 0,
 })
 
 const spinnerSize = computed(() => {
   const sizes = {
     small: '30px',
     medium: '50px',
-    large: '70px'
+    large: '70px',
   }
   return sizes[props.size]
 })
@@ -78,4 +78,4 @@ const spinnerSize = computed(() => {
   margin: 0;
   font-weight: 600;
 }
-</style> 
+</style>

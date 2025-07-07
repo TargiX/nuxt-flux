@@ -39,7 +39,7 @@ export function useAutoSave() {
     }
 
     // Don't auto-save if no tags are selected
-    const selectedTags = tagStore.tags.filter(t => t.selected)
+    const selectedTags = tagStore.tags.filter((t) => t.selected)
     if (selectedTags.length === 0) {
       return
     }
@@ -63,7 +63,7 @@ export function useAutoSave() {
             summary: 'Auto-saved',
             detail: 'Your dream has been automatically saved',
             life: 2000,
-            closable: false
+            closable: false,
           })
         }
       } else {
@@ -105,13 +105,16 @@ export function useAutoSave() {
   })
 
   // Watch for unsaved changes
-  watch(() => tagStore.hasUnsavedChanges, (hasChanges) => {
-    if (hasChanges && isAutoSaveEnabled.value && !autoSaveTimer.value) {
-      startAutoSave()
-    } else if (!hasChanges && autoSaveTimer.value) {
-      stopAutoSave()
+  watch(
+    () => tagStore.hasUnsavedChanges,
+    (hasChanges) => {
+      if (hasChanges && isAutoSaveEnabled.value && !autoSaveTimer.value) {
+        startAutoSave()
+      } else if (!hasChanges && autoSaveTimer.value) {
+        stopAutoSave()
+      }
     }
-  })
+  )
 
   // Initialize
   loadPreferences()
@@ -132,4 +135,4 @@ export function useAutoSave() {
     startAutoSave,
     stopAutoSave,
   }
-} 
+}

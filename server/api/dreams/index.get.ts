@@ -1,16 +1,16 @@
-import prisma from '~/server/utils/db';
-import { defineEventHandler, createError, H3Event } from 'h3';
-import { getServerSession } from '#auth';
-import { authOptions } from '~/server/api/auth/[...]'; // Path from server root
+import prisma from '~/server/utils/db'
+import { defineEventHandler, createError, H3Event } from 'h3'
+import { getServerSession } from '#auth'
+import { authOptions } from '~/server/api/auth/[...]' // Path from server root
 
 export default defineEventHandler(async (event: H3Event) => {
-  const session = await getServerSession(event, authOptions);
+  const session = await getServerSession(event, authOptions)
 
   if (!session || !session.user) {
     // No user logged in, or session is invalid
     // Depending on requirements, you might throw an error or return an empty array
     // For "My Dreams", returning an empty array if not logged in seems reasonable.
-    return [];
+    return []
   }
 
   try {
@@ -27,17 +27,16 @@ export default defineEventHandler(async (event: H3Event) => {
       orderBy: {
         createdAt: 'desc',
       },
-    });
-    return dreams;
-
+    })
+    return dreams
   } catch (error: any) {
     // Log the error for server-side debugging
-    console.error("Error fetching dreams:", error);
+    console.error('Error fetching dreams:', error)
 
     // Throw a generic server error
     throw createError({
       statusCode: 500,
       statusMessage: 'Internal Server Error: Could not retrieve dreams.',
-    });
+    })
   }
-}); 
+})

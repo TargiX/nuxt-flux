@@ -9,64 +9,96 @@
           <div class="form-container">
             <div class="form-field">
               <label for="name">Name</label>
-              <InputText id="name" type="text" v-model="name" />
+              <InputText id="name" v-model="name" type="text" />
             </div>
-            
+
             <div class="form-field">
               <label for="email">Email</label>
               <div class="email-input-container">
-                <InputText 
-                  id="email" 
-                  type="email" 
-                  v-model="email" 
-                  required 
-                  @blur="checkEmailAvailability" 
+                <InputText
+                  id="email"
+                  v-model="email"
+                  type="email"
+                  required
                   :class="{ 'p-invalid': !!errorMsg && errorMsg.includes('email') }"
+                  @blur="checkEmailAvailability"
                 />
-                <i v-if="checkingEmail" class="pi pi-spin pi-spinner email-status-icon checking"></i>
-                <i v-else-if="emailChecked && !emailError" class="pi pi-check-circle email-status-icon available"></i>
+                <i
+                  v-if="checkingEmail"
+                  class="pi pi-spin pi-spinner email-status-icon checking"
+                ></i>
+                <i
+                  v-else-if="emailChecked && !emailError"
+                  class="pi pi-check-circle email-status-icon available"
+                ></i>
                 <i v-else-if="emailError" class="pi pi-times-circle email-status-icon taken"></i>
               </div>
-              <small class="field-help" v-if="!emailError">You'll use this email to sign in.</small>
-              <small class="field-help error" v-else>{{ emailError }}</small>
+              <small v-if="!emailError" class="field-help">You'll use this email to sign in.</small>
+              <small v-else class="field-help error">{{ emailError }}</small>
             </div>
-            
+
             <div class="form-field">
               <label for="password">Password</label>
-              <Password id="password" v-model="password" required toggleMask :feedback="true" @input="checkPasswordStrength" />
-              <small class="field-help">Use at least 8 characters with a mix of letters, numbers & symbols.</small>
-              
+              <Password
+                id="password"
+                v-model="password"
+                required
+                toggle-mask
+                :feedback="true"
+                @input="checkPasswordStrength"
+              />
+              <small class="field-help"
+                >Use at least 8 characters with a mix of letters, numbers & symbols.</small
+              >
+
               <!-- Password requirements checklist -->
-              <div class="password-requirements" v-if="password.length > 0">
+              <div v-if="password.length > 0" class="password-requirements">
                 <div class="requirement" :class="{ met: passwordChecks.length }">
-                  <i class="pi" :class="passwordChecks.length ? 'pi-check-circle' : 'pi-times-circle'"></i>
+                  <i
+                    class="pi"
+                    :class="passwordChecks.length ? 'pi-check-circle' : 'pi-times-circle'"
+                  ></i>
                   <span>At least 8 characters</span>
                 </div>
                 <div class="requirement" :class="{ met: passwordChecks.hasLetter }">
-                  <i class="pi" :class="passwordChecks.hasLetter ? 'pi-check-circle' : 'pi-times-circle'"></i>
+                  <i
+                    class="pi"
+                    :class="passwordChecks.hasLetter ? 'pi-check-circle' : 'pi-times-circle'"
+                  ></i>
                   <span>At least one letter</span>
                 </div>
                 <div class="requirement" :class="{ met: passwordChecks.hasNumber }">
-                  <i class="pi" :class="passwordChecks.hasNumber ? 'pi-check-circle' : 'pi-times-circle'"></i>
+                  <i
+                    class="pi"
+                    :class="passwordChecks.hasNumber ? 'pi-check-circle' : 'pi-times-circle'"
+                  ></i>
                   <span>At least one number</span>
                 </div>
                 <div class="requirement" :class="{ met: passwordChecks.hasSpecial }">
-                  <i class="pi" :class="passwordChecks.hasSpecial ? 'pi-check-circle' : 'pi-times-circle'"></i>
+                  <i
+                    class="pi"
+                    :class="passwordChecks.hasSpecial ? 'pi-check-circle' : 'pi-times-circle'"
+                  ></i>
                   <span>At least one special character</span>
                 </div>
               </div>
             </div>
-            
+
             <div v-if="errorMsg" class="form-field">
               <Message severity="error" :closable="false">{{ errorMsg }}</Message>
             </div>
-            
+
             <div v-if="successMsg" class="form-field">
               <Message severity="success" :closable="false">{{ successMsg }}</Message>
             </div>
 
             <div class="form-field">
-              <Button label="Create Account" type="submit" :loading="loading" class="w-full submit-button" />
+              <Button
+                label="Create Account"
+                type="submit"
+                :loading="loading"
+                class="w-full submit-button"
+              />
             </div>
 
             <div class="form-field social-login-divider">
@@ -76,21 +108,20 @@
             </div>
 
             <div class="form-field">
-              <Button 
-                label="Sign up with Google" 
-                icon="pi pi-google" 
-                @click="handleGoogleSignUp" 
-                class="w-full p-button-secondary google-button" 
+              <Button
+                label="Sign up with Google"
+                icon="pi pi-google"
+                class="w-full p-button-secondary google-button"
                 :loading="googleLoading"
+                @click="handleGoogleSignUp"
               />
             </div>
-
           </div>
         </form>
       </template>
       <template #footer>
         <div class="text-center">
-          Already have an account? 
+          Already have an account?
           <NuxtLink to="/login" class="sign-in-link">Sign in here</NuxtLink>
         </div>
       </template>
@@ -123,24 +154,28 @@ const emailError = ref<string | null>(null)
 const googleLoading = ref(false)
 
 // Watch for authentication status changes
-watch(status, (newStatus) => {
-  if (newStatus === 'authenticated') {
-    navigateTo('/');
-  }
-}, { immediate: true });
+watch(
+  status,
+  (newStatus) => {
+    if (newStatus === 'authenticated') {
+      navigateTo('/')
+    }
+  },
+  { immediate: true }
+)
 
 // Password validation state
 const passwordChecks = reactive({
   length: false,
   hasLetter: false,
   hasNumber: false,
-  hasSpecial: false
+  hasSpecial: false,
 })
 
 // Check password as user types
 const checkPasswordStrength = () => {
   const pass = password.value
-  
+
   // Update validation state
   passwordChecks.length = pass.length >= 8
   passwordChecks.hasLetter = /[a-zA-Z]/.test(pass)
@@ -151,33 +186,33 @@ const checkPasswordStrength = () => {
 // Password validation function
 const validatePassword = (pass: string): { valid: boolean; message: string } => {
   if (!passwordChecks.length) {
-    return { 
-      valid: false, 
-      message: 'Password must be at least 8 characters long' 
+    return {
+      valid: false,
+      message: 'Password must be at least 8 characters long',
     }
   }
-  
+
   if (!passwordChecks.hasLetter) {
-    return { 
-      valid: false, 
-      message: 'Password must include at least one letter' 
+    return {
+      valid: false,
+      message: 'Password must include at least one letter',
     }
   }
-  
+
   if (!passwordChecks.hasNumber) {
-    return { 
-      valid: false, 
-      message: 'Password must include at least one number' 
+    return {
+      valid: false,
+      message: 'Password must include at least one number',
     }
   }
-  
+
   if (!passwordChecks.hasSpecial) {
-    return { 
-      valid: false, 
-      message: 'Password must include at least one special character (!@#$%^&*()_+etc.)' 
+    return {
+      valid: false,
+      message: 'Password must include at least one special character (!@#$%^&*()_+etc.)',
     }
   }
-  
+
   return { valid: true, message: '' }
 }
 
@@ -185,27 +220,27 @@ const validatePassword = (pass: string): { valid: boolean; message: string } => 
 const checkEmailAvailability = async () => {
   // Only check if there's an email to check
   if (!email.value || email.value.trim() === '') return
-  
+
   // Basic email format validation
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   if (!emailRegex.test(email.value)) {
     emailError.value = 'Please enter a valid email address.'
     return
   }
-  
+
   // Clear previous error
   emailError.value = null
   errorMsg.value = null
   emailChecked.value = false
   checkingEmail.value = true
-  
+
   try {
     // Check if email exists
     const { data, error } = await useFetch('/api/auth/check-email', {
       method: 'POST',
-      body: { email: email.value }
+      body: { email: email.value },
     })
-    
+
     if (error.value) {
       if (error.value.statusCode === 409) {
         emailError.value = 'This email is already registered. Please try signing in instead.'
@@ -252,8 +287,8 @@ const handleRegister = async () => {
       body: {
         name: name.value,
         email: email.value,
-        password: password.value
-      }
+        password: password.value,
+      },
     })
 
     if (error.value) {
@@ -263,14 +298,14 @@ const handleRegister = async () => {
     } else {
       // Registration successful - now automatically sign in the user
       successMsg.value = 'Account created successfully! Signing you in...'
-      
+
       try {
         // Automatically sign in the user with their credentials
-        const signInResult = await signIn('credentials', {
+        const signInResult = (await signIn('credentials', {
           email: email.value,
           password: password.value,
-          redirect: false
-        }) as Response
+          redirect: false,
+        })) as Response
 
         if (signInResult.ok) {
           // Sign in successful - the watch() will handle navigation
@@ -306,21 +341,21 @@ const handleRegister = async () => {
 
 // Handle Google Sign-Up (which is the same as Sign-In for Google)
 const handleGoogleSignUp = async () => {
-  googleLoading.value = true;
-  errorMsg.value = null; // Clear previous errors
-  successMsg.value = null; // Clear previous success messages
+  googleLoading.value = true
+  errorMsg.value = null // Clear previous errors
+  successMsg.value = null // Clear previous success messages
   try {
-    await signIn('google');
+    await signIn('google')
     // If redirect occurs, this part might not be reached.
     // Nuxt-auth and page guards handle post-login flow.
   } catch (err: any) {
-    console.error('Google Sign-Up Invocation Error:', err);
-    const message = err.message || 'An error occurred while trying to sign up with Google.';
-    errorMsg.value = message;
+    console.error('Google Sign-Up Invocation Error:', err)
+    const message = err.message || 'An error occurred while trying to sign up with Google.'
+    errorMsg.value = message
   } finally {
-    googleLoading.value = false;
+    googleLoading.value = false
   }
-};
+}
 </script>
 
 <style scoped lang="scss">
@@ -337,8 +372,8 @@ const handleGoogleSignUp = async () => {
   position: relative;
   z-index: 0;
   overflow: hidden;
-  background-color: rgba(255,255,255,0.12);
-  border: 1px solid rgba(255,255,255,0.3);
+  background-color: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   width: 440px;
   padding: 2rem;
 
@@ -389,9 +424,9 @@ label {
 :deep(.p-password input) {
   width: 100%;
   border-radius: 6px;
-  background: rgba(255,255,255,0.15);
+  background: rgba(255, 255, 255, 0.15);
   color: #e9f1fb;
-  border: 1px solid rgba(255,255,255,0.25);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   padding: 0.75rem 1rem;
   font-size: 1rem;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -404,7 +439,7 @@ label {
 :deep(.p-password input:focus) {
   outline: none;
   border-color: #3caaff;
-  background: rgba(255,255,255,0.22);
+  background: rgba(255, 255, 255, 0.22);
 }
 
 .field-help {
@@ -452,7 +487,7 @@ label {
   background: linear-gradient(90deg, #3caaff 0%, #46c3e5 100%);
   border: none;
   color: #fff;
-  box-shadow: 0 2px 10px 0 rgba(60,170,255,0.08);
+  box-shadow: 0 2px 10px 0 rgba(60, 170, 255, 0.08);
   border-radius: 6px;
   transition: background 0.2s;
 }
@@ -462,7 +497,7 @@ label {
 }
 
 .btn-secondary {
-  background: rgba(255,255,255,0.08);
+  background: rgba(255, 255, 255, 0.08);
   color: #3caaff;
   border: 1px solid #3caaff;
   border-radius: 6px;
@@ -499,8 +534,12 @@ label {
   color: #ef4444;
 }
 @keyframes spin {
-  0% { transform: translateY(-50%) rotate(0deg); }
-  100% { transform: translateY(-50%) rotate(360deg); }
+  0% {
+    transform: translateY(-50%) rotate(0deg);
+  }
+  100% {
+    transform: translateY(-50%) rotate(360deg);
+  }
 }
 
 .social-login-divider {

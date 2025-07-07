@@ -9,16 +9,25 @@
           <div class="form-container">
             <div class="form-field">
               <label for="email">Email</label>
-              <InputText id="email" type="email" v-model="email" required  />
+              <InputText id="email" v-model="email" type="email" required />
               <small class="field-help">Enter your registered email address.</small>
             </div>
             <div class="form-field w-full">
               <label for="password">Password</label>
-              <Password :inputStyle="{ width: '100%' }"  id="password" v-model="password" required toggleMask :feedback="false"  />
+              <Password
+                id="password"
+                v-model="password"
+                :input-style="{ width: '100%' }"
+                required
+                toggle-mask
+                :feedback="false"
+              />
             </div>
 
             <div v-if="errorMsg" class="form-field">
-              <Message severity="error" :closable="false" class="error-message">{{ errorMsg }}</Message>
+              <Message severity="error" :closable="false" class="error-message">{{
+                errorMsg
+              }}</Message>
             </div>
 
             <div class="form-field">
@@ -32,21 +41,36 @@
             </div>
 
             <div class="form-field">
-              <Button 
-                label="Sign in with Google" 
-                icon="pi pi-google" 
-                @click="handleGoogleSignIn" 
+              <Button
+                label="Sign in with Google"
+                icon="pi pi-google"
                 :loading="googleLoading"
                 class="btn-secondary"
+                @click="handleGoogleSignIn"
               />
             </div>
           </div>
         </form>
       </template>
       <template #footer>
-        <div class="footer-text">
-          Don't have an account?
-          <NuxtLink to="/register" class="sign-up-link">Register here</NuxtLink>
+        <div class="flex justify-between items-">
+          <div class="text-sm">
+            <NuxtLink
+              to="/forgot-password"
+              class="font-medium text-indigo-400 hover:text-indigo-300"
+            >
+              Forgot password?
+            </NuxtLink>
+          </div>
+          <div class="text-sm flex flex-col justify-end">
+            <span class="grey-light block">Don't have an account? </span>
+            <NuxtLink
+              to="/register"
+              class="font-medium text-indigo-400 hover:text-indigo-300 block ml-auto"
+            >
+              Register here
+            </NuxtLink>
+          </div>
         </div>
       </template>
     </Card>
@@ -69,119 +93,141 @@ definePageMeta({
 const email = ref('')
 const password = ref('')
 const loading = ref(false)
-const googleLoading = ref(false);
+const googleLoading = ref(false)
 const errorMsg = ref<string | null>(null)
 
 // Handle redirect for already authenticated users
 if (status.value === 'authenticated') {
   const route = useRoute()
-  const redirectPath = typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/') 
-                        ? route.query.redirect 
-                        : '/';
-  await navigateTo(redirectPath, { replace: true });
+  const redirectPath =
+    typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/')
+      ? route.query.redirect
+      : '/'
+  await navigateTo(redirectPath, { replace: true })
 }
 
 const handleLogin = async () => {
-  loading.value = true;
-  errorMsg.value = null;
+  loading.value = true
+  errorMsg.value = null
 
   try {
     // 1. send credentials without redirect
-    const res = await signIn('credentials', {
+    const res = (await signIn('credentials', {
       email: email.value,
       password: password.value,
-      redirect: false // stay on page
-    }) as Response // signIn with redirect:false returns a Response
+      redirect: false, // stay on page
+    })) as Response // signIn with redirect:false returns a Response
 
     if (!res.ok) {
       /* error payload from Auth.js: { error: 'CredentialsSignin' | ... } */
       // Try to parse JSON for an error object, otherwise use statusText
-      let errorDetail = `HTTP error ${res.status}: ${res.statusText}`;
+      let errorDetail = `HTTP error ${res.status}: ${res.statusText}`
       try {
-        const errorBody = await res.json();
-        errorDetail = errorBody.error || errorDetail;
-      } catch (e) {
+        const errorBody = await res.json()
+        errorDetail = errorBody.error || errorDetail
+      } catch {
         // JSON parsing failed, stick with statusText or a generic message
       }
-      
-      errorMsg.value = errorDetail === 'CredentialsSignin'
-        ? 'Invalid email or password.'
-        : `Login failed: ${errorDetail}`;
-      return;
+
+      errorMsg.value =
+        errorDetail === 'CredentialsSignin'
+          ? 'Invalid email or password.'
+          : `Login failed: ${errorDetail}`
+      return
     }
 
     // 2. cookie is now in the browser – hydrate Nuxt auth state once
     try {
       // Attempt to get session data from response if backend sends it (often not for credentials)
       // If res.json() fails or returns empty, it will be caught.
-      const freshSessionData = await res.json(); 
+      const freshSessionData = await res.json()
       console.log(`[LOGIN] Response JSON parsed:`, freshSessionData)
-      
+
       if (freshSessionData && Object.keys(freshSessionData).length > 0) {
         console.log(`[LOGIN] Valid session data found. Calling updateSession...`)
-        await updateSession(freshSessionData); // Update the session store with new data
-        console.log(`[LOGIN] updateSession completed. New status: ${status.value}, Session exists: ${!!session.value}`)
+        await updateSession(freshSessionData) // Update the session store with new data
+        console.log(
+          `[LOGIN] updateSession completed. New status: ${
+            status.value
+          }, Session exists: ${!!session.value}`
+        )
       } else {
         console.log(`[LOGIN] No meaningful session data in response. Calling reloadNuxtApp...`)
         // If no meaningful session data in response, force reload to pick up cookie
         // This is a common pattern if the credentials endpoint only sets a cookie.
-        reloadNuxtApp({ persistState: true, force: true });
-        return; // reloadNuxtApp will stop current execution flow
+        reloadNuxtApp({ persistState: true, force: true })
+        return // reloadNuxtApp will stop current execution flow
       }
-    } catch (e) {
+    } catch (e: unknown) {
       console.log(`[LOGIN] Failed to parse response JSON or updateSession failed:`, e)
       // Fallback: if res.json() fails (e.g. empty response which is valid for 200 OK)
       // or if updateSession itself has issues, force-reload to pick up cookie.
       console.log(`[LOGIN] Calling reloadNuxtApp as fallback...`)
-      reloadNuxtApp({ persistState: true, force: true });
-      return; // reloadNuxtApp will stop current execution flow
+      reloadNuxtApp({ persistState: true, force: true })
+      return // reloadNuxtApp will stop current execution flow
     }
     // If updateSession was successful and we didn't reload, the watch(status) will navigate
-    console.log(`[LOGIN] Login process completed without reload. Status: ${status.value}, Session exists: ${!!session.value}`)
-
-  } catch (e: any) {
+    console.log(
+      `[LOGIN] Login process completed without reload. Status: ${
+        status.value
+      }, Session exists: ${!!session.value}`
+    )
+  } catch (e: unknown) {
     // Catch errors from signIn itself (network issues, etc.)
-    console.error('[LOGIN] Credentials Sign-In Main Catch Block:', e);
-    errorMsg.value = e.message || 'An unexpected error occurred during login.';
+    console.error('[LOGIN] Credentials Sign-In Main Catch Block:', e)
+    const message = e instanceof Error ? e.message : 'An unexpected error occurred during login.'
+    errorMsg.value = message
   } finally {
-    loading.value = false;
-    console.log(`[LOGIN] Login process finished. Final status: ${status.value}, Session exists: ${!!session.value}`)
+    loading.value = false
+    console.log(
+      `[LOGIN] Login process finished. Final status: ${
+        status.value
+      }, Session exists: ${!!session.value}`
+    )
   }
-};
+}
 
 const handleGoogleSignIn = async () => {
   console.log(`[LOGIN] Starting Google OAuth login`)
-  googleLoading.value = true;
-  errorMsg.value = null;
+  googleLoading.value = true
+  errorMsg.value = null
   try {
-    await signIn('google'); // Defaults to redirect: true
+    await signIn('google') // Defaults to redirect: true
     // OAuth flow will redirect away and then back. Watch(status,...) handles post-login.
     console.log(`[LOGIN] Google signIn completed (should redirect)`)
-  } catch (err: any) {
-    console.error('[LOGIN] Google Sign-In Error:', err);
-    errorMsg.value = err.message || 'An error occurred during Google Sign-In.';
-    googleLoading.value = false;
+  } catch (err: unknown) {
+    console.error('[LOGIN] Google Sign-In Error:', err)
+    const message = err instanceof Error ? err.message : 'An error occurred during Google Sign-In.'
+    errorMsg.value = message
+    googleLoading.value = false
   }
-};
+}
 
-const route = useRoute();
-const router = useRouter();
+const route = useRoute()
 
-watch(status, (newStatus, oldStatus) => {
-  console.log(`[LOGIN WATCH] Status changed from ${oldStatus} to ${newStatus}. Session exists: ${!!session.value}`)
-  if (newStatus === 'authenticated') {
-    const redirect = route.query.redirect;
-    if (typeof redirect === 'string' && redirect.startsWith('/')) {
-      console.log(`[LOGIN WATCH] Authenticated! Navigating to stored path: ${redirect}`)
-      navigateTo(redirect, { replace: true, external: false });
-    } else {
-      console.log(`[LOGIN WATCH] Authenticated! Navigating to default path: /`)
-      navigateTo('/', { replace: true, external: false });
+watch(
+  status,
+  (newStatus, oldStatus) => {
+    console.log(
+      `[LOGIN WATCH] Status changed from ${oldStatus} to ${newStatus}. Session exists: ${!!session.value}`
+    )
+    if (newStatus === 'authenticated') {
+      const redirect = route.query.redirect
+      if (typeof redirect === 'string' && redirect.startsWith('/')) {
+        console.log(`[LOGIN WATCH] Authenticated! Navigating to stored path: ${redirect}`)
+        navigateTo(redirect, { replace: true, external: false })
+      } else {
+        console.log(`[LOGIN WATCH] Authenticated! Navigating to default path: /`)
+        navigateTo('/', { replace: true, external: false })
+      }
     }
-  }
-}, { immediate: false }); // Set immediate to true if you want to check on component mount too
+  },
+  { immediate: false }
+) // Set immediate to true if you want to check on component mount too
 </script>
 <style scoped lang="scss">
+@use '../assets/scss/variables' as v;
+
 .login-container {
   display: flex;
   justify-content: center;
@@ -193,20 +239,20 @@ watch(status, (newStatus, oldStatus) => {
 
 .login-card {
   position: relative;
-  z-index: 0;            /* establish stacking context */
-  overflow: hidden;      /* clip the oversized blur */
-  background-color: rgba(255,255,255,0.12);
-  border: 1px solid rgba(255,255,255,0.3);
+  z-index: 0; /* establish stacking context */
+  overflow: hidden; /* clip the oversized blur */
+  background-color: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   width: 440px;
   padding: 2rem;
 
   &::before {
     content: '';
     position: absolute;
-    inset: -50%;                       /* reach out beyond edges */
+    inset: -50%; /* reach out beyond edges */
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    z-index: -1;                       /* sit behind all card content */
+    z-index: -1; /* sit behind all card content */
     /* remove any mask-image here unless intentional */
   }
 }
@@ -243,6 +289,10 @@ label {
   border-radius: 0.5rem !important;
   padding: 0 0.75rem !important;
   font-size: 1rem;
+}
+
+.grey-light {
+  color: v.$grey-light;
 }
 
 .field-help {

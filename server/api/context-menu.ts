@@ -6,7 +6,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 405, statusMessage: 'Method Not Allowed' })
   }
 
-  const { public: { GEMINI_API_KEY } } = useRuntimeConfig()
+  const {
+    public: { GEMINI_API_KEY },
+  } = useRuntimeConfig()
   if (!GEMINI_API_KEY) {
     throw createError({ statusCode: 500, statusMessage: 'Missing Gemini API Key configuration' })
   }
@@ -15,7 +17,7 @@ export default defineEventHandler(async (event) => {
   if (!text || text.trim().length === 0) {
     throw createError({ statusCode: 400, statusMessage: 'Missing or empty node text' })
   }
-  
+
   // Sanitize the text input
   const sanitizedText = text.trim().substring(0, 100) // Limit to 100 chars for safety
 
@@ -54,23 +56,23 @@ Return ONLY valid JSON, no other text:
 [{"category":"Category Name","items":["Specific Item 1","Specific Item 2","Specific Item 3"]}]`
 
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
-  const model = genAI.getGenerativeModel({ 
+  const model = genAI.getGenerativeModel({
     model: 'gemini-2.0-flash-lite',
     generationConfig: {
       temperature: 0.8, // Balanced creativity
       topK: 40,
       topP: 0.9,
       maxOutputTokens: 1000,
-    }
+    },
   })
 
   try {
     const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }]
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
     })
     const raw = result.response.text()
     console.log(`[Context Menu API] Raw response for "${sanitizedText}":`, raw)
-    
+
     // Clean the response more thoroughly
     const cleaned = raw
       .replace(/```json\n?|\n```/g, '')
@@ -78,16 +80,16 @@ Return ONLY valid JSON, no other text:
       .replace(/^[^[{]*/, '') // Remove text before JSON starts
       .replace(/[^}\]]*$/, '') // Remove text after JSON ends
       .trim()
-    
+
     let categories
     try {
       categories = JSON.parse(cleaned)
-      
+
       // Validate the structure
       if (!Array.isArray(categories)) {
         throw new Error('Response must be an array')
       }
-      
+
       // Validate each category
       for (const category of categories) {
         if (!category.category || !Array.isArray(category.items)) {
@@ -97,18 +99,27 @@ Return ONLY valid JSON, no other text:
           throw new Error('Each category must have at least one item')
         }
       }
-      
-      console.log(`[Context Menu API] Successfully parsed ${categories.length} categories for "${sanitizedText}"`)
-      
+
+      console.log(
+        `[Context Menu API] Successfully parsed ${categories.length} categories for "${sanitizedText}"`
+      )
     } catch (err) {
-      console.error(`[Context Menu API] JSON parsing error for "${sanitizedText}":`, err, 'Raw:', raw, 'Cleaned:', cleaned)
+      console.error(
+        `[Context Menu API] JSON parsing error for "${sanitizedText}":`,
+        err,
+        'Raw:',
+        raw,
+        'Cleaned:',
+        cleaned
+      )
       throw createError({ statusCode: 500, statusMessage: 'Invalid JSON response from AI' })
     }
-    
+
     return { categories }
   } catch (error: any) {
     console.error(`[Context Menu API] Error for "${sanitizedText}":`, error)
-    const message = error.response?.data?.error?.message || error.message || 'Failed to generate context menu'
+    const message =
+      error.response?.data?.error?.message || error.message || 'Failed to generate context menu'
     throw createError({ statusCode: 500, statusMessage: `ContextMenu Error: ${message}` })
   }
 })

@@ -5,9 +5,9 @@
     <div class="sidebar">
       <!-- Logo at the top -->
       <div class="logo-container">
-        <img src="/assets/dreamseed-logo-white.png" alt="DreamSeed" class="logo">
+        <img src="/assets/dreamseed-logo-white.png" alt="DreamSeed" class="logo" />
       </div>
-      
+
       <!-- Navigation items -->
       <nav class="nav-menu">
         <!-- <a href="#" class="nav-item active">
@@ -31,56 +31,59 @@
           <i class="pi pi-bell"></i>
           <span>Notifications</span>
         </a> -->
-        <NuxtLink 
-          to="/gallery" 
-          class="nav-item"
-          :class="{ 'active': route.path === '/gallery' }"
-        >
+        <NuxtLink to="/gallery" class="nav-item" :class="{ active: route.path === '/gallery' }">
           <i class="pi pi-th-large"></i>
           <span>Gallery</span>
         </NuxtLink>
 
         <!-- Help/Tutorial -->
-        <a 
-          href="#" 
-          class="nav-item"
-          @click.prevent="showTutorial"
-        >
+        <a href="#" class="nav-item" @click.prevent="showTutorial">
           <i class="pi pi-question-circle"></i>
           <span>Help</span>
         </a>
 
         <!-- My Dreams Section -->
-        <a 
-          href="#" 
-          class="nav-item" 
-          :class="{ 'active': route.path.startsWith('/dream/') || route.path === '/' }"
+        <a
+          href="#"
+          class="nav-item"
+          :class="{ active: route.path.startsWith('/dream/') || route.path === '/' }"
           @click.prevent="isDreamsOpen = !isDreamsOpen"
         >
           <i :class="['pi', isDreamsOpen ? 'pi-folder-open' : 'pi-folder']"></i>
           <span>My Dreams</span>
-           <i :class="['pi', 'ml-auto', 'text-xs', isDreamsOpen ? 'pi-chevron-down' : 'pi-chevron-right']"></i>
+          <i
+            :class="[
+              'pi',
+              'ml-auto',
+              'text-xs',
+              isDreamsOpen ? 'pi-chevron-down' : 'pi-chevron-right',
+            ]"
+          ></i>
         </a>
         <div v-if="isDreamsOpen" class="dreams-list-container">
           <ul class="dreams-list">
-            <li 
+            <li
+              v-if="tagStore.loadedDreamId !== null"
               class="dream-item new-dream-item"
-              v-if="tagStore.loadedDreamId !== null" 
               @click.stop="onSelectDream(null)"
             >
               <i class="pi pi-plus-circle mr-2 text-xs"></i>
               <span>New Dream</span>
             </li>
-            <li 
-              class="dream-item unsaved" 
-              v-if="tagStore.loadedDreamId === null" 
-              :class="{ 'active-dream': route.path === '/dream/new' }" 
+            <li
+              v-if="tagStore.loadedDreamId === null"
+              class="dream-item unsaved"
+              :class="{ 'active-dream': route.path === '/dream/new' }"
               @click="onSelectDream(null)"
             >
               <i class="pi pi-pencil mr-2 text-xs"></i>
               <span>
-                Current Session 
-                <span v-if="tagStore.hasUnsavedChanges && tagStore.loadedDreamId === null" class="unsaved-indicator">*</span>
+                Current Session
+                <span
+                  v-if="tagStore.hasUnsavedChanges && tagStore.loadedDreamId === null"
+                  class="unsaved-indicator"
+                  >*</span
+                >
               </span>
             </li>
             <li v-if="pending" class="dream-item loading">
@@ -89,112 +92,130 @@
             <li v-else-if="error" class="dream-item error">
               <i class="pi pi-exclamation-triangle mr-2 text-red-400"></i> Error loading dreams
             </li>
-             <li v-else-if="!pending && !error && (!savedDreams || savedDreams.length === 0)" class="dream-item empty">
-                <i class="pi pi-info-circle mr-2"></i> No saved dreams yet.
-             </li>
-             <template v-else>
-              <li 
-                v-for="dream in savedDreams" 
-                :key="dream.id" 
-                class="dream-item saved" 
-                :class="{ 'active-dream': route.path === `/dream/${dream.id}` }" 
-                @click="onSelectDream(dream)"
+            <li
+              v-else-if="!pending && !error && (!savedDreams || savedDreams.length === 0)"
+              class="dream-item empty"
             >
-            <!-- Inline editing for dream title -->
-            <template v-if="editingDreamId === dream.id">
-              <InputText 
-                ref="titleInputRef" 
-                v-model="editingTitle" 
-                class="inline-edit-title-input"
-                @keyup.enter="saveDreamTitle(dream)" 
-                @keyup.esc="cancelEditDreamTitle" 
-                @blur="saveDreamTitle(dream)" 
-                autofocus 
-              />
-            </template>
-            <template v-else>
-              <span class="dream-title">{{ dream.title || 'Untitled Dream' }}</span>
-              <span v-if="tagStore.hasUnsavedChanges && tagStore.loadedDreamId === dream.id && route.path === `/dream/${dream.id}`" class="unsaved-indicator">*</span>
-            </template>
-            <ActionMenu
-              :items="menuItems"
-              buttonClass="dream-actions-button"
-              @open="() => { selectedDreamForMenu = dream; }"
-            />
+              <i class="pi pi-info-circle mr-2"></i> No saved dreams yet.
             </li>
+            <template v-else>
+              <li
+                v-for="dream in savedDreams"
+                :key="dream.id"
+                class="dream-item saved"
+                :class="{ 'active-dream': route.path === `/dream/${dream.id}` }"
+                @click="onSelectDream(dream)"
+              >
+                <!-- Inline editing for dream title -->
+                <template v-if="editingDreamId === dream.id">
+                  <InputText
+                    ref="titleInputRef"
+                    v-model="editingTitle"
+                    class="inline-edit-title-input"
+                    autofocus
+                    @keyup.enter="saveDreamTitle(dream)"
+                    @keyup.esc="cancelEditDreamTitle"
+                    @blur="saveDreamTitle(dream)"
+                  />
+                </template>
+                <template v-else>
+                  <span class="dream-title">{{ dream.title || 'Untitled Dream' }}</span>
+                  <span
+                    v-if="
+                      tagStore.hasUnsavedChanges &&
+                      tagStore.loadedDreamId === dream.id &&
+                      route.path === `/dream/${dream.id}`
+                    "
+                    class="unsaved-indicator"
+                    >*</span
+                  >
+                </template>
+                <ActionMenu
+                  :items="menuItems"
+                  button-class="dream-actions-button"
+                  @open="
+                    () => {
+                      selectedDreamForMenu = dream
+                    }
+                  "
+                />
+              </li>
             </template>
           </ul>
         </div>
         <!-- End My Dreams Section -->
-
       </nav>
-      
+
       <!-- User section at bottom -->
       <div class="user-section">
         <div v-if="status === 'authenticated' && session?.user" class="user-profile">
           <div class="user-avatar">
-             <img v-if="session.user.image" :src="session.user.image" alt="User Avatar" class="avatar-image" />
-             <i v-else class="pi pi-user"></i>
+            <img
+              v-if="session.user.image"
+              :src="session.user.image"
+              alt="User Avatar"
+              class="avatar-image"
+            />
+            <i v-else class="pi pi-user"></i>
           </div>
           <span class="user-name">{{ session.user.name || 'User' }}</span>
-          <Button 
-            icon="pi pi-sign-out" 
-            @click="signOut()"
-            text 
-            rounded 
+          <Button
+            icon="pi pi-sign-out"
+            text
+            rounded
             aria-label="Sign Out"
-            class="p-button-secondary p-button-sm sign-out-button" 
-           />
+            class="p-button-secondary p-button-sm sign-out-button"
+            @click="signOut()"
+          />
         </div>
         <div v-else class="login-options">
           <!-- Email/Password Login Button -->
-          <Button 
-            label="Sign in with Email" 
-            icon="pi pi-envelope" 
+          <Button
+            label="Sign in with Email"
+            icon="pi pi-envelope"
+            class="w-full mb-2"
             @click="router.push('/login')"
-            class="w-full mb-2" 
           />
-          
+
           <!-- Google Login Button -->
-          <Button 
-            label="Sign in with Google" 
-            icon="pi pi-google" 
+          <Button
+            label="Sign in with Google"
+            icon="pi pi-google"
+            class="w-full p-button-secondary"
             @click="signIn('google')"
-            class="w-full p-button-secondary" 
           />
         </div>
       </div>
     </div>
-    
+
     <!-- Main content -->
     <div class="main-content-container">
       <NuxtPage />
     </div>
 
     <!-- Add ConfirmDialog component -->
- 
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'; // removed onMounted as they are in composable
-import { useTagStore } from '~/store/tagStore'; 
+import { ref, watch, nextTick } from 'vue' // removed onMounted as they are in composable
+import { useTagStore } from '~/store/tagStore'
 // PrimeVue components used in the template still need to be imported here.
-import Toast from 'primevue/toast'; 
-import ActionMenu from '~/components/ActionMenu.vue';
-import InputText from 'primevue/inputtext';
-import { useDreamManagement } from '~/composables/useDreamManagement';
-import { useRouter, useRoute } from 'vue-router';
-import { useConfirm } from 'primevue/useconfirm';
-import type { DreamSummary } from '~/types/dream';
+import Toast from 'primevue/toast'
+import ActionMenu from '~/components/ActionMenu.vue'
+import InputText from 'primevue/inputtext'
+import { useDreamManagement } from '~/composables/useDreamManagement'
+import { useRouter, useRoute } from 'vue-router'
+import { useConfirm } from 'primevue/useconfirm'
+import type { DreamSummary } from '~/types/dream'
 
 // useAuth is auto-imported by Nuxt Auth; no manual import needed
-const { status, session, signIn, signOut } = useAuth(); // auth logic
-const tagStore = useTagStore();
+const { status, session, signIn, signOut } = useAuth() // auth logic
+const tagStore = useTagStore()
 
-const router = useRouter();
-const route = useRoute(); // Get the current route object
-const confirm = useConfirm();
+const router = useRouter()
+const route = useRoute() // Get the current route object
+const confirm = useConfirm()
 
 // Initialize dream management logic from composable
 const {
@@ -208,12 +229,12 @@ const {
   editingTitle,
   saveDreamTitle,
   cancelEditDreamTitle,
-} = useDreamManagement();
+} = useDreamManagement()
 
 // Navigate to dream session page, prompting save if needed via loadDream API
 async function onSelectDream(dream: DreamSummary | null) {
   if (tagStore.hasUnsavedChanges) {
-    const proceed = await new Promise(resolve => {
+    const proceed = await new Promise((resolve) => {
       confirm.require({
         message: 'You have unsaved changes. Leave without saving?',
         header: 'Unsaved Changes',
@@ -222,19 +243,19 @@ async function onSelectDream(dream: DreamSummary | null) {
         rejectLabel: 'Cancel',
         rejectClass: 'p-button-secondary',
         accept: () => resolve(true),
-        reject: () => resolve(false)
-      });
-    });
-    if (!proceed) return;
+        reject: () => resolve(false),
+      })
+    })
+    if (!proceed) return
   }
   // Navigate to selected dream or new session
-  const targetPath = dream ? `/dream/${dream.id}` : '/dream/new';
-  console.log(`[onSelectDream] Navigating to: ${targetPath}`);
-  router.push(targetPath);
+  const targetPath = dream ? `/dream/${dream.id}` : '/dream/new'
+  console.log(`[onSelectDream] Navigating to: ${targetPath}`)
+  router.push(targetPath)
 }
 
 // Ref for the Menu component instance - this needs to stay in the component that renders the Menu
-const titleInputRef = ref<any>(null); // Ref for the InputText component
+const titleInputRef = ref<any>(null) // Ref for the InputText component
 
 // Watch for editingDreamId to change, then focus the input
 watch(editingDreamId, (newId) => {
@@ -244,14 +265,14 @@ watch(editingDreamId, (newId) => {
       // or on its underlying input element ($el). Check PrimeVue docs if direct .focus() fails.
       if (titleInputRef.value) {
         if (typeof titleInputRef.value.focus === 'function') {
-          titleInputRef.value.focus(); 
+          titleInputRef.value.focus()
         } else if (titleInputRef.value.$el && typeof titleInputRef.value.$el.focus === 'function') {
-          titleInputRef.value.$el.focus();
+          titleInputRef.value.$el.focus()
         }
       }
-    });
+    })
   }
-});
+})
 
 // Show tutorial function
 const showTutorial = () => {
@@ -264,7 +285,6 @@ const showTutorial = () => {
 }
 
 // Any other component-specific logic for default.vue that was not moved...
-
 </script>
 
 <style lang="scss">
@@ -276,7 +296,7 @@ const showTutorial = () => {
 
 .sidebar {
   width: 280px;
-  background-color:  rgb(16 13 44 / 70%);
+  background-color: rgb(16 13 44 / 70%);
   display: flex;
   border-right: 1px solid rgba(255, 255, 255, 0.05);
   flex-direction: column;
@@ -295,7 +315,7 @@ const showTutorial = () => {
   margin-bottom: 20px;
 
   .logo {
-    height: 50px; 
+    height: 50px;
     width: auto;
     transition: transform 0.3s ease;
     &:hover {
@@ -307,7 +327,7 @@ const showTutorial = () => {
 .nav-menu {
   flex-grow: 1;
   overflow-y: auto;
-  padding: 0 15px; 
+  padding: 0 15px;
 
   .nav-item {
     display: flex;
@@ -318,29 +338,34 @@ const showTutorial = () => {
     color: rgba(255, 255, 255, 0.85);
     text-decoration: none;
     transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
-    font-size: 0.9rem; 
+    font-size: 0.9rem;
     font-weight: 500;
 
     i {
       margin-right: 12px;
-      font-size: 1.1rem; 
+      font-size: 1.1rem;
     }
 
     &:hover {
       background-color: rgba(255, 255, 255, 0.1);
       color: white;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     }
 
     &.active {
-      background-color: rgba(79, 70, 229, 0.7); // Active item highlight (Tailwind indigo-600 equivalent with alpha)
+      background-color: rgba(
+        79,
+        70,
+        229,
+        0.7
+      ); // Active item highlight (Tailwind indigo-600 equivalent with alpha)
       color: white;
       font-weight: 600;
-      box-shadow: 0 4px 10px rgba(79,70,229,0.3);
+      box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);
 
-       i {
+      i {
         // color: #c7d2fe; // Lighter icon color for active state if needed
-       }
+      }
     }
   }
 }
@@ -375,7 +400,12 @@ const showTutorial = () => {
         opacity: 0;
         transition: opacity 0.2s ease, visibility 0.2s ease;
         color: white;
-        background-color: rgba(0,0,0,0.1); // Slight background for better visibility on hover state
+        background-color: rgba(
+          0,
+          0,
+          0,
+          0.1
+        ); // Slight background for better visibility on hover state
       }
 
       &:hover .dream-actions-button {
@@ -419,20 +449,22 @@ const showTutorial = () => {
         max-width: 100%;
         mask-image: linear-gradient(to right, black 80%, transparent 100%);
       }
-      
+
       .unsaved-indicator {
         color: #facc15; // Tailwind yellow-400
         margin-left: 4px;
         font-weight: bold;
       }
     }
-     .loading, .error, .empty {
-        font-style: italic;
-        color: rgba(255, 255, 255, 0.5);
-        padding: 8px 10px;
-        display: flex;
-        align-items: center;
-     }
+    .loading,
+    .error,
+    .empty {
+      font-style: italic;
+      color: rgba(255, 255, 255, 0.5);
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+    }
   }
 }
 
@@ -456,19 +488,19 @@ const showTutorial = () => {
       align-items: center;
       justify-content: center;
       margin-right: 10px;
-      overflow: hidden; 
+      overflow: hidden;
 
       .avatar-image {
         width: 100%;
         height: 100%;
         object-fit: cover;
       }
-      
+
       i {
         font-size: 1.2rem;
       }
     }
-    
+
     .user-name {
       flex-grow: 1;
       white-space: nowrap;
@@ -476,19 +508,19 @@ const showTutorial = () => {
       text-overflow: ellipsis;
       margin-right: 8px;
     }
-    
+
     .sign-out-button {
       :deep(.p-button-icon) {
-        font-size: 0.9rem; 
+        font-size: 0.9rem;
       }
-       width: 2.25rem; 
-       height: 2.25rem;
+      width: 2.25rem;
+      height: 2.25rem;
     }
   }
-  
+
   .login-options {
     .p-button {
-        font-size: 0.9rem;
+      font-size: 0.9rem;
     }
     // Adjust spacing or styles for login buttons if needed
   }
@@ -496,7 +528,7 @@ const showTutorial = () => {
 
 .main-content-container {
   flex: 1;
-  overflow-y: auto; 
+  overflow-y: auto;
   padding: 20px;
   // background: radial-gradient(circle at top left, #0f172a, #1e293b 70%);
 }
@@ -505,7 +537,8 @@ const showTutorial = () => {
 /* Add any global styles here or ensure they are in a global CSS file imported in nuxt.config */
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif,
+    'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
   background-color: #0f172a; // Default body background
   color: #e2e8f0; // Default text color for better contrast on dark bg
 }
@@ -534,4 +567,4 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
 }
-</style> 
+</style>

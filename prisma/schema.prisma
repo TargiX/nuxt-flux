@@ -28,6 +28,7 @@ model User {
   // posts Post[]
   dreams Dream[] // Add relation to Dream model
   generatedImages GeneratedImage[] // Add relation to GeneratedImage model
+  passwordResetTokens PasswordResetToken[]
 }
 
 // Add the Dream model
@@ -55,5 +56,16 @@ model GeneratedImage {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([dreamId])
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  tokenHash String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
   @@index([userId])
 }

@@ -1,12 +1,12 @@
 export interface Dream {
-  id: number;
-  createdAt: string; // ISO date string
-  title: string | null;
-  data: any; // We'll keep data generic for now
+  id: number
+  createdAt: string // ISO date string
+  title: string | null
+  data: any // We'll keep data generic for now
 }
 
 export interface DreamSummary {
-  id: number;
-  createdAt: string; // ISO date string
-  title: string | null;
-} 
+  id: number
+  createdAt: string // ISO date string
+  title: string | null
+}

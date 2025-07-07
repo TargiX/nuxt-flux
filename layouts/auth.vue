@@ -1,9 +1,6 @@
 <template>
-  <div class="auth-layout auth-background" >
-    <canvas
-      ref="canvas"
-      :class="['fixed inset-0 -z-10', { 'opacity-0': !isCanvasInitialized }]"
-    />
+  <div class="auth-layout auth-background">
+    <canvas ref="canvas" :class="['fixed inset-0 -z-10', { 'opacity-0': !isCanvasInitialized }]" />
     <NuxtPage />
   </div>
 </template>
@@ -25,28 +22,28 @@ import { onMounted, onBeforeUnmount, ref } from 'vue'
  *********************************************************************************************/
 
 /***** Tunables *************************************************/
-const GROUP_COUNT         = 24               // number of constellations
+const GROUP_COUNT = 24 // number of constellations
 const MIN_CORES_PER_GROUP = 2
 const MAX_CORES_PER_GROUP = 5
-const MIN_SAT_PER_CORE    = 3
-const MAX_SAT_PER_CORE    = 7
+const MIN_SAT_PER_CORE = 3
+const MAX_SAT_PER_CORE = 7
 
-const CORE_RADIUS         = 8.0
-const SAT_RADIUS          = 4.0
+const CORE_RADIUS = 8.0
+const SAT_RADIUS = 4.0
 
-const ORBIT_CORE_RADIUS   = 90               // distance group centre → core
-const ORBIT_SAT_RADIUS    = 46
-const ORBIT_JITTER        = 8
+const ORBIT_CORE_RADIUS = 90 // distance group centre → core
+const ORBIT_SAT_RADIUS = 46
+const ORBIT_JITTER = 8
 
 // motion
-const GROUP_BASE_SPEED    = 0.03             // ambient drift px/frame
-const CORE_ROT_SPEED      = 0.0007           // rad/frame base
+const GROUP_BASE_SPEED = 0.03 // ambient drift px/frame
+const CORE_ROT_SPEED = 0.0007 // rad/frame base
 
 // interaction
-const PUSH_DIST           = 140              // influence radius (px)
-const PUSH_FORCE          = 3.2              // offset px impulse (scaled by closeness)
-const OFFSET_DAMPING      = 0.9              // how fast offsets decay back (0–1)
-const HOVER_DIST          = 80               // pulse radius
+const PUSH_DIST = 140 // influence radius (px)
+const PUSH_FORCE = 3.2 // offset px impulse (scaled by closeness)
+const OFFSET_DAMPING = 0.9 // how fast offsets decay back (0–1)
+const HOVER_DIST = 80 // pulse radius
 
 /***** Types *****************************************************/
 interface Satellite {
@@ -96,7 +93,7 @@ const showLayoutBackground = ref(true)
 const rand = (a: number, b: number) => Math.random() * (b - a) + a
 
 /***** Scene creation *******************************************/
-function createScene (w: number, h: number) {
+function createScene(w: number, h: number) {
   groups = []
 
   // place groups in jittered grid
@@ -117,10 +114,10 @@ function createScene (w: number, h: number) {
     const cores: Core[] = []
 
     for (let c = 0; c < coreCount; c++) {
-      const angle = (Math.PI * 2 / coreCount) * c + rand(-0.4, 0.4)
+      const angle = ((Math.PI * 2) / coreCount) * c + rand(-0.4, 0.4)
 
       const satellites: Satellite[] = []
-      for (let s = 0; s < Math.floor(rand(MAX_SAT_PER_CORE , MIN_SAT_PER_CORE + 1)); s++) {
+      for (let s = 0; s < Math.floor(rand(MAX_SAT_PER_CORE, MIN_SAT_PER_CORE + 1)); s++) {
         satellites.push({
           angle: rand(0, Math.PI * 2),
           omega: CORE_ROT_SPEED * rand(0.6, 1.4) * (Math.random() < 0.5 ? 1 : -1),
@@ -159,7 +156,7 @@ function createScene (w: number, h: number) {
 }
 
 /***** Main loop *************************************************/
-function step (w: number, h: number) {
+function step(w: number, h: number) {
   if (!ctx) return
   ctx.clearRect(0, 0, w, h)
 
@@ -295,14 +292,14 @@ function onMouseMove(e: MouseEvent) {
 onMounted(() => {
   if (!canvas.value) return
   ctx = canvas.value.getContext('2d')!
-  
+
   resizeCanvas() // This also calls createScene
   isCanvasInitialized.value = true // Canvas is now sized and scene is ready
-  
+
   // Delay hiding the layout background to match canvas fade-in
   setTimeout(() => {
-    showLayoutBackground.value = false;
-  }, 300); // canvas transition-delay (0.15s) + transition-duration (0.15s) = 0.3s
+    showLayoutBackground.value = false
+  }, 300) // canvas transition-delay (0.15s) + transition-duration (0.15s) = 0.3s
 
   animationId = requestAnimationFrame(animate)
   window.addEventListener('resize', resizeCanvas)
@@ -328,7 +325,6 @@ onBeforeUnmount(() => {
 
 .auth-background {
   background: radial-gradient(circle at center, rgb(46, 46, 82) 0%, rgb(19, 12, 45) 100%);
-
 }
 
 canvas {

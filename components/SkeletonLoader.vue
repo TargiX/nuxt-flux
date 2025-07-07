@@ -8,7 +8,7 @@
         <div class="skeleton-text" style="width: 80%"></div>
       </div>
     </div>
-    
+
     <div v-else-if="type === 'list-item'" class="skeleton-list-item">
       <div class="skeleton-avatar"></div>
       <div class="skeleton-list-content">
@@ -16,13 +16,18 @@
         <div class="skeleton-subtitle"></div>
       </div>
     </div>
-    
+
     <div v-else-if="type === 'image'" class="skeleton-image-only"></div>
-    
+
     <div v-else-if="type === 'text'" class="skeleton-text-only">
-      <div v-for="i in lines" :key="i" class="skeleton-line" :style="{ width: getLineWidth(i) }"></div>
+      <div
+        v-for="i in lines"
+        :key="i"
+        class="skeleton-line"
+        :style="{ width: getLineWidth(i) }"
+      ></div>
     </div>
-    
+
     <div v-else class="skeleton-custom">
       <slot></slot>
     </div>
@@ -39,7 +44,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   type: 'card',
   animated: true,
-  lines: 3
+  lines: 3,
 })
 
 const getLineWidth = (index: number) => {
@@ -173,4 +178,4 @@ const getLineWidth = (index: number) => {
 .skeleton-custom {
   /* Styles for custom content via slot */
 }
-</style> 
+</style>

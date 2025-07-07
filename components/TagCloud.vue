@@ -27,21 +27,21 @@
         :height="600"
         :nodes="localGraphNodes"
         :links="localGraphLinks"
-        :isGraphLoading="tagStore.isRestoringSession"
-        @nodeClick="handleNodeClick"
-        @nodePositionsUpdated="handleNodePositionsUpdated"
-        @nodeTextUpdated="handleNodeTextUpdated"
-        @menu-action="handleNodeContextMenu"
+        :is-graph-loading="tagStore.isRestoringSession"
         class="w-full flex-grow"
+        @node-click="handleNodeClick"
+        @node-positions-updated="handleNodePositionsUpdated"
+        @node-text-updated="handleNodeTextUpdated"
+        @menu-action="handleNodeContextMenu"
       >
         <!-- Zone selector will be moved here via slot later -->
         <template #controls>
           <div class="zone-selector-container mt-4">
             <ZoneSelector
-              v-model:modelValue="selectedZone"
+              v-model:model-value="selectedZone"
               :options="zoneOptionsWithCounts"
-              optionLabel="name"
-              optionValue="name"
+              option-label="name"
+              option-value="name"
             />
           </div>
         </template>
@@ -56,12 +56,12 @@
           <h3>Current Image:</h3>
           <Button
             v-if="tagStore.currentImageUrl"
-            @click="handleDownloadImage"
+            v-tooltip.top="'Download image'"
             severity="secondary"
             text
             size="small"
             class="w-8 h-8 !p-0 flex items-center justify-center"
-            v-tooltip.top="'Download image'"
+            @click="handleDownloadImage"
           >
             <i class="pi pi-download text-sm"></i>
           </Button>
@@ -89,6 +89,7 @@
         <div class="flex items-center gap-2">
           <Button
             v-if="isViewingSnapshot"
+            v-tooltip.top="'Use this snapshot as your live session'"
             label="Apply Snapshot"
             icon="pi pi-check-square"
             severity="success"
@@ -96,10 +97,10 @@
             size="small"
             class="px-2 py-1 h-8"
             @click="handleApplySnapshot"
-            v-tooltip.top="'Use this snapshot as your live session'"
           />
           <Button
             v-if="tagStore.stashedSessionState"
+            v-tooltip.top="'Return to your live session'"
             label="Exit Snapshot View"
             icon="pi pi-replay"
             severity="info"
@@ -107,28 +108,27 @@
             size="small"
             class="px-2 py-1 h-8"
             @click="tagStore.restoreStashedSession()"
-            v-tooltip.top="'Return to your live session'"
           />
           <Button
             v-if="!isManualMode && generatedPrompt && devMode && !isViewingSnapshot"
+            v-tooltip.top="'Regenerate prompt'"
             icon="pi pi-refresh"
             severity="secondary"
             text
             size="small"
             class="w-7 h-7 !p-0 flex items-center justify-center"
             :class="{ 'animate-spin': isGeneratingPrompt }"
-            @click="handleRefreshPrompt"
             :disabled="isGeneratingPrompt"
-            v-tooltip.top="'Regenerate prompt'"
+            @click="handleRefreshPrompt"
           />
           <ToggleButton
             v-if="!isViewingSnapshot"
-            onLabel="Auto"
-            class="px-1 py-1 h-8"
-            offLabel="Manual"
-            onIcon="pi pi-lock"
-            offIcon="pi pi-lock-open"
             v-model="isManualMode"
+            on-label="Auto"
+            class="px-1 py-1 h-8"
+            off-label="Manual"
+            on-icon="pi pi-lock"
+            off-icon="pi pi-lock-open"
             :disabled="isViewingSnapshot"
           />
         </div>
@@ -142,9 +142,9 @@
           :disabled="isViewingSnapshot"
         ></Textarea>
         <p
+          v-else
           class="text-white-palette prompt-text"
           :class="{ 'fade-in': !isGeneratingPrompt, 'fade-out': isGeneratingPrompt }"
-          v-else
         >
           {{ tagStore.currentGeneratedPrompt }}
         </p>
@@ -165,19 +165,19 @@
         </div>
         <div class="flex gap-2">
           <Button
-            @click="handleSaveDreamClick"
+            v-if="!isViewingSnapshot"
+            v-tooltip.top="'Save session'"
             severity="info"
             :disabled="isSavingDisabled"
             class="flex items-center justify-center !w-8 !h-8 !p-0 !bg-blue-600 hover:!bg-blue-700 !border-blue-600 hover:!border-blue-700"
-            v-tooltip.top="'Save session'"
-            v-if="!isViewingSnapshot"
+            @click="handleSaveDreamClick"
           >
             <!-- Show spinner when saving, otherwise show floppy disk icon -->
             <LoadingSpinner
               v-if="isSavingDreamFromComposable"
               :width="16"
               :height="16"
-              strokeWidth="8"
+              stroke-width="8"
             />
             <!-- Custom floppy disk icon -->
             <svg
@@ -198,18 +198,18 @@
             </svg>
           </Button>
           <Button
-            @click="handleGenerateImageClick"
+            v-if="!isViewingSnapshot"
             severity="primary"
             :disabled="isGenerationDisabled"
             class="flex items-center gap-2 flex-nowrap whitespace-nowrap !h-8 px-3"
-            v-if="!isViewingSnapshot"
+            @click="handleGenerateImageClick"
           >
             <!-- Show spinner when generating, otherwise show generate icon -->
             <LoadingSpinner
               v-if="isGeneratingImageFromComposable"
               :width="16"
               :height="16"
-              strokeWidth="8"
+              stroke-width="8"
             />
             <svg
               v-else
@@ -242,20 +242,20 @@
     <div class="image-strip-container glass-card">
       <ImageStrip
         ref="imageStripRef"
-        :dreamId="tagStore.loadedDreamId"
+        :dream-id="tagStore.loadedDreamId"
+        :viewing-snapshot-id="tagStore.viewingSnapshotImageId"
+        :is-generating-image="isGeneratingImageFromComposable"
         @image-clicked="openImageViewerFromStrip"
         @snapshot-requested="handleSnapshotRequestFromStrip"
-        :viewingSnapshotId="tagStore.viewingSnapshotImageId"
-        :isGeneratingImage="isGeneratingImageFromComposable"
       />
     </div>
   </div>
   <div v-else class="loading-session-indicator">
     <ProgressSpinner
       style="width: 50px; height: 50px"
-      strokeWidth="8"
+      stroke-width="8"
       fill="var(--surface-ground)"
-      animationDuration=".5s"
+      animation-duration=".5s"
       aria-label="Loading session"
     />
     <p>Loading session...</p>
@@ -321,8 +321,8 @@ console.log(
   tagStore.isRestoringSession
 )
 
-const localGraphNodes = computed(() => tagStore.isRestoringSession ? [] : tagStore.graphNodes);
-const localGraphLinks = computed(() => tagStore.graphLinks);
+const localGraphNodes = computed(() => (tagStore.isRestoringSession ? [] : tagStore.graphNodes))
+const localGraphLinks = computed(() => tagStore.graphLinks)
 
 const isRestoringSessionForTemplate = computed(() => tagStore.isRestoringSession)
 

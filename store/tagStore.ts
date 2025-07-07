@@ -132,14 +132,14 @@ export const useTagStore = defineStore('tags', () => {
 
   // --- Action to load a saved dream state ---
   async function loadDreamState(dreamData: DreamData, dreamId: number | null) {
-    isRestoringSession.value = true;
-    tags.value = [];
-    currentGeneratedPrompt.value = '';
-    currentImageUrl.value = null;
-    loadedDreamId.value = null;
-    hasUnsavedChanges.value = false;
-    sessionId.value = generateSessionId();
-    zoneViewportStates.value = new Map<string, ViewportState>();
+    isRestoringSession.value = true
+    tags.value = []
+    currentGeneratedPrompt.value = ''
+    currentImageUrl.value = null
+    loadedDreamId.value = null
+    hasUnsavedChanges.value = false
+    sessionId.value = generateSessionId()
+    zoneViewportStates.value = new Map<string, ViewportState>()
 
     if (dreamData.zoneViewports) {
       for (const [zoneName, viewportState] of Object.entries(dreamData.zoneViewports)) {
@@ -272,10 +272,10 @@ export const useTagStore = defineStore('tags', () => {
     hasUnsavedChanges.value = false
 
     // Delay tag assignment to allow loader to display
-    await nextTick();
-    tags.value = reconstructedTags;
-    await nextTick();
-    isRestoringSession.value = false;
+    await nextTick()
+    tags.value = reconstructedTags
+    await nextTick()
+    isRestoringSession.value = false
   }
   // ------------------------------------------
 
@@ -290,16 +290,18 @@ export const useTagStore = defineStore('tags', () => {
   }
 
   // --- Action to reset to initial/current state ---
-  async function resetToCurrentSession({isNewDream = false}: {isNewDream?: boolean} = {}) {
-    isRestoringSession.value = true;
-    tags.value = [];
-    sessionId.value = generateSessionId();
-    zoneViewportStates.value = new Map<string, ViewportState>();
-    loadedDreamId.value = null;
-    currentGeneratedPrompt.value = '';
-    currentImageUrl.value = null;
-    
-    const freshTagsData = isNewDream ? initializeTags() : JSON.parse(JSON.stringify(initialTagsState));
+  async function resetToCurrentSession({ isNewDream = false }: { isNewDream?: boolean } = {}) {
+    isRestoringSession.value = true
+    tags.value = []
+    sessionId.value = generateSessionId()
+    zoneViewportStates.value = new Map<string, ViewportState>()
+    loadedDreamId.value = null
+    currentGeneratedPrompt.value = ''
+    currentImageUrl.value = null
+
+    const freshTagsData = isNewDream
+      ? initializeTags()
+      : JSON.parse(JSON.stringify(initialTagsState))
     freshTagsData.forEach((tag: Tag) => {
       delete tag.x
       delete tag.y
@@ -315,10 +317,10 @@ export const useTagStore = defineStore('tags', () => {
     hasUnsavedChanges.value = false
 
     // Delay tag assignment
-    await nextTick();
-    tags.value = freshTagsData;
-    await nextTick();
-    isRestoringSession.value = false;
+    await nextTick()
+    tags.value = freshTagsData
+    await nextTick()
+    isRestoringSession.value = false
   }
   // ----------------------------------------------
 
@@ -364,10 +366,10 @@ export const useTagStore = defineStore('tags', () => {
 
   // --- Action to load state from an image snapshot ---
   async function loadStateFromImageSnapshot(imageSnapshot: {
-    id: number;
-    imageUrl: string;
-    promptText?: string;
-    graphState: any; // This will be the { focusedZone, tags } object
+    id: number
+    imageUrl: string
+    promptText?: string
+    graphState: any // This will be the { focusedZone, tags } object
   }) {
     isRestoringSession.value = true
     currentGeneratedPrompt.value = ''
@@ -475,9 +477,9 @@ export const useTagStore = defineStore('tags', () => {
     // or the initial state of a *new session*.
     hasUnsavedChanges.value = true
 
-    await nextTick();
-    isRestoringSession.value = false;
-    router.replace({ query: { ...router.currentRoute.value.query, snapshot: imageSnapshot.id } });
+    await nextTick()
+    isRestoringSession.value = false
+    router.replace({ query: { ...router.currentRoute.value.query, snapshot: imageSnapshot.id } })
   }
   // --------------------------------------------------
 
@@ -599,5 +601,5 @@ export const useTagStore = defineStore('tags', () => {
     setPendingSnapshot,
     consumePendingSnapshot,
     reset,
-  };
-});
+  }
+})

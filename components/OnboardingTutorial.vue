@@ -3,23 +3,26 @@
     <div class="tutorial-container" @click.stop>
       <div class="tutorial-header">
         <h2>Welcome to DreamSeed! 🎨</h2>
-        <Button 
-          icon="pi pi-times" 
+        <Button
+          icon="pi pi-times"
           class="p-button-text p-button-rounded tutorial-close"
           @click="closeTutorial"
         />
       </div>
-      
+
       <div class="tutorial-content">
         <div v-if="currentStep === 0" class="tutorial-step">
           <div class="step-icon">
             <i class="pi pi-sparkles"></i>
           </div>
           <h3>Create Amazing AI Art</h3>
-          <p>DreamSeed helps you generate beautiful images using AI. Select tags from our visual graph to build your perfect prompt.</p>
-          <div class="step-image">
+          <p>
+            DreamSeed helps you generate beautiful images using AI. Select tags from our visual
+            graph to build your perfect prompt.
+          </p>
+          <!-- <div class="step-image">
             <img src="/tutorial/overview.png" alt="App overview" />
-          </div>
+          </div> -->
         </div>
 
         <div v-else-if="currentStep === 1" class="tutorial-step">
@@ -27,7 +30,10 @@
             <i class="pi pi-sitemap"></i>
           </div>
           <h3>1. Select Tags</h3>
-          <p>Click on tags in the force graph to add them to your prompt. Tags are organized by zones like Subject, Style, and Mood.</p>
+          <p>
+            Click on tags in the force graph to add them to your prompt. Tags are organized by zones
+            like Subject, Style, and Mood.
+          </p>
           <ul class="tutorial-tips">
             <li>🎯 Click parent tags (like "Humans") to see more options</li>
             <li>🎨 Combine tags from different zones for unique results</li>
@@ -40,7 +46,10 @@
             <i class="pi pi-image"></i>
           </div>
           <h3>2. Generate Images</h3>
-          <p>Once you've selected your tags, click "Generate Image" to create your artwork. Each generation takes about 10-20 seconds.</p>
+          <p>
+            Once you've selected your tags, click "Generate Image" to create your artwork. Each
+            generation takes about 10-20 seconds.
+          </p>
           <ul class="tutorial-tips">
             <li>💡 The AI will create a detailed prompt from your tags</li>
             <li>🔄 You can regenerate with the same tags for variations</li>
@@ -53,7 +62,10 @@
             <i class="pi pi-save"></i>
           </div>
           <h3>3. Save Your Dreams</h3>
-          <p>Save your creative sessions as "Dreams" to build a history of your generated images and tag combinations.</p>
+          <p>
+            Save your creative sessions as "Dreams" to build a history of your generated images and
+            tag combinations.
+          </p>
           <ul class="tutorial-tips">
             <li>💾 Click the save button to preserve your session</li>
             <li>📚 Access saved dreams from the sidebar</li>
@@ -68,20 +80,20 @@
           <h3>Ready to Create!</h3>
           <p>You're all set! Start by selecting some tags and generating your first image.</p>
           <div class="tutorial-actions">
-            <Button 
+            <Button
               label="Start Creating"
               icon="pi pi-arrow-right"
-              @click="closeTutorial"
               class="p-button-primary"
+              @click="closeTutorial"
             />
           </div>
         </div>
       </div>
-      
+
       <div class="tutorial-footer">
         <div class="tutorial-dots">
-          <span 
-            v-for="i in totalSteps" 
+          <span
+            v-for="i in totalSteps"
             :key="i"
             class="dot"
             :class="{ active: currentStep === i - 1 }"
@@ -89,20 +101,20 @@
           ></span>
         </div>
         <div class="tutorial-nav">
-          <Button 
+          <Button
             v-if="currentStep > 0"
             label="Previous"
             icon="pi pi-chevron-left"
-            @click="previousStep"
             class="p-button-text"
+            @click="previousStep"
           />
-          <Button 
+          <Button
             v-if="currentStep < totalSteps - 1"
             label="Next"
             icon="pi pi-chevron-right"
-            iconPos="right"
-            @click="nextStep"
+            icon-pos="right"
             class="p-button-primary"
+            @click="nextStep"
           />
         </div>
       </div>
@@ -323,18 +335,18 @@ defineExpose({ show })
     max-height: 100vh;
     border-radius: 0;
   }
-  
+
   .tutorial-content {
     padding: 1.5rem;
   }
-  
+
   .step-icon {
     width: 60px;
     height: 60px;
   }
-  
+
   .step-icon i {
     font-size: 2rem;
   }
 }
-</style> 
+</style>

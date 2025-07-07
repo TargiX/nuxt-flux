@@ -6,7 +6,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
   const { status, session } = useAuth()
 
   // Public routes: Allow access directly
-  if (['/login', '/register'].includes(to.path)) {
+  if (['/login', '/register', '/forgot-password', '/reset-password'].includes(to.path)) {
     return
   }
 
@@ -17,7 +17,8 @@ export default defineNuxtRouteMiddleware(async (to) => {
     // then redirect to login.
     if (!session.value && status.value !== 'authenticated') {
       // Only add redirect parameter if not going to home page
-      const redirectParam = to.fullPath !== '/' ? `?redirect=${encodeURIComponent(to.fullPath)}` : ''
+      const redirectParam =
+        to.fullPath !== '/' ? `?redirect=${encodeURIComponent(to.fullPath)}` : ''
       return navigateTo(`/login${redirectParam}`)
     }
     return // Proceed with navigation
@@ -27,15 +28,19 @@ export default defineNuxtRouteMiddleware(async (to) => {
   // If status is 'loading', it means useAuth is trying to determine auth state.
   // Wait for this to complete.
   if (status.value === 'loading') {
-    await new Promise<void>(resolve => {
+    await new Promise<void>((resolve) => {
       // Watch for status to change from 'loading'
-      const unwatch = watch(status, (newStatus) => {
-        if (newStatus !== 'loading') {
-          unwatch(); // Stop watching once resolved
-          resolve();
-        }
-      }, { immediate: true }); // immediate:true ensures it runs if status is already not 'loading'
-    });
+      const unwatch = watch(
+        status,
+        (newStatus) => {
+          if (newStatus !== 'loading') {
+            unwatch() // Stop watching once resolved
+            resolve()
+          }
+        },
+        { immediate: true }
+      ) // immediate:true ensures it runs if status is already not 'loading'
+    })
   }
 
   // After any loading, if status is not 'authenticated', redirect to login.
@@ -46,4 +51,4 @@ export default defineNuxtRouteMiddleware(async (to) => {
   }
 
   // No explicit return needed here; if not redirected, Nuxt proceeds.
-}) 
+})

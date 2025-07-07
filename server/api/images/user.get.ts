@@ -37,4 +37,4 @@ export default defineEventHandler(async (event) => {
       data: error.message, // Optionally include error message in data for debugging
     })
   }
-}) 
+})

@@ -1,4 +1,4 @@
-const tailwindcssPrimeUI = require('tailwindcss-primeui');
+const tailwindcssPrimeUI = require('tailwindcss-primeui')
 
 module.exports = {
   darkMode: 'class', // or 'media' or 'class'
@@ -10,7 +10,7 @@ module.exports = {
     './plugins/**/*.{js,ts}',
     './app.vue',
     './error.vue',
-    './node_modules/primevue/**/*.{vue,js,ts,jsx,tsx}' // Path to PrimeVue components
+    './node_modules/primevue/**/*.{vue,js,ts,jsx,tsx}', // Path to PrimeVue components
   ],
   theme: {
     extend: {
@@ -37,11 +37,9 @@ module.exports = {
         'surface-700': 'rgb(var(--surface-700))',
         'surface-800': 'rgb(var(--surface-800))',
         'surface-900': 'rgb(var(--surface-900))',
-        'surface-950': 'rgb(var(--surface-950))'
-      }
-    }
+        'surface-950': 'rgb(var(--surface-950))',
+      },
+    },
   },
-  plugins: [
-    tailwindcssPrimeUI
-  ]
-}; 
+  plugins: [tailwindcssPrimeUI],
+}

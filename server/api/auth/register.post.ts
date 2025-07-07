@@ -11,19 +11,19 @@ export default defineEventHandler(async (event) => {
     if (!email || !password) {
       return createError({
         statusCode: 400,
-        statusMessage: 'Email and password are required'
+        statusMessage: 'Email and password are required',
       })
     }
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
-      where: { email }
+      where: { email },
     })
 
     if (existingUser) {
       return createError({
         statusCode: 400,
-        statusMessage: 'User with this email already exists'
+        statusMessage: 'User with this email already exists',
       })
     }
 
@@ -43,7 +43,7 @@ export default defineEventHandler(async (event) => {
         email: true,
         name: true,
         createdAt: true,
-      }
+      },
     })
 
     // Return the created user (without password)
@@ -51,11 +51,11 @@ export default defineEventHandler(async (event) => {
   } catch (error) {
     // Log the error for debugging
     console.error('Registration error:', error)
-    
+
     // Return a generic error to the client
     return createError({
       statusCode: 500,
-      statusMessage: 'An error occurred during registration'
+      statusMessage: 'An error occurred during registration',
     })
   }
-}) 
+})

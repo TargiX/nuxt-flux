@@ -1,5 +1,5 @@
-import { type Selection } from 'd3';
-import type { GraphLink, GraphNode } from '~/types/graph';
+import { type Selection } from 'd3'
+import type { GraphLink, GraphNode } from '~/types/graph'
 
 export function useLinkStyling() {
   /**
@@ -10,38 +10,43 @@ export function useLinkStyling() {
     id: string = 'link-gradient'
   ) => {
     // Create default gradient for links
-    const linkGradient = svg.select('defs')
+    const linkGradient = svg
+      .select('defs')
       .append('linearGradient')
       .attr('id', id)
       .attr('gradientUnits', 'userSpaceOnUse')
       .attr('x1', '0%')
       .attr('y1', '0%')
       .attr('x2', '100%')
-      .attr('y2', '0%');
-    
+      .attr('y2', '0%')
+
     // Add stops to the gradient - subtle fade
-    linkGradient.append('stop')
+    linkGradient
+      .append('stop')
       .attr('offset', '0%')
       .attr('stop-color', '#aaa')
-      .attr('stop-opacity', '0');
-      
-    linkGradient.append('stop')
+      .attr('stop-opacity', '0')
+
+    linkGradient
+      .append('stop')
       .attr('offset', '20%')
       .attr('stop-color', '#aaa')
-      .attr('stop-opacity', '0.5');
-      
-    linkGradient.append('stop')
+      .attr('stop-opacity', '0.5')
+
+    linkGradient
+      .append('stop')
       .attr('offset', '80%')
       .attr('stop-color', '#aaa')
-      .attr('stop-opacity', '0.5');
-      
-    linkGradient.append('stop')
+      .attr('stop-opacity', '0.5')
+
+    linkGradient
+      .append('stop')
       .attr('offset', '100%')
       .attr('stop-color', '#aaa')
-      .attr('stop-opacity', '0');
-      
-    return linkGradient;
-  };
+      .attr('stop-opacity', '0')
+
+    return linkGradient
+  }
 
   /**
    * Creates a unique gradient for a specific link
@@ -51,20 +56,20 @@ export function useLinkStyling() {
     source: GraphNode,
     target: GraphNode
   ): string => {
-    const gradientId = `link-gradient-${source.id}-${target.id}`;
-    
+    const gradientId = `link-gradient-${source.id}-${target.id}`
+
     // Check if this gradient already exists
     if (svg.select(`#${gradientId}`).empty()) {
       // Create a new gradient for this link
-      createLinkGradient(svg, gradientId);
-      
+      createLinkGradient(svg, gradientId)
+
       // Update the gradient orientation
-      updateGradientPositions(svg, source, target);
+      updateGradientPositions(svg, source, target)
     }
-    
-    return gradientId;
-  };
-  
+
+    return gradientId
+  }
+
   /**
    * Updates gradient positions based on node positions
    */
@@ -73,30 +78,29 @@ export function useLinkStyling() {
     source: GraphNode,
     target: GraphNode
   ) => {
-    const gradientId = `link-gradient-${source.id}-${target.id}`;
-    svg.select(`#${gradientId}`)
+    const gradientId = `link-gradient-${source.id}-${target.id}`
+    svg
+      .select(`#${gradientId}`)
       .attr('x1', source.x || 0)
       .attr('y1', source.y || 0)
       .attr('x2', target.x || 0)
-      .attr('y2', target.y || 0);
-  };
-  
+      .attr('y2', target.y || 0)
+  }
+
   /**
    * Apply styling to a link
    */
-  const applyLinkStyle = (
-    selection: Selection<any, GraphLink, any, any>
-  ) => {
+  const applyLinkStyle = (selection: Selection<any, GraphLink, any, any>) => {
     selection
       .attr('stroke-opacity', 0.5)
-      .attr('stroke-width', d => Math.max(1, Math.sqrt(d.value) * 0.7))
-      .attr('stroke-linecap', 'round');
-  };
+      .attr('stroke-width', (d) => Math.max(1, Math.sqrt(d.value) * 0.7))
+      .attr('stroke-linecap', 'round')
+  }
 
   return {
     createLinkGradient,
     createUniqueGradient,
     updateGradientPositions,
-    applyLinkStyle
-  };
-} 
+    applyLinkStyle,
+  }
+}
