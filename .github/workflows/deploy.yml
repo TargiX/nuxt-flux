@@ -163,12 +163,24 @@ jobs:
           port: ${{ secrets.SERVER_SSH_PORT || 22 }}
           script: |
               set -e
+              
+              # Source NVM to make the nvm command available.
+              export NVM_DIR="$HOME/.nvm"
+              [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+              
+              # Explicitly USE the correct node version. This is the critical step
+              # for non-interactive shells, as they don't automatically use the default.
+              nvm use default
+              
+              # Now, the correct node and pnpm are in the PATH.
               cd /var/www/dreamseed
               
-              # The server environment is now pre-configured with the correct Node, nvm, and pnpm.
-              # We just need to install dependencies and restart the app.
+              echo "--- Verification ---"
+              echo "Node version: $(node -v)"
+              echo "pnpm version: $(pnpm -v)"
+              echo "--------------------"
               
-              echo "=== Installing production dependencies with pre-configured pnpm ==="
+              echo "=== Installing production dependencies ==="
               pnpm install --prod --frozen-lockfile
               
               echo "=== Restarting application with PM2 ==="
