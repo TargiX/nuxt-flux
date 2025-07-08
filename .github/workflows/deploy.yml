@@ -164,8 +164,21 @@ jobs:
           script: |
               set -e
               cd /var/www/dreamseed
-  
+
+              # Set up NVM
+              export NVM_DIR="$HOME/.nvm"
+              [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+              [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+              
+              # Install and use the correct Node.js version from .nvmrc
+              echo "=== Setting up Node.js via NVM ==="
+              nvm install
+              nvm use
+              echo "Node version: $(node -v)"
+              echo "pnpm version: $(pnpm -v)"
+
               # 1) install production deps (this will trigger postinstall script with prisma generate)
+              echo "=== Installing production dependencies ==="
               pnpm install --prod --frozen-lockfile
   
               # 2) DEBUG: Check if .env file exists before PM2 restart
