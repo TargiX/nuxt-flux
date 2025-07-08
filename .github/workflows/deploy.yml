@@ -165,15 +165,20 @@ jobs:
               set -e
               cd /var/www/dreamseed
 
-              # Set up NVM
+              # Check for NVM and install if not present
               export NVM_DIR="$HOME/.nvm"
-              [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-              [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+              if [ ! -s "$NVM_DIR/nvm.sh" ]; then
+                echo "NVM not found, installing..."
+                curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+              fi
               
-              # Install and use the correct Node.js version from .nvmrc
+              # Source NVM scripts to make it available in this session
+              [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+              
+              # Now, nvm command should be available
               echo "=== Setting up Node.js via NVM ==="
-              nvm install
-              nvm use
+              nvm install # This will read .nvmrc and install the version if needed
+              nvm use     # This will use the version from .nvmrc
               echo "Node version: $(node -v)"
               echo "pnpm version: $(pnpm -v)"
 
