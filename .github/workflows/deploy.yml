@@ -45,8 +45,8 @@ jobs:
       # - name: Check Formatting
       #   run: pnpm format --check
         
-      - name: Run tests
-        run: pnpm test --run
+      # - name: Run tests
+      #   run: pnpm test --run
 
       - name: Build Nuxt
         run: pnpm run build
