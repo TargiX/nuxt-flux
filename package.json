@@ -10,7 +10,7 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare && prisma generate",
-    "lint": "eslint --ext .js,.ts,.vue .",
+    "lint": "eslint .",
     "lint:fix": "eslint --fix --ext .js,.ts,.vue .",
     "format": "prettier --write \"**/*.{js,ts,vue,scss,html,md,json}\" --ignore-path .gitignore",
     "db:studio:local": "cp .env.local .env && npx prisma studio",
@@ -92,3 +92,4 @@
     }
   }
 }
+

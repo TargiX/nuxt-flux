@@ -1,10 +1,27 @@
-import { ref, watch, onMounted, type Ref } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import type { Dream, DreamSummary } from '~/types/dream'
 import { useTagStore } from '~/store/tagStore'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { useErrorTracking } from '~/composables/useErrorTracking'
 // Menu component instance methods like .toggle() are handled by passing the ref from the calling component
+
+interface ValidationError {
+  field: string
+  message: string
+}
+
+interface Tag {
+  id: string
+  text: string
+  originalText?: string
+  isTransformed?: boolean
+  cluster?: number
+  vx?: number
+  vy?: number
+  x?: number
+  y?: number
+}
 
 // Add a module-level flag to track if we've fetched dreams list
 let dreamsListFetched = false
@@ -15,7 +32,7 @@ export function useDreamManagement() {
   const tagStore = useTagStore()
   const confirm = useConfirm()
   const toast = useToast()
-  const { trackError, trackUserAction, trackPerformance, withErrorTracking } = useErrorTracking()
+  const { trackError, trackUserAction, trackPerformance } = useErrorTracking()
 
   const {
     data: savedDreams,
@@ -81,7 +98,11 @@ export function useDreamManagement() {
   // ----------------------------------------------
 
   // --- Functions for Menu and Inline Editing ---
-  function toggleDreamActionMenu(event: MouseEvent, dream: DreamSummary, menuComponent: any) {
+  function toggleDreamActionMenu(
+    event: MouseEvent,
+    dream: DreamSummary,
+    menuComponent: { toggle: (event: MouseEvent) => void }
+  ) {
     selectedDreamForMenu.value = dream // Set context for menu items
     if (menuComponent && typeof menuComponent.toggle === 'function') {
       menuComponent.toggle(event)
@@ -268,35 +289,53 @@ export function useDreamManagement() {
   const isSavingDream = ref(false) // Add a ref to track saving state if needed by other parts of the composable or UI
 
   // Helper function to handle save errors (can be used by multiple save operations)
-  function handleSaveError(error: any, operation: string, toastInstance: any) {
-    // Pass toast instance
+  function handleSaveError(error: unknown, operation: string) {
     let errorMessage = `Could not ${operation} dream due to an unknown error.`
-    const errorContext: any = { operation }
+    const errorContext: { operation: string; validationErrors?: ValidationError[] } = {
+      operation,
+    }
+    let errorToTrack: Error | unknown = error
 
-    if (error.data && error.data.message) {
-      errorMessage = error.data.message
-      if (error.data.code === 'VALIDATION_FAILED' && error.data.errors) {
-        errorMessage = error.data.errors.map((e: any) => `${e.field}: ${e.message}`).join('; ')
-        errorContext.validationErrors = error.data.errors
+    if (
+      error instanceof Object &&
+      'data' in error &&
+      error.data &&
+      typeof error.data === 'object'
+    ) {
+      const errorData = error.data as {
+        message?: string
+        code?: string
+        errors?: ValidationError[]
       }
-    } else if (error.statusMessage) {
-      errorMessage = error.statusMessage
+      errorMessage = errorData.message || errorMessage
+      if (errorData.code === 'VALIDATION_FAILED' && Array.isArray(errorData.errors)) {
+        errorContext.validationErrors = errorData.errors
+        if (errorContext.validationErrors) {
+          errorMessage = errorContext.validationErrors
+            .map((e) => `${e.field}: ${e.message}`)
+            .join('; ')
+        }
+      }
+    } else if (error instanceof Object && 'statusMessage' in error) {
+      errorMessage = (error as { statusMessage: string }).statusMessage
     }
 
-    trackError(error, errorMessage, {
+    if (!(error instanceof Error)) {
+      errorToTrack = new Error(errorMessage)
+    }
+
+    trackError(errorToTrack as Error, errorMessage, {
       context: {
         dreamOperation: errorContext,
-        status: error.status || 'unknown',
+        status: error instanceof Object && 'status' in error ? error.status : 'unknown',
       },
     })
   }
 
   // Function to perform the save (for new or save as new)
   async function performSaveAsNew(
-    dreamDataPayload: any,
-    toastInstance: any,
-    tagStoreInstance: any,
-    title?: string
+    dreamDataPayload: { tags: Tag[] },
+    tagStoreInstance: ReturnType<typeof useTagStore>
   ) {
     // Pass toast and tagStore
     isSavingDream.value = true
@@ -309,7 +348,7 @@ export function useDreamManagement() {
     })
 
     try {
-      newDreamResponse = await $fetch<any>('/api/dreams', {
+      newDreamResponse = await $fetch<Dream>('/api/dreams', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -336,28 +375,28 @@ export function useDreamManagement() {
       tagStoreInstance.refreshDreamsList() // This should ideally call the refreshDreamsListAPI from this composable
 
       return newDreamResponse // Return the saved dream data
-    } catch (error: any) {
+    } catch (error: unknown) {
       const duration = Date.now() - startTime
       trackPerformance('save_new_dream', duration, {
         success: false,
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error',
       })
 
-      handleSaveError(error, 'save as new', toastInstance)
+      handleSaveError(error, 'save as new')
       return null // Indicate failure
     } finally {
       isSavingDream.value = false
     }
   }
 
-  async function initiateSaveDreamProcess(dreamDataPayload: any) {
+  async function initiateSaveDreamProcess(dreamDataPayload: { tags: Tag[] }) {
     console.log(`[DREAM_SAVE] === STARTING SAVE PROCESS ===`)
     console.log(`[DREAM_SAVE] isSavingDream.value: ${isSavingDream.value}`)
     console.log(`[DREAM_SAVE] dreamDataPayload:`, dreamDataPayload)
 
-    const transformedInPayload = dreamDataPayload.tags.filter((tag: any) => tag.isTransformed)
+    const transformedInPayload = dreamDataPayload.tags?.filter((tag) => tag.isTransformed) || []
     console.log(`[DREAM_SAVE] Transformed tags in payload: ${transformedInPayload.length}`)
-    transformedInPayload.forEach((tag: any) => {
+    transformedInPayload.forEach((tag) => {
       console.log(
         `[DREAM_SAVE] Payload transformed tag: ${tag.id} - "${tag.originalText}" -> "${tag.text}"`
       )
@@ -395,7 +434,7 @@ export function useDreamManagement() {
             // Current TagCloud.vue uses POST to /api/dreams with dreamIdToUpdate in body.
             // A more RESTful approach would be PUT to /api/dreams/:id.
             // Assuming the current backend handles the POST for updates.
-            const updatedDream = await $fetch<any>('/api/dreams', {
+            const updatedDream = await $fetch<Dream>('/api/dreams', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -423,14 +462,14 @@ export function useDreamManagement() {
 
             tagStore.markAsSaved()
             if (refreshDreamsListAPI) refreshDreamsListAPI() // Refresh using the composable's own refresher
-          } catch (error: any) {
+          } catch (error: unknown) {
             const duration = Date.now() - startTime
             trackPerformance('update_dream', duration, {
               success: false,
-              error: error.message,
+              error: error instanceof Error ? error.message : 'Unknown error',
             })
 
-            handleSaveError(error, 'update', toast) // Use existing error handler
+            handleSaveError(error, 'update') // Use existing error handler
           } finally {
             isSavingDream.value = false
           }
@@ -438,13 +477,13 @@ export function useDreamManagement() {
         reject: async () => {
           // User chose to SAVE AS NEW dream (from an existing one)
           // performSaveAsNew already sets isSavingDream true/false
-          await performSaveAsNew(dreamDataPayload, toast, tagStore)
+          await performSaveAsNew(dreamDataPayload, tagStore)
         },
       })
     } else {
       // It's a NEW dream (loadedDreamId is null), save it directly
       // performSaveAsNew already sets isSavingDream true/false
-      await performSaveAsNew(dreamDataPayload, toast, tagStore)
+      await performSaveAsNew(dreamDataPayload, tagStore)
     }
   }
   // --------------------------
