@@ -164,54 +164,14 @@ jobs:
           script: |
               set -e
               cd /var/www/dreamseed
-
-              # Check for NVM and install if not present
-              export NVM_DIR="$HOME/.nvm"
-              if [ ! -s "$NVM_DIR/nvm.sh" ]; then
-                echo "NVM not found, installing..."
-                curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-              fi
               
-              # Source NVM scripts to make it available in this session
-              [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+              # The server environment is now pre-configured with the correct Node, nvm, and pnpm.
+              # We just need to install dependencies and restart the app.
               
-              # Now, nvm command should be available
-              echo "=== Setting up Node.js via NVM ==="
-              nvm install # This will read .nvmrc and install the version if needed
-              nvm use     # This will use the version from .nvmrc
-              
-              # Install pnpm in the NVM-managed Node environment to match project setup
-              echo "=== Installing pnpm v9 ==="
-              npm install -g pnpm@9
-
-              echo "Node version: $(node -v)"
-              echo "pnpm version: $(pnpm -v)"
-
-              # 1) install production deps (this will trigger postinstall script with prisma generate)
-              echo "=== Installing production dependencies ==="
+              echo "=== Installing production dependencies with pre-configured pnpm ==="
               pnpm install --prod --frozen-lockfile
-  
-              # 2) DEBUG: Check if .env file exists before PM2 restart
-              echo "=== DEBUG: Checking .env file before PM2 restart ==="
-              ls -la .env
-              echo "First 3 lines of .env:"
-              head -3 .env
               
-              # 3) Kill PM2 daemon completely to force fresh environment loading
-              pm2 kill
+              echo "=== Restarting application with PM2 ==="
+              pm2 restart ecosystem.config.cjs --env production
               
-              # 4) Load environment variables manually and start PM2
-              echo "=== Loading .env manually ==="
-              set -a  # automatically export all variables
-              source .env
-              set +a  # stop auto-export
-              
-              # 5) Start fresh with new .env file
-              pm2 start ecosystem.config.cjs --env production
-              
-              # 6) Verification - check if environment variables are loaded
-              echo "=== PM2 Environment Check ==="
-              pm2 show dreamseed | grep -A20 'env' || echo "PM2 show failed"
-              echo "=== Debug API Check ==="
-              sleep 5  # Give server more time to start
-              curl -s http://localhost:3000/api/debug/env || echo "Debug endpoint not ready yet"
+              echo "Deployment complete."
