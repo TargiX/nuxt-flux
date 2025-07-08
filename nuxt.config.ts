@@ -23,12 +23,16 @@ const MyPreset = definePreset(Aura, {
 })
 
 export default defineNuxtConfig({
+  build: {
+    transpile: ['import-in-the-middle', 'd3'],
+  },
   modules: [
     '@primevue/nuxt-module',
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt',
     '@nuxtjs/google-fonts',
     '@hebilicious/authjs-nuxt',
+    '@sentry/nuxt/module',
   ],
 
   experimental: {

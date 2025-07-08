@@ -26,7 +26,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18' # Ensure this matches your project's requirement (check package.json engines field)
+          node-version: '22' # Ensure this matches your project's requirement (check package.json engines field)
           cache: 'pnpm' # Cache pnpm dependencies
 
       - name: Check for lockfile
