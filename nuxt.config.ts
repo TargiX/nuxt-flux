@@ -33,6 +33,7 @@ export default defineNuxtConfig({
     '@nuxtjs/google-fonts',
     '@hebilicious/authjs-nuxt',
     '@sentry/nuxt/module',
+    '@nuxt/eslint',
   ],
 
   experimental: {

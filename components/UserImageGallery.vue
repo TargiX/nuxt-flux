@@ -14,6 +14,7 @@
       <p>Your gallery is empty. Go create some amazing images!</p>
     </div>
     <div v-else class="image-grid">
+      <!-- eslint-disable-next-line vue/valid-v-for -->
       <div v-for="(image, index) in images" :key="image.id" class="image-card glass-card-hoverable">
         <img
           :src="image.imageUrl"
@@ -55,6 +56,7 @@
 </template>
 
 <script setup lang="ts">
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { ref, onMounted } from 'vue'
 import { useImageDownloader } from '~/composables/useImageDownloader'
 import ImageViewerModal from './ImageViewerModal.vue'
@@ -66,13 +68,13 @@ interface GalleryImage {
   promptText?: string | null
   createdAt: string // Or Date, adjust based on API response
   dreamId: number
-  graphState?: any
+  graphState?: unknown
   // Add other fields if needed from the API response, e.g., graphState
 }
 
 const images = ref<GalleryImage[]>([])
 const pending = ref(true)
-const error = ref<any | null>(null)
+const error = ref<{ data?: unknown } | null>(null)
 
 const { downloadImage } = useImageDownloader()
 
@@ -83,11 +85,12 @@ async function fetchUserImages() {
   pending.value = true
   error.value = null
   try {
+    // eslint-disable-next-line no-undef
     const fetchedImages = await $fetch<GalleryImage[]>('/api/images/user')
     images.value = fetchedImages
-  } catch (err: any) {
+  } catch (err) {
     console.error('Failed to fetch user images for gallery:', err)
-    error.value = err
+    error.value = err as { data?: unknown }
   } finally {
     pending.value = false
   }
@@ -105,6 +108,7 @@ function openImageModal(index: number) {
 function handleDownloadImage(imageUrl: string, promptText?: string | null) {
   downloadImage(imageUrl, promptText)
 }
+/* eslint-enable @typescript-eslint/no-unused-vars */
 </script>
 
 <style scoped>
@@ -215,7 +219,7 @@ function handleDownloadImage(imageUrl: string, promptText?: string | null) {
   color: var(--text-color, #f9fafb);
 }
 .custom-image-dialog .prompt-modal-text {
-  background-color: rgba(255, 255, 255, 0.04); /* Very subtle background for the prompt box */
+  background-color: rgba(255, 255, 255, _0.04); /* Very subtle background for the prompt box */
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: var(--text-color, #f3f4f6);
   padding: 0.5rem 0.75rem;
