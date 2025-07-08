@@ -37,9 +37,16 @@ jobs:
           head -n 10 pnpm-lock.yaml || echo "pnpm-lock.yaml not found or empty"
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
-      # - name: Run tests # Uncomment this block if you have tests configured
+      - name: Lint Code
+        run: pnpm lint
+
+      - name: Check Formatting
+        run: pnpm format --check
+        
+      - name: Run tests
+        run: pnpm test --run
 
       - name: Build Nuxt
         run: pnpm run build
@@ -159,7 +166,7 @@ jobs:
               cd /var/www/dreamseed
   
               # 1) install production deps (this will trigger postinstall script with prisma generate)
-              pnpm install --prod --no-frozen-lockfile
+              pnpm install --prod --frozen-lockfile
   
               # 2) DEBUG: Check if .env file exists before PM2 restart
               echo "=== DEBUG: Checking .env file before PM2 restart ==="
