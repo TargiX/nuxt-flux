@@ -13,10 +13,10 @@
       <div class="tutorial-content">
         <div v-if="currentStep === 0" class="tutorial-step">
           <div class="step-icon">
-            <i class="pi pi-sparkles"></i>
+            <i class="pi pi-sparkles"/>
           </div>
           <h3>Create Amazing AI Art</h3>
-          <p>
+          <p class="frosted-card-text">
             DreamSeed helps you generate beautiful images using AI. Select tags from our visual
             graph to build your perfect prompt.
           </p>
@@ -27,7 +27,7 @@
 
         <div v-else-if="currentStep === 1" class="tutorial-step">
           <div class="step-icon">
-            <i class="pi pi-sitemap"></i>
+            <i class="pi pi-sitemap"/>
           </div>
           <h3>1. Select Tags</h3>
           <p>
@@ -37,13 +37,13 @@
           <ul class="tutorial-tips">
             <li>🎯 Click parent tags (like "Humans") to see more options</li>
             <li>🎨 Combine tags from different zones for unique results</li>
-            <li>✨ Selected tags turn green</li>
+            <li>✨ Selected tags turn vibrant colors</li>
           </ul>
         </div>
 
         <div v-else-if="currentStep === 2" class="tutorial-step">
           <div class="step-icon">
-            <i class="pi pi-image"></i>
+            <i class="pi pi-image"/>
           </div>
           <h3>2. Generate Images</h3>
           <p>
@@ -59,14 +59,14 @@
 
         <div v-else-if="currentStep === 3" class="tutorial-step">
           <div class="step-icon">
-            <i class="pi pi-save"></i>
+            <i class="pi pi-save"/>
           </div>
           <h3>3. Save Your Dreams</h3>
           <p>
             Save your creative sessions as "Dreams" to build a history of your generated images and
             tag combinations.
           </p>
-          <ul class="tutorial-tips">
+          <ul class="tutorial-tips frosted-card-text">
             <li>💾 Click the save button to preserve your session</li>
             <li>📚 Access saved dreams from the sidebar</li>
             <li>🔍 Return to any dream to continue where you left off</li>
@@ -75,7 +75,7 @@
 
         <div v-else-if="currentStep === 4" class="tutorial-step">
           <div class="step-icon">
-            <i class="pi pi-check-circle"></i>
+            <i class="pi pi-check-circle"/>
           </div>
           <h3>Ready to Create!</h3>
           <p>You're all set! Start by selecting some tags and generating your first image.</p>
@@ -98,7 +98,7 @@
             class="dot"
             :class="{ active: currentStep === i - 1 }"
             @click="currentStep = i - 1"
-          ></span>
+          />
         </div>
         <div class="tutorial-nav">
           <Button
@@ -189,14 +189,26 @@ defineExpose({ show })
 }
 
 .tutorial-container {
-  background: var(--surface-card);
   border-radius: 12px;
   max-width: 600px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  z-index: 0; /* establish stacking context */
+  overflow: hidden; /* clip the oversized blur */
+  background-color: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -50%; /* reach out beyond edges */
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    z-index: -1; /* sit behind all card content */
+    /* remove any mask-image here unless intentional */
+  }
 }
 
 .tutorial-header {
@@ -262,7 +274,6 @@ defineExpose({ show })
 }
 
 .tutorial-step p {
-  color: var(--text-color-secondary);
   line-height: 1.6;
   margin-bottom: 1.5rem;
 }
@@ -289,8 +300,8 @@ defineExpose({ show })
 
 .tutorial-tips li {
   padding: 0.5rem 0;
-  color: var(--text-color-secondary);
   line-height: 1.5;
+  color: v
 }
 
 .tutorial-actions {

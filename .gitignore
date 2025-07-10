@@ -56,3 +56,4 @@ scripts/prd.txt
 
 # Sentry Config File
 .env.sentry-build-plugin
+shrimp-data/nuxt-flux/WebGUI.md

@@ -19,7 +19,6 @@
       </div>
 
       <!-- Graph View -->
-      <button id="errorBtn" @click="triggerError">Trigger Error</button>
       <ForceGraph
         v-if="currentViewMode === 'graph'"
         ref="forceGraphRef"
@@ -63,7 +62,7 @@
             class="w-8 h-8 !p-0 flex items-center justify-center"
             @click="handleDownloadImage"
           >
-            <i class="pi pi-download text-sm"></i>
+            <i class="pi pi-download text-sm"/>
           </Button>
         </div>
         <div class="large-image-container">
@@ -72,9 +71,9 @@
             :src="tagStore.currentImageUrl"
             alt="Generated Image"
             class="large-generated-image"
-          />
+          >
           <div v-else class="large-placeholder-container">
-            <i class="pi pi-image text-6xl mb-4 opacity-50"></i>
+            <i class="pi pi-image text-6xl mb-4 opacity-50"/>
             <p class="text-lg opacity-75">No image generated yet</p>
             <p class="text-sm opacity-50">Generate an image to see it here</p>
           </div>
@@ -140,7 +139,7 @@
           class="manual-prompt-input text-[var(--text-color-secondary)] h-[calc(100%-10px)] w-full p-2"
           placeholder="Enter your prompt..."
           :disabled="isViewingSnapshot"
-        ></Textarea>
+        />
         <p
           v-else
           class="text-white-palette prompt-text"
@@ -635,10 +634,7 @@ watch(
   }
 )
 
-const triggerError = () => {
-  console.log('Triggering error')
-  throw new Error('Nuxt Button Error')
-}
+
 // Remove the problematic timeout-based forceViewportReset function
 function forceViewportReset() {
   if (!forceGraphRef.value) return
