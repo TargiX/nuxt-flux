@@ -80,26 +80,30 @@ export function useForceSimulation() {
     const centerY = height / 2
 
     const selectedParent = validNodes.find((n) => n.selected && !n.parentId)
-    const parentX =
+    const _parentX =
       selectedParent && typeof selectedParent.x === 'number' && !isNaN(selectedParent.x)
         ? selectedParent.x
         : centerX
-    const parentY =
+    const _parentY =
       selectedParent && typeof selectedParent.y === 'number' && !isNaN(selectedParent.y)
         ? selectedParent.y
         : centerY
 
     // Update node positions and fix selected nodes
     validNodes.forEach((node) => {
-      // Force clear invalid positions or initialize if missing
+      // Only initialize positions for truly new nodes (no x/y at all)
+      // Preserve existing positions even if they might be slightly invalid
       const hasValidX = typeof node.x === 'number' && !isNaN(node.x)
       const hasValidY = typeof node.y === 'number' && !isNaN(node.y)
+      const hasAnyX = node.x !== undefined && node.x !== null
+      const hasAnyY = node.y !== undefined && node.y !== null
 
-      if (!hasValidX) node.x = centerX + (Math.random() - 0.5) * 10
-      if (!hasValidY) node.y = centerY + (Math.random() - 0.5) * 10
+      // Only set positions for completely new nodes (no x/y properties at all)
+      if (!hasAnyX) node.x = centerX + (Math.random() - 0.5) * 10
+      if (!hasAnyY) node.y = centerY + (Math.random() - 0.5) * 10
 
-      // Reset velocities only for new/invalid nodes - preserve momentum for stable nodes
-      if (!hasValidX || !hasValidY) {
+      // Only reset velocities for truly new nodes
+      if (!hasAnyX || !hasAnyY) {
         node.vx = 0
         node.vy = 0
       }

@@ -16,7 +16,7 @@
           class="image-thumbnail-item current-session-tile live-session-active"
           :title="'This is your current session'"
         >
-          <i class="current-session-icon pi pi-desktop"></i>
+          <i class="current-session-icon pi pi-desktop"/>
           <span>Current Session</span>
         </div>
         <Button
@@ -55,7 +55,7 @@
             :class="{ 'thumbnail-selected': image.id === props.viewingSnapshotId }"
             @click="handleImageClick(image, idx)"
           >
-            <img :src="image.imageUrl" :alt="image.promptText || 'Generated Image'" />
+            <img :src="image.imageUrl" :alt="image.promptText || 'Generated Image'" >
             <div class="image-menu-wrapper">
               <ActionMenu
                 :items="getMenuItems(image)"
@@ -90,11 +90,11 @@
             key="error-msg"
             class="error-message central-message"
           >
-            <i class="pi pi-exclamation-triangle"></i>
+            <i class="pi pi-exclamation-triangle"/>
             <p>Could not load images. {{ error.message }}</p>
           </div>
           <div
-            v-else-if="props.dreamId && images.length === 0 && !pending && !error"
+            v-else-if="props.dreamId && images.length === 0 && !pending && !error && !props.isGeneratingImage"
             key="empty-dream-msg"
             class="empty-strip-message central-message"
           >

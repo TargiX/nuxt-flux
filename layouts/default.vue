@@ -5,7 +5,7 @@
     <div class="sidebar">
       <!-- Logo at the top -->
       <div class="logo-container">
-        <img src="/assets/dreamseed-logo-white.png" alt="DreamSeed" class="logo" />
+        <img src="/assets/dreamseed-logo-white.png" alt="DreamSeed" class="logo" >
       </div>
 
       <!-- Navigation items -->
@@ -32,13 +32,13 @@
           <span>Notifications</span>
         </a> -->
         <NuxtLink to="/gallery" class="nav-item" :class="{ active: route.path === '/gallery' }">
-          <i class="pi pi-th-large"></i>
+          <i class="pi pi-th-large"/>
           <span>Gallery</span>
         </NuxtLink>
 
         <!-- Help/Tutorial -->
         <a href="#" class="nav-item" @click.prevent="showTutorial">
-          <i class="pi pi-question-circle"></i>
+          <i class="pi pi-question-circle"/>
           <span>Help</span>
         </a>
 
@@ -49,7 +49,7 @@
           :class="{ active: route.path.startsWith('/dream/') || route.path === '/' }"
           @click.prevent="isDreamsOpen = !isDreamsOpen"
         >
-          <i :class="['pi', isDreamsOpen ? 'pi-folder-open' : 'pi-folder']"></i>
+          <i :class="['pi', isDreamsOpen ? 'pi-folder-open' : 'pi-folder']"/>
           <span>My Dreams</span>
           <i
             :class="[
@@ -58,7 +58,7 @@
               'text-xs',
               isDreamsOpen ? 'pi-chevron-down' : 'pi-chevron-right',
             ]"
-          ></i>
+          />
         </a>
         <div v-if="isDreamsOpen" class="dreams-list-container">
           <ul class="dreams-list">
@@ -67,16 +67,16 @@
               class="dream-item new-dream-item"
               @click.stop="onSelectDream(null)"
             >
-              <i class="pi pi-plus-circle mr-2 text-xs"></i>
+              <i class="pi pi-plus-circle mr-2 text-xs"/>
               <span>New Dream</span>
             </li>
             <li
               v-if="tagStore.loadedDreamId === null"
               class="dream-item unsaved"
-              :class="{ 'active-dream': route.path === '/dream/new' }"
+              :class="{ 'active-dream': tagStore.loadedDreamId === null }"
               @click="onSelectDream(null)"
             >
-              <i class="pi pi-pencil mr-2 text-xs"></i>
+              <i class="pi pi-pencil mr-2 text-xs"/>
               <span>
                 Current Session
                 <span
@@ -87,23 +87,23 @@
               </span>
             </li>
             <li v-if="pending" class="dream-item loading">
-              <i class="pi pi-spin pi-spinner mr-2"></i> Loading...
+              <i class="pi pi-spin pi-spinner mr-2"/> Loading...
             </li>
             <li v-else-if="error" class="dream-item error">
-              <i class="pi pi-exclamation-triangle mr-2 text-red-400"></i> Error loading dreams
+              <i class="pi pi-exclamation-triangle mr-2 text-red-400"/> Error loading dreams
             </li>
             <li
               v-else-if="!pending && !error && (!savedDreams || savedDreams.length === 0)"
               class="dream-item empty"
             >
-              <i class="pi pi-info-circle mr-2"></i> No saved dreams yet.
+              <i class="pi pi-info-circle mr-2"/> No saved dreams yet.
             </li>
             <template v-else>
               <li
                 v-for="dream in savedDreams"
                 :key="dream.id"
                 class="dream-item saved"
-                :class="{ 'active-dream': route.path === `/dream/${dream.id}` }"
+                :class="{ 'active-dream': tagStore.loadedDreamId === dream.id }"
                 @click="onSelectDream(dream)"
               >
                 <!-- Inline editing for dream title -->
@@ -123,8 +123,7 @@
                   <span
                     v-if="
                       tagStore.hasUnsavedChanges &&
-                      tagStore.loadedDreamId === dream.id &&
-                      route.path === `/dream/${dream.id}`
+                      tagStore.loadedDreamId === dream.id
                     "
                     class="unsaved-indicator"
                     >*</span
@@ -155,8 +154,8 @@
               :src="session.user.image"
               alt="User Avatar"
               class="avatar-image"
-            />
-            <i v-else class="pi pi-user"></i>
+            >
+            <i v-else class="pi pi-user"/>
           </div>
           <span class="user-name">{{ session.user.name || 'User' }}</span>
           <Button
@@ -251,7 +250,16 @@ async function onSelectDream(dream: DreamSummary | null) {
   // Navigate to selected dream or new session
   const targetPath = dream ? `/dream/${dream.id}` : '/dream/new'
   console.log(`[onSelectDream] Navigating to: ${targetPath}`)
-  router.push(targetPath)
+  if (targetPath === '/dream/new') {
+    // Only reset if we're not already in a new session
+    if (tagStore.loadedDreamId !== null) {
+      tagStore.resetToCurrentSession({ isNewDream: true })
+    }
+    window.history.replaceState(null, '', targetPath)
+    router.replace(targetPath)
+  } else {
+    router.push(targetPath)
+  }
 }
 
 // Ref for the Menu component instance - this needs to stay in the component that renders the Menu

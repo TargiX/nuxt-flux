@@ -26,8 +26,8 @@
           -
         </Button>
         <Button
-          severity="secondary"
           v-tooltip.top="'Fit entire graph'"
+          severity="secondary"
           size="small"
           class="!w-7 !h-7"
           icon="pi pi-stop"
@@ -55,7 +55,7 @@
       </div>
       <div>
         <div class="additional-controls flex-grow">
-          <slot name="controls"></slot>
+          <slot name="controls"/>
         </div>
       </div>
     </div>
@@ -72,7 +72,8 @@
 import { ref, onMounted, watch, computed, onBeforeUnmount, nextTick } from 'vue'
 import * as d3 from 'd3'
 import 'd3-transition' // Ensure transition support is available
-import { useZoom, type ViewportState } from '~/composables/useZoom'
+import { useZoom  } from '~/composables/useZoom'
+import type {ViewportState} from '~/composables/useZoom';
 import { useNodeStyling } from '~/composables/useNodeStyling'
 import { useLinkStyling } from '~/composables/useLinkStyling'
 import { useForceSimulation } from '~/composables/useForceSimulation'
@@ -85,6 +86,7 @@ const props = defineProps<{
   nodes: GraphNode[]
   links: GraphLink[]
   isReadOnly?: boolean
+  isGraphLoading?: boolean
 }>()
 
 const emit = defineEmits(['nodeClick', 'nodePositionsUpdated', 'nodeTextUpdated', 'menuAction'])
@@ -707,6 +709,7 @@ defineExpose<ForceGraphExposed>({
   },
   resetAndCenter: () => {
     console.log('ForceGraph resetAndCenter called - performing full reset')
+    console.trace('resetAndCenter call stack')
     if (!svg || !simulation || !container.value) return
 
     // Get container dimensions

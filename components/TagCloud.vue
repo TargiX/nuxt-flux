@@ -276,8 +276,6 @@ import ImageStrip from './ImageStrip.vue'
 import ImageViewerModal from './ImageViewerModal.vue'
 import { generateImagePrompt, clearPromptCache } from '~/services/promptGenerationService'
 import {
-  generateConceptTags,
-  preselectConceptTag,
   transformNodeConcept,
   generateConceptTagsForTransformed,
 } from '~/services/tagSelectionService'
@@ -291,6 +289,7 @@ import { useConfirm } from 'primevue/useconfirm'
 import { useImageDownloader } from '~/composables/useImageDownloader'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useRoute } from 'vue-router'
+import type { Dream } from '~/types/dream'
 
 const tagStore = useTagStore()
 const toast = useToast()
@@ -299,8 +298,11 @@ const { downloadImage } = useImageDownloader()
 const route = useRoute()
 
 // Use the dream management composable
-const { isSavingDream: isSavingDreamFromComposable, initiateSaveDreamProcess } =
-  useDreamManagement()
+const {
+  isSavingDream: isSavingDreamFromComposable,
+  initiateSaveDreamProcess,
+  performSaveAsNew,
+} = useDreamManagement()
 
 // Use the image generation composable
 const {
@@ -356,10 +358,10 @@ const devMode = ref(false)
 
 watch(
   () => tagStore.loadedDreamId,
-  (newId, oldId) => {
-    if (newId !== oldId) {
-      // skipPrompt.value = true;
-    }
+  (_newId, _oldId) => {
+    // if (newId !== oldId) {
+    //   // skipPrompt.value = true;
+    // }
   }
 )
 
@@ -419,19 +421,18 @@ watch(selectedZone, (newZone, oldZone) => {
   }
 })
 
-function debounce<T extends (...args: any[]) => any>(
+function debounce<T extends (...args: any[]) => void>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
   let timeout: ReturnType<typeof setTimeout> | null = null
 
-  return function (this: any, ...args: Parameters<T>) {
-    const context = this
+  return function (this: unknown, ...args: Parameters<T>) {
     if (timeout !== null) {
       clearTimeout(timeout)
     }
     timeout = setTimeout(() => {
-      func.apply(context, args)
+      func.apply(this, args)
       timeout = null
     }, wait)
   }
@@ -460,14 +461,14 @@ const triggerPromptGeneration = debounce(async () => {
       if (currentRequestId === promptRequestId && !isZoneSwitching.value) {
         tagStore.setCurrentGeneratedPrompt(result, false)
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to generate prompt:', error)
       if (currentRequestId === promptRequestId && !isZoneSwitching.value) {
         tagStore.setCurrentGeneratedPrompt('Error generating prompt.', false)
         toast.add({
           severity: 'error',
           summary: 'Prompt Generation Failed',
-          detail: error.message || 'Could not generate prompt. Please try again.',
+          detail: (error as Error).message || 'Could not generate prompt. Please try again.',
           life: 5000,
         })
       }
@@ -488,10 +489,6 @@ watch(generatedPrompt, () => {
     triggerPromptGeneration()
   }
 })
-
-function loadPendingSnapshot() {
-  // This function is now replaced by the more robust handleInitialSnapshot
-}
 
 onMounted(() => {
   // The page component `[dreamId].vue` now handles all initial data loading.
@@ -581,12 +578,12 @@ async function handleNodeClick(id: string) {
     await tagStore.toggleTag(id)
     // Explicitly trigger prompt generation after tags have been updated
     triggerPromptGeneration()
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error toggling tag or generating related tags:', error)
     toast.add({
       severity: 'error',
       summary: 'Tag Action Failed',
-      detail: error.message || 'Could not toggle tag or generate related tags. Please try again.',
+      detail: (error as Error).message || 'Could not toggle tag or generate related tags. Please try again.',
       life: 5000,
     })
   }
@@ -596,6 +593,13 @@ async function handleNodeClick(id: string) {
 watch(
   () => tagStore.loadedDreamId,
   (newId, oldId) => {
+    // Skip viewport reset if we're just updating the ID after a save (null -> number)
+    // This happens when saving a new dream and we don't want to reset positions
+    if (oldId === null && typeof newId === 'number') {
+      console.log('[TagCloud] Dream ID updated after save - skipping viewport reset to preserve positions')
+      return
+    }
+
     // Reset all prompt-related state when loading a new dream or clearing to new session
     promptRequestId++ // Cancel any pending prompt operations
     // skipPrompt.value = true;
@@ -620,7 +624,7 @@ watch(
     // nextTick(() => {
     // skipPrompt.value = false;
     // });
-
+    console.log('[TagCloud] New dream loaded/session changed. Resetting viewport.')
     // Apply viewport for the newly loaded dream's focused zone
     nextTick(() => {
       if (!forceGraphRef.value) return
@@ -634,16 +638,6 @@ watch(
   }
 )
 
-
-// Remove the problematic timeout-based forceViewportReset function
-function forceViewportReset() {
-  if (!forceGraphRef.value) return
-
-  console.log('Forcing complete viewport reset with default zoom level')
-
-  // Always use resetAndCenter which applies the proper default zoom
-  forceGraphRef.value.resetAndCenter()
-}
 
 // Fix switchToZone to properly handle default viewport
 async function switchToZone(newZone: string, oldZone?: string) {
@@ -816,7 +810,12 @@ watch(
 )
 
 // Handle request to view a snapshot from the strip
-const handleSnapshotRequestFromStrip = (image: any) => {
+const handleSnapshotRequestFromStrip = (image: {
+  id: number
+  imageUrl: string
+  promptText?: string
+  graphState?: any
+}) => {
   if (image && image.imageUrl) {
     if (tagStore.viewingSnapshotImageId === image.id) {
       toast.add({
@@ -864,7 +863,7 @@ const handleSnapshotRequestFromStrip = (image: any) => {
   }
 }
 
-function openImageViewerFromStrip(payload: { image: any; index: number }) {
+function openImageViewerFromStrip(payload: { image: Dream; index: number }) {
   const imgs = imageStripRef.value?.images || []
   viewerImages.value = imgs
   viewerStartIndex.value = payload.index
@@ -902,35 +901,27 @@ async function handleGenerateImageClick() {
 
   let currentDreamId = tagStore.loadedDreamId
 
+  // If it's a new session, we must save it first to get a dream ID.
   if (currentDreamId === null) {
-    console.log('[TagCloud] New session, auto-saving before image generation.')
-    // toast.add({ severity: 'info', summary: 'Saving Session', detail: 'Auto-saving current session...', life: 3000 });
-
     const dreamDataPayload = getDreamDataPayload()
 
-    try {
-      await initiateSaveDreamProcess(dreamDataPayload)
+    // Directly call performSaveAsNew for a streamlined, non-interactive save.
+    const newDream = await performSaveAsNew(dreamDataPayload, tagStore)
 
-      if (tagStore.loadedDreamId === null) {
-        console.error(
-          '[TagCloud] Auto-save initiated but dream ID is still null in store. Aborting image generation.'
-        )
-        toast.add({
-          severity: 'error',
-          summary: 'Save Failed',
-          detail: 'Failed to auto-save session. Image generation aborted.',
-          life: 5000,
-        })
-        return
-      }
-      currentDreamId = tagStore.loadedDreamId
-      // toast.add({ severity: 'success', summary: 'Session Saved', detail: `Session auto-saved successfully. Dream ID: ${currentId}`, life: 3000 });
-    } catch (error: any) {
-      console.error('Failed to auto-save dream:', error)
+    if (newDream && newDream.id) {
+      currentDreamId = newDream.id
+      // CRITICAL: Update the URL silently without triggering Vue Router reactivity
+      // The store's loadedDreamId is already updated by performSaveAsNew, 
+      // so we just need to sync the browser URL for the side menu
+      window.history.replaceState(null, '', `/dream/${currentDreamId}`)
+    } else {
+      console.error(
+        '[TagCloud] Auto-save initiated but failed to return a new dream. Aborting image generation.'
+      )
       toast.add({
         severity: 'error',
-        summary: 'Auto-Save Failed',
-        detail: error.message || 'Could not auto-save session. Image generation aborted.',
+        summary: 'Save Failed',
+        detail: 'Failed to auto-save session. Image generation aborted.',
         life: 5000,
       })
       return
@@ -980,7 +971,6 @@ async function handleGenerateImageClick() {
 function handleNodePositionsUpdated(positions: { id: string; x: number; y: number }[]) {
   // Skip position updates during session restoration to prevent overriding loaded state
   if (tagStore.isRestoringSession) {
-    console.log('[POSITION UPDATE] Skipping position update during session restoration')
     return
   }
 
@@ -1006,9 +996,6 @@ function handleNodePositionsUpdated(positions: { id: string; x: number; y: numbe
         // Only update position properties, preserving all other tag properties including transformation state
         tag.x = pos.x
         tag.y = pos.y
-        console.log(
-          `[POSITION UPDATE] Tag ${pos.id} moved to (${pos.x}, ${pos.y}). isTransformed: ${tag.isTransformed}, text: "${tag.text}"`
-        )
       }
     })
 
@@ -1163,12 +1150,12 @@ async function handleNodeContextMenu(payload: {
         result.selectedTag.children?.length || 0
       } children for transformed concept '${payload.action}'`
     )
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error transforming node concept:', error)
     toast.add({
       severity: 'error',
       summary: 'Node Transformation Failed',
-      detail: error.message || 'Could not transform node concept. Please try again.',
+      detail: (error as Error).message || 'Could not transform node concept. Please try again.',
       life: 5000,
     })
   }
@@ -1255,10 +1242,10 @@ async function handleApplySnapshot() {
 }
 
 const currentViewMode = ref('graph')
-const viewModeOptions = ref([
-  { label: 'Graph', value: 'graph' },
-  // { label: 'Image Preview', value: 'image-preview' },
-])
+// const viewModeOptions = ref([
+//   { label: 'Graph', value: 'graph' },
+//   // { label: 'Image Preview', value: 'image-preview' },
+// ])
 </script>
 
 <style scoped lang="scss">

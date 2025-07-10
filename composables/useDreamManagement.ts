@@ -371,7 +371,9 @@ export function useDreamManagement() {
       })
 
       // IMPORTANT: Update store to reflect this newly saved dream as the current one
-      tagStoreInstance.loadDreamState(newDreamResponse.data, newDreamResponse.id)
+      // Use updateLoadedDreamId instead of loadDreamState to avoid triggering isRestoringSession
+      // which would cause ForceGraph to reset positions
+      tagStoreInstance.updateLoadedDreamId(newDreamResponse.id)
       tagStoreInstance.refreshDreamsList() // This should ideally call the refreshDreamsListAPI from this composable
 
       return newDreamResponse // Return the saved dream data

@@ -172,18 +172,11 @@ export const useTagStore = defineStore('tags', () => {
     const reconstructedTags: Tag[] = [...baseTags]
 
     // Overlay saved tag states
-    console.log(`[LOAD] === PROCESSING SAVED TAGS ===`)
     dreamData.tags.forEach((savedTag, index) => {
       const existing = tagMap.get(savedTag.id)
-      console.log(
-        `[LOAD] Processing tag ${index}: ${savedTag.id}, isTransformed: ${savedTag.isTransformed}`
-      )
 
       if (existing) {
-        console.log(`[LOAD] Found existing predefined tag: ${savedTag.id}`)
-        console.log(
-          `[LOAD] - Before: text="${existing.text}", isTransformed=${existing.isTransformed}`
-        )
+      
 
         // Predefined tag: apply saved properties
         existing.selected = savedTag.selected
@@ -192,10 +185,6 @@ export const useTagStore = defineStore('tags', () => {
 
         // Handle transformation state for predefined tags
         if (savedTag.isTransformed) {
-          console.log(`[LOAD] APPLYING TRANSFORMATION to predefined tag ${savedTag.id}:`)
-          console.log(`[LOAD] - savedTag.originalText: "${savedTag.originalText}"`)
-          console.log(`[LOAD] - savedTag.text: "${savedTag.text}"`)
-
           existing.isTransformed = true
           existing.originalText = savedTag.originalText
           // If transformed, use the saved transformed text instead of the predefined text
@@ -203,18 +192,8 @@ export const useTagStore = defineStore('tags', () => {
           // Clear predefined children for transformed tags - they should only have saved dynamic children
           existing.children = []
 
-          console.log(
-            `[LOAD] - After transformation: text="${existing.text}", isTransformed=${existing.isTransformed}, originalText="${existing.originalText}", children cleared`
-          )
         }
-
-        console.log(
-          `[LOAD] - Final state: text="${existing.text}", isTransformed=${existing.isTransformed}`
-        )
       } else {
-        console.log(
-          `[LOAD] Creating dynamic tag: ${savedTag.id}, isTransformed: ${savedTag.isTransformed}`
-        )
 
         // Dynamic tag: re-create Tag object
         const dynamicTag: Tag = {
@@ -233,13 +212,6 @@ export const useTagStore = defineStore('tags', () => {
           isTransformed: savedTag.isTransformed || false,
           originalText: savedTag.originalText || undefined,
         }
-
-        if (savedTag.isTransformed) {
-          console.log(
-            `[LOAD] Dynamic tag ${savedTag.id} has transformation: "${savedTag.originalText}" -> "${savedTag.text}"`
-          )
-        }
-
         // Attach dynamic tag to its parent in base tags
         if (dynamicTag.parentId) {
           const parent = tagMap.get(dynamicTag.parentId)
@@ -260,15 +232,7 @@ export const useTagStore = defineStore('tags', () => {
     currentGeneratedPrompt.value = dreamData.generatedPrompt || ''
     currentImageUrl.value = dreamData.imageUrl || null
 
-    console.log(`[LOAD] === BEFORE SETTING TAGS ===`)
-    console.log(`[LOAD] reconstructedTags length: ${reconstructedTags.length}`)
-    const preLoadTransformed = reconstructedTags.filter((tag) => tag.isTransformed)
-    console.log(`[LOAD] Transformed tags before setting: ${preLoadTransformed.length}`)
-    preLoadTransformed.forEach((tag) => {
-      console.log(
-        `[LOAD] Pre-set transformed tag: ${tag.id} - "${tag.originalText}" -> "${tag.text}"`
-      )
-    })
+
     hasUnsavedChanges.value = false
 
     // Delay tag assignment to allow loader to display
@@ -279,15 +243,7 @@ export const useTagStore = defineStore('tags', () => {
   }
   // ------------------------------------------
 
-  // Helper function to clear session state
-  function clearSessionState() {
-    // Clear all previous data
-    zoneViewportStates.value.clear()
-    loadedDreamId.value = null
-    currentGeneratedPrompt.value = ''
-    currentImageUrl.value = null
-    hasUnsavedChanges.value = false
-  }
+
 
   // --- Action to reset to initial/current state ---
   async function resetToCurrentSession({ isNewDream = false }: { isNewDream?: boolean } = {}) {
@@ -346,6 +302,13 @@ export const useTagStore = defineStore('tags', () => {
     hasUnsavedChanges.value = false
   }
   // -----------------------------------
+
+  // --- Action to update dream ID without reloading state ---
+  function updateLoadedDreamId(dreamId: number) {
+    loadedDreamId.value = dreamId
+    hasUnsavedChanges.value = false
+  }
+  // -------------------------------------------------------
 
   // --- Action to set the refresh function ---
   function setDreamsListRefresher(refreshFn: () => void) {
@@ -582,6 +545,7 @@ export const useTagStore = defineStore('tags', () => {
     loadDreamState,
     resetToCurrentSession,
     markAsSaved,
+    updateLoadedDreamId,
     setCurrentGeneratedPrompt,
     setCurrentImageUrl,
     graphNodes,
