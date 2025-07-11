@@ -19,41 +19,41 @@ model User {
   name          String?
   email         String?   @unique
   emailVerified DateTime? // Used by Email provider
-  passwordHash  String?   // Added field for storing the hashed password
+  passwordHash  String? // Added field for storing the hashed password
   image         String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   // Optional: Add relations if you plan to link users to other models
   // posts Post[]
-  dreams Dream[] // Add relation to Dream model
-  generatedImages GeneratedImage[] // Add relation to GeneratedImage model
+  dreams              Dream[] // Add relation to Dream model
+  generatedImages     GeneratedImage[] // Add relation to GeneratedImage model
   passwordResetTokens PasswordResetToken[]
 }
 
 // Add the Dream model
 model Dream {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
-  title     String? // Optional title for the dream
-  data      Json    // Store the graph state or other relevant data as JSON
-  userId    String  // Foreign key to the User model
-  user      User     @relation(fields: [userId], references: [id]) // Relation field
+  id              Int              @id @default(autoincrement())
+  createdAt       DateTime         @default(now())
+  title           String? // Optional title for the dream
+  data            Json // Store the graph state or other relevant data as JSON
+  userId          String // Foreign key to the User model
+  user            User             @relation(fields: [userId], references: [id]) // Relation field
   generatedImages GeneratedImage[] // Add relation to GeneratedImage model
 }
 
 // Define the GeneratedImage model
 model GeneratedImage {
-  id          Int      @id @default(autoincrement())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  imageUrl    String
-  promptText  String?
-  graphState  Json?    // To store the full graph/dream state at the time of generation
-  dreamId     Int
-  dream       Dream    @relation(fields: [dreamId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         Int      @id @default(autoincrement())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  imageUrl   String
+  promptText String?
+  graphState Json? // To store the full graph/dream state at the time of generation
+  dreamId    Int
+  dream      Dream    @relation(fields: [dreamId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([dreamId])
   @@index([userId])
@@ -68,4 +68,9 @@ model PasswordResetToken {
   user      User     @relation(fields: [userId], references: [id])
 
   @@index([userId])
+}
+
+model TagAppearance {
+  id       String @id @unique
+  imageUrl String
 }

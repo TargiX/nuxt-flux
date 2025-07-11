@@ -13,4 +13,5 @@ export interface Tag {
   depth?: number
   isTransformed?: boolean // Mark if tag was transformed via context menu
   originalText?: string // Store original text before transformation
+  imageUrl?: string // URL for the tag's generated icon
 }

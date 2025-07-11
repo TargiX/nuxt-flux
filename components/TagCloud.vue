@@ -235,6 +235,17 @@
           </Button>
         </div>
       </div>
+      <!-- Model Picker Row -->
+      <div v-if="!isViewingSnapshot" class="flex justify-between items-center w-full mt-2">
+        <div class="text-sm text-gray-400">
+          AI Model:
+        </div>
+        <ModelPicker
+          v-model="selectedModel"
+          compact
+          @change="handleModelChange"
+        />
+      </div>
     </div>
 
     <!-- Bottom Right: Vertical Image Strip -->
@@ -274,6 +285,7 @@ import ForceGraph from './ForceGraph.vue'
 import ZoneSelector from './ZoneSelector.vue'
 import ImageStrip from './ImageStrip.vue'
 import ImageViewerModal from './ImageViewerModal.vue'
+import ModelPicker from './ModelPicker.vue'
 import { generateImagePrompt, clearPromptCache } from '~/services/promptGenerationService'
 import {
   transformNodeConcept,
@@ -290,6 +302,7 @@ import { useImageDownloader } from '~/composables/useImageDownloader'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useRoute } from 'vue-router'
 import type { Dream } from '~/types/dream'
+import { getDefaultModel } from '~/services/modelConfigService'
 
 const tagStore = useTagStore()
 const toast = useToast()
@@ -370,6 +383,7 @@ const manualPrompt = ref('')
 // const isGeneratingImage = ref(false) // REMOVED - Use from composable
 // const isImageCooldown = ref(false) // REMOVED - Use from composable
 const isGeneratingPrompt = ref(false)
+const selectedModel = ref(getDefaultModel())
 
 const isViewingSnapshot = computed(() => tagStore.viewingSnapshotImageId !== null)
 
@@ -943,7 +957,8 @@ async function handleGenerateImageClick() {
     promptText,
     currentDreamId,
     focusedZone.value,
-    tagStore.tags
+    tagStore.tags,
+    selectedModel.value
   )
 
   if (newImageObject && imageStripRef.value) {
@@ -1246,6 +1261,12 @@ const currentViewMode = ref('graph')
 //   { label: 'Graph', value: 'graph' },
 //   // { label: 'Image Preview', value: 'image-preview' },
 // ])
+
+// Handle model selection change
+function handleModelChange(modelId: string) {
+  selectedModel.value = modelId
+  console.log('Selected model changed to:', modelId)
+}
 </script>
 
 <style scoped lang="scss">

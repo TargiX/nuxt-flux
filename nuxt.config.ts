@@ -83,6 +83,13 @@ const __dirname  = _dirname(__filename);`,
     resend: {
       apiKey: process.env.RESEND_API_KEY,
     },
+    // AI Provider API Keys (server-side only)
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    FLUX_API_KEY: process.env.FLUX_API_KEY,
+    STABILITY_API_KEY: process.env.STABILITY_API_KEY,
+    MIDJOURNEY_API_KEY: process.env.MIDJOURNEY_API_KEY,
+    REPLICATE_API_TOKEN: process.env.REPLICATE_API_TOKEN,
     public: {
       GEMINI_API_KEY: process.env.GEMINI_API_KEY,
       FLUX_API_KEY: process.env.FLUX_API_KEY,

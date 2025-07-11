@@ -1,4 +1,4 @@
-import { type Selection } from 'd3'
+import type { Selection } from 'd3'
 import type { GraphNode } from '~/types/graph'
 import * as d3 from 'd3'
 
@@ -842,12 +842,12 @@ export function useNodeStyling() {
   }
 
   return {
-    // applyNodeStyle, // This will become internal or selectively exposed if needed for hover only
     getSubjectImagePath,
     createNodeGradients,
-    startTextEdit, // Still exposed for direct click handlers if any remain outside manageNodeVisualsAndText
+    startTextEdit,
     formatNodeText,
-    manageNodeVisualsAndText, // The new main function
-    // saveTextEdit, cancelTextEdit, cleanupEdit are internal to the editing process started by startTextEdit
+    manageNodeVisualsAndText,
+    getNodeGradient,
+    getNodeGlowFilter,
   }
 }

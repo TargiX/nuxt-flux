@@ -1,8 +1,7 @@
 // stores/tagStore.ts
 import { defineStore } from 'pinia'
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useRuntimeConfig } from '#app'
 import type { Tag } from '~/types/tag'
 import { initializeTags, getAvailableZones } from '~/services/tagProcessingService'
 import { toggleTag } from '~/services/tagSelectionService'
@@ -28,6 +27,11 @@ interface ImageSnapshot {
   graphState?: any
 }
 
+interface TagAppearance {
+  id: string
+  imageUrl: string
+}
+
 export const useTagStore = defineStore('tags', () => {
   const router = useRouter()
   const tags = ref<Tag[]>([])
@@ -47,15 +51,52 @@ export const useTagStore = defineStore('tags', () => {
   const viewingSnapshotImageId = ref<number | null>(null) // ID of the image snapshot currently being viewed
   const pendingSnapshot = ref<ImageSnapshot | null>(null) // State to hold a snapshot pending a route change
   // ------------------------------------
+  let initialTagsState: Tag[] = []
+
+  async function initializeStore() {
+    console.log('[TagStore] Initializing...')
+    const baseTags = initializeTags()
+
+    try {
+      const response = await fetch('/api/tags/appearances')
+      if (!response.ok) {
+        throw new Error('Failed to fetch tag appearances')
+      }
+      const appearances: TagAppearance[] = await response.json()
+
+      const appearanceMap = new Map(appearances.map((a: TagAppearance) => [a.id, a.imageUrl]))
+
+      // Function to recursively apply image URLs
+      const applyImageUrls = (tagsToProcess: Tag[]) => {
+        for (const tag of tagsToProcess) {
+          if (appearanceMap.has(tag.alias)) {
+            tag.imageUrl = appearanceMap.get(tag.alias)
+          }
+          if (tag.children && tag.children.length > 0) {
+            applyImageUrls(tag.children)
+          }
+        }
+      }
+
+      applyImageUrls(baseTags)
+      console.log('[TagStore] Tag appearances merged successfully.')
+    } catch (error) {
+      console.error('[TagStore] Error fetching or merging tag appearances:', error)
+      // Proceed with base tags even if fetching fails
+    }
+
+    tags.value = baseTags
+    initialTagsState = JSON.parse(JSON.stringify(tags.value)) // Store initial state for reset
+  }
 
   // Add session ID at the top with existing state
   const sessionId = ref<string>(generateSessionId())
   const isRequestInProgress = ref(false)
   const isRestoringSession = ref(false) // Flag to indicate a dream/snapshot load is in progress
 
-  // Initialize tags on store creation
-  tags.value = initializeTags()
-  const initialTagsState = JSON.parse(JSON.stringify(tags.value)) // Store initial state for reset
+  onMounted(() => {
+    initializeStore()
+  })
 
   // Helper function to generate unique session ID
   function generateSessionId() {
@@ -176,8 +217,6 @@ export const useTagStore = defineStore('tags', () => {
       const existing = tagMap.get(savedTag.id)
 
       if (existing) {
-      
-
         // Predefined tag: apply saved properties
         existing.selected = savedTag.selected
         if (savedTag.x !== undefined) existing.x = savedTag.x
@@ -191,10 +230,8 @@ export const useTagStore = defineStore('tags', () => {
           existing.text = savedTag.text
           // Clear predefined children for transformed tags - they should only have saved dynamic children
           existing.children = []
-
         }
       } else {
-
         // Dynamic tag: re-create Tag object
         const dynamicTag: Tag = {
           id: savedTag.id,
@@ -232,7 +269,6 @@ export const useTagStore = defineStore('tags', () => {
     currentGeneratedPrompt.value = dreamData.generatedPrompt || ''
     currentImageUrl.value = dreamData.imageUrl || null
 
-
     hasUnsavedChanges.value = false
 
     // Delay tag assignment to allow loader to display
@@ -242,8 +278,6 @@ export const useTagStore = defineStore('tags', () => {
     isRestoringSession.value = false
   }
   // ------------------------------------------
-
-
 
   // --- Action to reset to initial/current state ---
   async function resetToCurrentSession({ isNewDream = false }: { isNewDream?: boolean } = {}) {
