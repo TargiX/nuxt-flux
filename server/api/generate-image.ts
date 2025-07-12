@@ -15,6 +15,7 @@ interface GenerateImageBody {
 }
 
 export default defineEventHandler(async (event: H3Event) => {
+  console.error('[GenerateImage API] handler invoked at URL:', event.node.req.url)
   try {
     const {
       prompt,

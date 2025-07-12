@@ -8,6 +8,7 @@ interface RequestBody {
 }
 
 export default defineEventHandler(async (event) => {
+  console.log('[Internal TagIcon API] handler invoked at URL:', event.node.req.url)
   try {
     const { alias, displayText } = await readBody<RequestBody>(event)
     console.log(
