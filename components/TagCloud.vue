@@ -303,7 +303,6 @@ import ProgressSpinner from 'primevue/progressspinner'
 import { useRoute } from 'vue-router'
 import type { Dream } from '~/types/dream'
 import { getDefaultModel } from '~/services/modelConfigService'
-import { getUserPreferredModelForNewDream, getDreamLastUsedModel } from '~/services/modelPreferenceService'
 
 const tagStore = useTagStore()
 const toast = useToast()
@@ -389,9 +388,9 @@ async function initializeSelectedModel() {
     
     if (currentDreamId) {
       // Try to get the last used model for this dream
-      const lastUsedModel = await getDreamLastUsedModel(currentDreamId)
-      if (lastUsedModel) {
-        selectedModel.value = lastUsedModel
+      const response = await $fetch(`/api/model-preferences/dream/${currentDreamId}`)
+      if (response.success && response.lastUsedModel) {
+        selectedModel.value = response.lastUsedModel
         return
       }
     }
@@ -399,8 +398,10 @@ async function initializeSelectedModel() {
     // For new dreams or if no last used model, get user's preferred model
     const { data: session } = await $fetch('/api/auth/session')
     if (session?.user?.id) {
-      const preferredModel = await getUserPreferredModelForNewDream(session.user.id)
-      selectedModel.value = preferredModel
+      const response = await $fetch(`/api/model-preferences/user/${session.user.id}`)
+      if (response.success && response.preferredModel) {
+        selectedModel.value = response.preferredModel
+      }
     }
   } catch (error) {
     console.error('Failed to initialize selected model:', error)

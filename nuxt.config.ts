@@ -114,7 +114,7 @@ const __dirname  = _dirname(__filename);`,
     },
     optimizeDeps: {
       include: ['cookie-es'],
-      exclude: ['cookie'],
+      exclude: ['cookie', '@prisma/client'],
     },
     resolve: {
       alias: { cookie: 'cookie-es' },
@@ -124,6 +124,12 @@ const __dirname  = _dirname(__filename);`,
         resolvers: [PrimeVueResolver()],
       }),
     ],
+    ssr: {
+      noExternal: ['@prisma/client'],
+    },
+    define: {
+      'process.env.PRISMA_CLIENT_ENGINE_TYPE': JSON.stringify('library'),
+    },
   },
 
   typescript: {
