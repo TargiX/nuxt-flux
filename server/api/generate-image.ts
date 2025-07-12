@@ -1,9 +1,9 @@
 import type { H3Event } from 'h3'
 import { defineEventHandler, readBody, createError } from 'h3'
 import { generateImage } from '~/server/services/aiImageGenerator'
-import { generateIconForTag } from '~/server/services/tagAppearanceService'
 import prisma from '~/server/utils/db'
 import type { ModelGenerationOptions } from '~/types/models'
+import logger from '~/utils/logger'
 
 interface GenerateImageBody {
   prompt: string
@@ -39,7 +39,7 @@ export default defineEventHandler(async (event) => {
     // --- Asynchronous Icon Generation (Fire-and-Forget) ---
     if (selectedTagAliases.length > 0) {
       triggerIconGeneration(selectedTagAliases, event).catch((err) => {
-        console.error('Error in background icon generation process:', err)
+        logger.error('Error in background icon generation process:', err)
       })
     }
 
@@ -72,8 +72,9 @@ export default defineEventHandler(async (event) => {
 })
 
 async function triggerIconGeneration(aliases: string[], event: H3Event) {
+  logger.info(`[GenerateImage] Starting icon generation check for aliases: ${aliases.join(', ')}`)
   // 1. Find which tags already have icons
-  const existingAppearances = await prisma.tagAppearance.findMany({
+  const existingAppearances = await prisma.TagAppearance.findMany({
     where: {
       id: { in: aliases },
     },
@@ -82,15 +83,40 @@ async function triggerIconGeneration(aliases: string[], event: H3Event) {
     },
   })
   const existingAliases = new Set(existingAppearances.map((a: { id: string }) => a.id))
+  logger.info(
+    `[GenerateImage] Found ${existingAliases.size} existing icons for aliases: ${Array.from(
+      existingAliases
+    ).join(', ')}`
+  )
 
   // 2. Determine which tags need icons
   const aliasesToGenerate = aliases.filter((alias) => !existingAliases.has(alias))
 
-  // 3. Trigger generation for each one
+  if (aliasesToGenerate.length === 0) {
+    logger.info('[GenerateImage] No new icons need to be generated.')
+    return
+  }
+
+  logger.info(
+    `[GenerateImage] Triggering icon generation for ${
+      aliasesToGenerate.length
+    } new aliases: ${aliasesToGenerate.join(', ')}`
+  )
+
+  // 3. Trigger generation for each one by calling the internal API
+  const baseUrl = event.node.req.headers.host
+  const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http'
+
   for (const alias of aliasesToGenerate) {
+    const url = `${protocol}://${baseUrl}/api/internal/tags/generate-icon`
+    logger.info(`[GenerateImage] Firing POST request to ${url} for alias: ${alias}`)
     // We don't await here to make it fire-and-forget
-    generateIconForTag(alias).catch((err) => {
-      console.error(`Failed to generate icon for tag '${alias}' in background:`, err)
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alias }),
+    }).catch((err) => {
+      logger.error(`[GenerateImage] Failed to trigger icon generation for tag '${alias}':`, err)
     })
   }
 }

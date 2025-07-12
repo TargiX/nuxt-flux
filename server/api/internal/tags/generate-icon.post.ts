@@ -1,5 +1,6 @@
 import { defineEventHandler, readBody, createError } from 'h3'
 import { generateIconForTag } from '~/server/services/tagAppearanceService'
+import logger from '~/utils/logger'
 
 interface RequestBody {
   alias: string
@@ -8,8 +9,10 @@ interface RequestBody {
 export default defineEventHandler(async (event) => {
   try {
     const { alias } = await readBody<RequestBody>(event)
+    logger.info(`[Internal TagIcon API] Received request to generate icon for alias: "${alias}"`)
 
     if (!alias) {
+      logger.warn('[Internal TagIcon API] Request received with missing alias.')
       throw createError({
         statusCode: 400,
         statusMessage: 'Tag alias is required.',
@@ -18,12 +21,13 @@ export default defineEventHandler(async (event) => {
 
     // No need to await, let it run in the background
     generateIconForTag(alias).catch((err) => {
-      console.error(`[Internal API] Failed to generate icon for tag '${alias}':`, err)
+      logger.error(`[Internal TagIcon API] Background generation failed for tag '${alias}':`, err)
     })
 
+    logger.info(`[Internal TagIcon API] Triggered background generation for alias: "${alias}"`)
     return { success: true, message: `Icon generation triggered for ${alias}.` }
   } catch (error: unknown) {
-    console.error('[Internal API] Error triggering icon generation:', error)
+    logger.error('[Internal TagIcon API] Error triggering icon generation:', error)
     // Don't rethrow to the client that triggered this,
     // as it's a background process. Just log it.
     return { success: false, message: 'Failed to trigger icon generation.' }

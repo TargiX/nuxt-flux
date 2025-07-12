@@ -7,6 +7,7 @@ import { initializeTags, getAvailableZones } from '~/services/tagProcessingServi
 import { toggleTag } from '~/services/tagSelectionService'
 import { computeGraphData } from '~/services/graphLayoutService'
 import type { ViewportState } from '~/composables/useZoom'
+import logger from '~/utils/logger'
 
 // Interface for the saved dream data structure (subset of what's saved)
 interface DreamData {
@@ -24,7 +25,7 @@ interface ImageSnapshot {
   promptText?: string | null
   createdAt: string
   dreamId: number
-  graphState?: any
+  graphState?: DreamData
 }
 
 interface TagAppearance {
@@ -58,11 +59,13 @@ export const useTagStore = defineStore('tags', () => {
     const baseTags = initializeTags()
 
     try {
+      logger.info('[TagStore] Fetching tag appearances from /api/tags/appearances...')
       const response = await fetch('/api/tags/appearances')
       if (!response.ok) {
-        throw new Error('Failed to fetch tag appearances')
+        throw new Error(`Failed to fetch tag appearances. Status: ${response.status}`)
       }
       const appearances: TagAppearance[] = await response.json()
+      logger.info(`[TagStore] Fetched ${appearances.length} tag appearances.`)
 
       const appearanceMap = new Map(appearances.map((a: TagAppearance) => [a.id, a.imageUrl]))
 
@@ -71,6 +74,7 @@ export const useTagStore = defineStore('tags', () => {
         for (const tag of tagsToProcess) {
           if (appearanceMap.has(tag.alias)) {
             tag.imageUrl = appearanceMap.get(tag.alias)
+            logger.info(`[TagStore] Applied image URL to tag: ${tag.alias}`)
           }
           if (tag.children && tag.children.length > 0) {
             applyImageUrls(tag.children)
@@ -79,9 +83,9 @@ export const useTagStore = defineStore('tags', () => {
       }
 
       applyImageUrls(baseTags)
-      console.log('[TagStore] Tag appearances merged successfully.')
+      logger.info('[TagStore] Finished merging tag appearances.')
     } catch (error) {
-      console.error('[TagStore] Error fetching or merging tag appearances:', error)
+      logger.error('[TagStore] Error fetching or merging tag appearances:', error)
       // Proceed with base tags even if fetching fails
     }
 
@@ -213,7 +217,7 @@ export const useTagStore = defineStore('tags', () => {
     const reconstructedTags: Tag[] = [...baseTags]
 
     // Overlay saved tag states
-    dreamData.tags.forEach((savedTag, index) => {
+    dreamData.tags.forEach((savedTag) => {
       const existing = tagMap.get(savedTag.id)
 
       if (existing) {
@@ -268,11 +272,11 @@ export const useTagStore = defineStore('tags', () => {
     focusedZone.value = dreamData.focusedZone || zones.value[0]
     currentGeneratedPrompt.value = dreamData.generatedPrompt || ''
     currentImageUrl.value = dreamData.imageUrl || null
-    
+
     // Temporarily clear loadedDreamId to ensure the watcher triggers even if the ID is the same
     loadedDreamId.value = null
     await nextTick()
-    loadedDreamId.value = dreamId  // This triggers the watcher, which needs correct focusedZone
+    loadedDreamId.value = dreamId // This triggers the watcher, which needs correct focusedZone
 
     hasUnsavedChanges.value = false
 
@@ -280,7 +284,7 @@ export const useTagStore = defineStore('tags', () => {
     await nextTick()
     tags.value = reconstructedTags
     await nextTick()
-    
+
     // Delay setting isRestoringSession to false to allow watchers to complete
     // The TagCloud viewport watcher needs time to apply the loaded viewport
     setTimeout(() => {
@@ -376,7 +380,7 @@ export const useTagStore = defineStore('tags', () => {
     id: number
     imageUrl: string
     promptText?: string
-    graphState: any // This will be the { focusedZone, tags } object
+    graphState: DreamData
   }) {
     isRestoringSession.value = true
     currentGeneratedPrompt.value = ''
