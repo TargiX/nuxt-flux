@@ -580,6 +580,27 @@ onMounted(() => {
   initializeSelectedModel()
 })
 
+// Watch for the end of a session restoration to apply the viewport.
+// This is more reliable than onMounted for this specific task.
+watch(
+  () => tagStore.isRestoringSession,
+  (isRestoring, wasRestoring) => {
+    if (wasRestoring && !isRestoring) {
+      // The session has just finished loading.
+      nextTick(() => {
+        if (forceGraphRef.value) {
+          const savedViewport = tagStore.getZoneViewport(tagStore.focusedZone)
+          if (isValidViewport(savedViewport)) {
+            forceGraphRef.value.applyViewport(savedViewport)
+          } else {
+            forceGraphRef.value.applyViewport() // Apply default if no valid viewport is found
+          }
+        }
+      })
+    }
+  }
+)
+
 // New, robust function to handle initial snapshot from URL
 async function handleInitialSnapshot() {
   const snapshotIdStr = route.query.snapshot as string

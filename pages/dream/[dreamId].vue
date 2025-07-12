@@ -1,7 +1,7 @@
 <template>
   <div class="dream-page-container">
     <div class="mx-auto max-w-[96vw]">
-      <TagCloud />
+      <TagCloud v-if="!isPageLoading" />
     </div>
     <!-- Loading overlay that doesn't destroy the TagCloud component -->
     <div v-if="isPageLoading" class="page-loading-overlay">
