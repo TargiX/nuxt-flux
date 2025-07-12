@@ -9,12 +9,20 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: 'Authentication required' })
   }
 
-  const dreamId = getRouterParam(event, 'dreamId')
+  const dreamIdParam = getRouterParam(event, 'dreamId')
   
-  if (!dreamId) {
+  if (!dreamIdParam) {
     throw createError({
       statusCode: 400,
       statusMessage: 'Dream ID is required'
+    })
+  }
+
+  const dreamId = parseInt(dreamIdParam, 10)
+  if (isNaN(dreamId)) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Invalid Dream ID format'
     })
   }
 

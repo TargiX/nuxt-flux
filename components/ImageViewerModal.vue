@@ -15,7 +15,8 @@
         <img
           :src="selectedImage.imageUrl"
           :alt="selectedImage.promptText || 'Selected image'"
-          class="large-gallery-image"
+          class="large-gallery-image cursor-pointer"
+          @click="openFullscreen"
         >
       </div>
       <Button
@@ -76,6 +77,35 @@
       <p>No image selected or image data is unavailable.</p>
     </div>
   </Dialog>
+  <!-- Fullscreen Viewer -->
+  <div v-if="isFullscreen" class="fullscreen-viewer">
+    <img
+      v-if="selectedImage"
+      :src="selectedImage.imageUrl"
+      :alt="selectedImage.promptText || 'Selected image'"
+      class="fullscreen-image"
+    >
+    <Button
+      icon="pi pi-times"
+      class="p-button-rounded p-button-secondary fullscreen-close-button"
+      style="width: 3rem; height: 3rem"
+      @click="closeFullscreen"
+    />
+    <Button
+      icon="pi pi-chevron-left"
+      class="p-button-rounded p-button-secondary absolute top-1/2 -translate-y-1/2 z-20 modal-nav-button modal-nav-left"
+      :disabled="images.length <= 1"
+      style="width: 3rem; height: 3rem"
+      @click="previousImage"
+    />
+    <Button
+      icon="pi pi-chevron-right"
+      class="p-button-rounded p-button-secondary absolute top-1/2 -translate-y-1/2 z-20 modal-nav-button modal-nav-right"
+      :disabled="images.length <= 1"
+      style="width: 3rem; height: 3rem"
+      @click="nextImage"
+    />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -83,8 +113,13 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useImageDownloader } from '~/composables/useImageDownloader'
 import { useTagStore } from '~/store/tagStore'
 import { useRouter } from 'vue-router'
-import ForceGraph from './ForceGraph.vue'
-import type { GraphNode, GraphLink } from '~/types/graph'
+import type { GraphNode } from '~/types/graph'
+
+interface GraphState {
+  tags: GraphNode[]
+  focusedZone: string
+  // Include other properties from the actual graphState object if known
+}
 
 interface GalleryImage {
   id: number
@@ -92,7 +127,7 @@ interface GalleryImage {
   promptText?: string | null
   createdAt: string
   dreamId: number
-  graphState?: any
+  graphState?: GraphState
 }
 
 const props = defineProps<{
@@ -106,6 +141,8 @@ const emit = defineEmits(['update:modelValue'])
 const { downloadImage } = useImageDownloader()
 const tagStore = useTagStore()
 const router = useRouter()
+
+const isFullscreen = ref(false)
 
 const visibleInternal = computed({
   get: () => props.modelValue,
@@ -127,22 +164,31 @@ const selectedImage = computed(() => {
   return null
 })
 
-const snapshotGraphData = computed<{ nodes: GraphNode[]; links: GraphLink[] } | null>(() => {
-  const state = selectedImage.value?.graphState
-  if (state && Array.isArray(state.tags) && state.focusedZone) {
-    5
-    // Treat tags array as GraphNode[] to include all required properties
-    const allTags = state.tags as GraphNode[]
-    // Filter nodes to the focused zone
-    const nodes: GraphNode[] = allTags.filter((tag) => tag.zone === state.focusedZone)
-    // Construct links for parent-child relationships within the zone
-    const links: GraphLink[] = nodes
-      .filter((tag) => typeof tag.parentId === 'string')
-      .map((tag) => ({ source: tag.parentId as string, target: tag.id, value: 1 }))
-    return { nodes, links }
+// const snapshotGraphData = computed<{ nodes: GraphNode[]; links: GraphLink[] } | null>(() => {
+//   const state = selectedImage.value?.graphState
+//   if (state && Array.isArray(state.tags) && state.focusedZone) {
+//     // Treat tags array as GraphNode[] to include all required properties
+//     const allTags = state.tags as GraphNode[]
+//     // Filter nodes to the focused zone
+//     const nodes: GraphNode[] = allTags.filter((tag) => tag.zone === state.focusedZone)
+//     // Construct links for parent-child relationships within the zone
+//     const links: GraphLink[] = nodes
+//       .filter((tag) => typeof tag.parentId === 'string')
+//       .map((tag) => ({ source: tag.parentId as string, target: tag.id, value: 1 }))
+//     return { nodes, links }
+//   }
+//   return null
+// })
+
+function openFullscreen() {
+  if (selectedImage.value) {
+    isFullscreen.value = true
   }
-  return null
-})
+}
+
+function closeFullscreen() {
+  isFullscreen.value = false
+}
 
 function nextImage() {
   if (props.images.length) currentIndex.value = (currentIndex.value + 1) % props.images.length
@@ -183,9 +229,22 @@ async function handleLoadSnapshot() {
 
 function handleKeydown(event: KeyboardEvent) {
   if (!visibleInternal.value) return
-  if (event.key === 'ArrowRight') nextImage()
-  else if (event.key === 'ArrowLeft') previousImage()
-  else if (event.key === 'Escape') visibleInternal.value = false
+
+  switch (event.key) {
+    case 'Escape':
+      if (isFullscreen.value) {
+        closeFullscreen()
+      } else {
+        visibleInternal.value = false
+      }
+      break
+    case 'ArrowRight':
+      nextImage()
+      break
+    case 'ArrowLeft':
+      previousImage()
+      break
+  }
 }
 
 onMounted(() => window.addEventListener('keydown', handleKeydown))
@@ -273,4 +332,52 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
 
 
 
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.fullscreen-viewer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1200;
+
+  .modal-nav-left {
+    left: 1rem;
+  }
+  .modal-nav-right {
+    right: 1rem;
+  }
+}
+
+.fullscreen-image {
+  max-width: 95vw;
+  max-height: 95vh;
+  object-fit: contain;
+}
+
+.fullscreen-close-button {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1201;
+  // Style to match nav buttons
+  opacity: 0.7;
+  transition: opacity 0.2s, transform 0.2s, background-color 0.2s;
+  background-color: rgba(45, 45, 45, 0.65) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+
+  &:hover {
+    opacity: 1;
+    transform: scale(1.05);
+    background-color: rgba(60, 60, 60, 0.85) !important;
+  }
+}
 </style>
