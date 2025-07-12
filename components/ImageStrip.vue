@@ -293,6 +293,7 @@ const handleCurrentSessionClick = () => {
   position: relative;
   flex-shrink: 0;
   width: 100%; /* Take full width of container */
+  min-height: 80px; /* Maintain height until image loads */
   /* Remove fixed height to respect aspect ratio */
   border-radius: 6px;
   overflow: hidden;
