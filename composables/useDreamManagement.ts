@@ -335,7 +335,8 @@ export function useDreamManagement() {
   // Function to perform the save (for new or save as new)
   async function performSaveAsNew(
     dreamDataPayload: { tags: Tag[] },
-    tagStoreInstance: ReturnType<typeof useTagStore>
+    tagStoreInstance: ReturnType<typeof useTagStore>,
+    lastUsedModelId?: string
   ) {
     // Pass toast and tagStore
     isSavingDream.value = true
@@ -353,6 +354,7 @@ export function useDreamManagement() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           data: dreamDataPayload,
+          lastUsedModelId: lastUsedModelId, // Include the model ID
           // title: title, // Title handling can be more complex if it's part of the payload vs. separate logic
         }),
       })
@@ -391,7 +393,7 @@ export function useDreamManagement() {
     }
   }
 
-  async function initiateSaveDreamProcess(dreamDataPayload: { tags: Tag[] }) {
+  async function initiateSaveDreamProcess(dreamDataPayload: { tags: Tag[] }, lastUsedModelId?: string) {
     console.log(`[DREAM_SAVE] === STARTING SAVE PROCESS ===`)
     console.log(`[DREAM_SAVE] isSavingDream.value: ${isSavingDream.value}`)
     console.log(`[DREAM_SAVE] dreamDataPayload:`, dreamDataPayload)
@@ -442,6 +444,7 @@ export function useDreamManagement() {
               body: JSON.stringify({
                 dreamIdToUpdate: currentLoadedDreamId,
                 data: dreamDataPayload,
+                lastUsedModelId: lastUsedModelId, // Include the model ID for updates too
               }),
             })
 
@@ -479,13 +482,13 @@ export function useDreamManagement() {
         reject: async () => {
           // User chose to SAVE AS NEW dream (from an existing one)
           // performSaveAsNew already sets isSavingDream true/false
-          await performSaveAsNew(dreamDataPayload, tagStore)
+          await performSaveAsNew(dreamDataPayload, tagStore, lastUsedModelId)
         },
       })
     } else {
       // It's a NEW dream (loadedDreamId is null), save it directly
       // performSaveAsNew already sets isSavingDream true/false
-      await performSaveAsNew(dreamDataPayload, tagStore)
+      await performSaveAsNew(dreamDataPayload, tagStore, lastUsedModelId)
     }
   }
   // --------------------------

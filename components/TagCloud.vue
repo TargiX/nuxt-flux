@@ -303,6 +303,7 @@ import ProgressSpinner from 'primevue/progressspinner'
 import { useRoute } from 'vue-router'
 import type { Dream } from '~/types/dream'
 import { getDefaultModel } from '~/services/modelConfigService'
+import { getUserPreferredModelForNewDream, getDreamLastUsedModel } from '~/services/modelPreferenceService'
 
 const tagStore = useTagStore()
 const toast = useToast()
@@ -380,6 +381,32 @@ const manualPrompt = ref('')
 // const isImageCooldown = ref(false) // REMOVED - Use from composable
 const isGeneratingPrompt = ref(false)
 const selectedModel = ref(getDefaultModel())
+
+// Initialize model based on user preferences and dream state
+async function initializeSelectedModel() {
+  try {
+    const currentDreamId = tagStore.loadedDreamId
+    
+    if (currentDreamId) {
+      // Try to get the last used model for this dream
+      const lastUsedModel = await getDreamLastUsedModel(currentDreamId)
+      if (lastUsedModel) {
+        selectedModel.value = lastUsedModel
+        return
+      }
+    }
+    
+    // For new dreams or if no last used model, get user's preferred model
+    const { data: session } = await $fetch('/api/auth/session')
+    if (session?.user?.id) {
+      const preferredModel = await getUserPreferredModelForNewDream(session.user.id)
+      selectedModel.value = preferredModel
+    }
+  } catch (error) {
+    console.error('Failed to initialize selected model:', error)
+    // Keep default model on error
+  }
+}
 
 const isViewingSnapshot = computed(() => tagStore.viewingSnapshotImageId !== null)
 
@@ -505,6 +532,9 @@ onMounted(() => {
   // This component just needs to react to the store.
   // We still need to check for a snapshot on mount.
   handleInitialSnapshot()
+  
+  // Initialize the selected model based on current dream state
+  initializeSelectedModel()
 })
 
 // New, robust function to handle initial snapshot from URL
@@ -610,6 +640,9 @@ watch(
 
     // Reset all prompt-related state when loading a new dream or clearing to new session
     promptRequestId++ // Cancel any pending prompt operations
+    
+    // Initialize the selected model for the new dream state
+    initializeSelectedModel()
 
     // Reset cooldowns and generation states
     isGeneratingPrompt.value = false
@@ -763,7 +796,7 @@ async function handleSaveDreamClick() {
   if (isSavingDisabled.value) return
 
   const dreamDataPayload = getDreamDataPayload()
-  await initiateSaveDreamProcess(dreamDataPayload)
+  await initiateSaveDreamProcess(dreamDataPayload, selectedModel.value)
 }
 
 // Update manual prompt values when loading dreams

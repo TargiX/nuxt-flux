@@ -1,6 +1,6 @@
 <template>
   <div v-if="showTutorial" class="tutorial-overlay" @click="handleOverlayClick">
-    <div class="tutorial-container" @click.stop>
+    <div class="tutorial-container glass-card" @click.stop>
       <div class="tutorial-header">
         <h2>Welcome to DreamSeed! 🎨</h2>
         <Button
@@ -172,7 +172,7 @@ const show = () => {
 defineExpose({ show })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 .tutorial-overlay {
   position: fixed;
   top: 0;
@@ -194,21 +194,6 @@ defineExpose({ show })
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
-  position: relative;
-  z-index: 0; /* establish stacking context */
-  overflow: hidden; /* clip the oversized blur */
-  background-color: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-
-  &::before {
-    content: '';
-    position: absolute;
-    inset: -50%; /* reach out beyond edges */
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    z-index: -1; /* sit behind all card content */
-    /* remove any mask-image here unless intentional */
-  }
 }
 
 .tutorial-header {

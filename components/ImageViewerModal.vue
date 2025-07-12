@@ -5,8 +5,7 @@
     :header="selectedImage?.promptText?.trim().substring(0, 200) + '...' || 'Image Details'"
     :style="{ width: '90vw', maxWidth: '1200px' }"
     content-class="p-0"
-    class="custom-image-dialog"
-    :pt="{ mask: { style: 'backdrop-filter: blur(2px)' }, header: { style: 'height: 90px;' } }"
+    class="custom-image-dialog glass-card"
   >
     <div
       v-if="selectedImage"
@@ -17,7 +16,7 @@
           :src="selectedImage.imageUrl"
           :alt="selectedImage.promptText || 'Selected image'"
           class="large-gallery-image"
-        />
+        >
       </div>
       <Button
         icon="pi pi-chevron-left"
@@ -52,7 +51,7 @@
           No graph available
         </div> -->
         <h3 class="text-lg font-semibold mb-1">Created:</h3>
-        <p class="date-modal-text text-sm mb-4">
+        <p class="frosted-card-text text-sm mb-4">
           {{ new Date(selectedImage.createdAt).toLocaleString() }}
         </p>
 
@@ -193,7 +192,8 @@ onMounted(() => window.addEventListener('keydown', handleKeydown))
 onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '~/assets/scss/mixins/frosted-glass' as fg;
 .large-gallery-image {
   width: 100%;
   max-height: calc(80vh - 100px);
@@ -269,4 +269,8 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
   height: 200px; /* Or adjust as needed */
   background-color: rgba(0, 0, 0, 0.2);
 }
+
+
+
+
 </style>

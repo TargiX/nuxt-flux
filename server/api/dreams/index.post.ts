@@ -69,10 +69,10 @@ export default defineEventHandler(async (event: H3Event) => {
   // ----------------------------
 
   try {
-    // Updated to include optional dreamIdToUpdate
-    const body = await readBody<{ title?: string; data: unknown; dreamIdToUpdate?: number }>(event)
+    // Updated to include optional dreamIdToUpdate and lastUsedModelId
+    const body = await readBody<{ title?: string; data: unknown; dreamIdToUpdate?: number; lastUsedModelId?: string }>(event)
     logger.debug('[POST /api/dreams] Request Body:', body)
-    const { title, data, dreamIdToUpdate } = body
+    const { title, data, dreamIdToUpdate, lastUsedModelId } = body
 
     // --- Zod Validation ---
     const validationResult = DreamDataSchema.safeParse(data)
@@ -153,6 +153,7 @@ export default defineEventHandler(async (event: H3Event) => {
         data: {
           title: dreamTitle,
           data: validatedData as object, // Prisma expects 'JsonValue'
+          lastUsedModelId: lastUsedModelId, // Update the last used model
           // userId should not change during an update by the same user
         },
       })
@@ -165,6 +166,7 @@ export default defineEventHandler(async (event: H3Event) => {
         data: {
           title: dreamTitle,
           data: validatedData as object, // Prisma expects 'JsonValue'
+          lastUsedModelId: lastUsedModelId, // Store the last used model for new dreams
           userId: userId,
         },
       })

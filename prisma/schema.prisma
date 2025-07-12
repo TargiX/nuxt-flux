@@ -29,6 +29,7 @@ model User {
   dreams              Dream[] // Add relation to Dream model
   generatedImages     GeneratedImage[] // Add relation to GeneratedImage model
   passwordResetTokens PasswordResetToken[]
+  modelPreferences    UserModelPreference[] // Add relation to model preferences
 }
 
 // Add the Dream model
@@ -37,6 +38,7 @@ model Dream {
   createdAt       DateTime         @default(now())
   title           String? // Optional title for the dream
   data            Json // Store the graph state or other relevant data as JSON
+  lastUsedModelId String? // Store the last model used for this dream
   userId          String // Foreign key to the User model
   user            User             @relation(fields: [userId], references: [id]) // Relation field
   generatedImages GeneratedImage[] // Add relation to GeneratedImage model
@@ -73,4 +75,20 @@ model PasswordResetToken {
 model TagAppearance {
   id       String @id @unique
   imageUrl String
+}
+
+// Store user's favorite AI models
+model UserModelPreference {
+  id         Int      @id @default(autoincrement())
+  userId     String
+  modelId    String   // The model ID (e.g., "gemini-2.0-flash-preview-image-generation")
+  isFavorite Boolean  @default(false) // Whether this model is marked as favorite
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Ensure one preference per user per model
+  @@unique([userId, modelId])
+  @@index([userId])
 }
