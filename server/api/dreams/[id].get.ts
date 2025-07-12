@@ -1,5 +1,6 @@
 import prisma from '~/server/utils/db'
-import { defineEventHandler, createError, H3Event } from 'h3'
+import type { H3Event } from 'h3';
+import { defineEventHandler, createError } from 'h3'
 import { getServerSession } from '#auth'
 import { authOptions } from '~/server/api/auth/[...]'
 
@@ -25,6 +26,12 @@ export default defineEventHandler(async (event: H3Event) => {
     throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
   }
 
+  // Ensure backwards compatibility by adding default zoneViewports if missing
+  const dreamData = dream.data as Record<string, unknown>
+  if (!dreamData.zoneViewports) {
+    dreamData.zoneViewports = {}
+  }
+  
   // Return the stored data JSON
-  return dream.data
+  return dreamData
 })

@@ -1,5 +1,6 @@
 import prisma from '~/server/utils/db'
-import { defineEventHandler, readBody, createError, H3Event } from 'h3'
+import type { H3Event } from 'h3';
+import { defineEventHandler, readBody, createError } from 'h3'
 import { z } from 'zod'
 import logger from '~/utils/logger'
 import { getServerSession } from '#auth'
@@ -35,6 +36,11 @@ const DreamDataSchema = z.object({
   tags: z.array(TagSchema),
   generatedPrompt: z.string().optional(),
   imageUrl: z.string().nullable().optional(),
+  zoneViewports: z.record(z.string(), z.object({
+    x: z.number(),
+    y: z.number(),
+    k: z.number(),
+  })).optional(), // Record of zone names to viewport states
 })
 // ---------------------------
 
@@ -146,7 +152,7 @@ export default defineEventHandler(async (event: H3Event) => {
         },
         data: {
           title: dreamTitle,
-          data: validatedData as any, // Prisma expects 'JsonValue'
+          data: validatedData as object, // Prisma expects 'JsonValue'
           // userId should not change during an update by the same user
         },
       })
@@ -158,7 +164,7 @@ export default defineEventHandler(async (event: H3Event) => {
       dream = await prisma.dream.create({
         data: {
           title: dreamTitle,
-          data: validatedData as any, // Prisma expects 'JsonValue'
+          data: validatedData as object, // Prisma expects 'JsonValue'
           userId: userId,
         },
       })
@@ -166,10 +172,10 @@ export default defineEventHandler(async (event: H3Event) => {
     }
 
     return dream
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(`[POST /api/dreams] Error for user ${userId || 'unknown'}:`, error)
 
-    if (error.statusCode) {
+    if (error && typeof error === 'object' && 'statusCode' in error) {
       // Re-throw H3/validation errors
       throw error
     }
@@ -183,7 +189,9 @@ export default defineEventHandler(async (event: H3Event) => {
       statusMessage: 'Internal Server Error',
       data: {
         code: 'DREAM_SAVE_FAILED',
-        message: error.message || 'Could not save dream due to an internal error.',
+        message: (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') 
+          ? error.message 
+          : 'Could not save dream due to an internal error.',
       },
     })
   }

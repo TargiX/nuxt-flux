@@ -159,7 +159,6 @@ watch(
     if (!pendingUpdate) {
       pendingUpdate = true
       setTimeout(() => {
-        console.log('Graph structure LENGTH (batched), triggering update')
         graphVersion.value++
         pendingUpdate = false
       }, 10)
@@ -171,7 +170,6 @@ watch(
 watch(
   () => graphVersion.value,
   () => {
-    console.log('Graph updating due to version change')
     updateGraph()
   }
 )
@@ -693,6 +691,7 @@ defineExpose<ForceGraphExposed>({
     // If state is undefined, always apply the default viewport with initial zoom scale
     if (!state) {
       console.log('ForceGraph applying default viewport with initial zoom scale')
+      console.trace('Default viewport call stack')
     } else {
       console.log(
         `ForceGraph applying viewport: custom (${state.x.toFixed(2)},${state.y.toFixed(

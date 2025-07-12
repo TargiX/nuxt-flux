@@ -153,7 +153,7 @@ export const useTagStore = defineStore('tags', () => {
           zoneViewportStates.value.set(zoneName, viewportState)
         } else {
           console.warn(
-            `[TagStore] Invalid viewport data for zone '${zoneName}' in loaded dream:`,
+            `Invalid viewport data for zone '${zoneName}' in loaded dream:`,
             viewportState
           )
         }
@@ -227,10 +227,15 @@ export const useTagStore = defineStore('tags', () => {
     })
 
     // Set core state before applying tags
-    loadedDreamId.value = dreamId
+    // CRITICAL: Set focusedZone BEFORE loadedDreamId to ensure viewport watcher gets correct zone
     focusedZone.value = dreamData.focusedZone || zones.value[0]
     currentGeneratedPrompt.value = dreamData.generatedPrompt || ''
     currentImageUrl.value = dreamData.imageUrl || null
+    
+    // Temporarily clear loadedDreamId to ensure the watcher triggers even if the ID is the same
+    loadedDreamId.value = null
+    await nextTick()
+    loadedDreamId.value = dreamId  // This triggers the watcher, which needs correct focusedZone
 
 
     hasUnsavedChanges.value = false
@@ -239,7 +244,12 @@ export const useTagStore = defineStore('tags', () => {
     await nextTick()
     tags.value = reconstructedTags
     await nextTick()
-    isRestoringSession.value = false
+    
+    // Delay setting isRestoringSession to false to allow watchers to complete
+    // The TagCloud viewport watcher needs time to apply the loaded viewport
+    setTimeout(() => {
+      isRestoringSession.value = false
+    }, 100)
   }
   // ------------------------------------------
 

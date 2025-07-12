@@ -1,11 +1,12 @@
 <template>
-  <div v-if="isPageLoading" class="page-loading-container">
-    <ProgressSpinner stroke-width="8" fill="var(--surface-ground)" animation-duration=".5s" />
-    <p>Loading session...</p>
-  </div>
-  <div v-else>
+  <div class="dream-page-container">
     <div class="mx-auto max-w-[96vw]">
       <TagCloud />
+    </div>
+    <!-- Loading overlay that doesn't destroy the TagCloud component -->
+    <div v-if="isPageLoading" class="page-loading-overlay">
+      <ProgressSpinner stroke-width="8" fill="var(--surface-ground)" animation-duration=".5s" />
+      <p>Loading session...</p>
     </div>
   </div>
 </template>
@@ -57,18 +58,14 @@ async function initializeSession() {
     return
   }
 
-  // If the route's ID already matches the store's ID, the state is current.
-  if (idNum === tagStore.loadedDreamId) {
-    isPageLoading.value = false // Ensure loading screen is off
-    return
-  }
-
+  // Always load dream data to ensure viewport coordinates are properly restored
+  // Even if the dream ID matches, we need to fetch and apply the saved state
   isPageLoading.value = true
   try {
     const dreamData = await $fetch<DreamData>(`/api/dreams/${idNum}`)
     await tagStore.loadDreamState(dreamData, idNum)
   } catch (e) {
-    console.error(`[initializeSession] Failed to load dream ${idNum}:`, e)
+    console.error(`Failed to load dream ${idNum}:`, e)
     router.replace('/dream/new')
   } finally {
     isPageLoading.value = false
@@ -83,12 +80,23 @@ watch(
 </script>
 
 <style scoped>
-.page-loading-container {
+.dream-page-container {
+  position: relative;
+  min-height: calc(100vh - 100px);
+}
+
+.page-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  height: calc(100vh - 100px);
-  width: 100%;
+  background-color: rgba(var(--surface-ground-rgb), 0.9);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
 }
 </style>

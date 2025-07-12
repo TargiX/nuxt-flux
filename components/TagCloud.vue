@@ -317,10 +317,6 @@ const viewerVisible = ref(false)
 const viewerImages = ref<any[]>([])
 const viewerStartIndex = ref(0)
 
-console.log(
-  '[TagCloud setup] Initial value of tagStore.isRestoringSession:',
-  tagStore.isRestoringSession
-)
 
 const localGraphNodes = computed(() => (tagStore.isRestoringSession ? [] : tagStore.graphNodes))
 const localGraphLinks = computed(() => tagStore.graphLinks)
@@ -567,7 +563,6 @@ async function handleNodeClick(id: string) {
   }
 
   if (tagStore.stashedSessionState) {
-    console.log('[TagCloud] Interaction while viewing snapshot. Clearing stashed session.')
     tagStore.stashedSessionState = null // Clear stash
     tagStore.viewingSnapshotImageId = null // Clear viewing ID
     // The current state is now the live session
@@ -593,47 +588,42 @@ async function handleNodeClick(id: string) {
 watch(
   () => tagStore.loadedDreamId,
   (newId, oldId) => {
-    // Skip viewport reset if we're just updating the ID after a save (null -> number)
-    // This happens when saving a new dream and we don't want to reset positions
-    if (oldId === null && typeof newId === 'number') {
-      console.log('[TagCloud] Dream ID updated after save - skipping viewport reset to preserve positions')
+    // Skip viewport operations ONLY if we're updating after a save AND isRestoringSession is false
+    // This means we're just updating the ID after saving, not loading a new dream
+    if (oldId === null && typeof newId === 'number' && !tagStore.isRestoringSession) {
       return
     }
 
     // Reset all prompt-related state when loading a new dream or clearing to new session
     promptRequestId++ // Cancel any pending prompt operations
-    // skipPrompt.value = true;
 
     // Reset cooldowns and generation states
     isGeneratingPrompt.value = false
-    // isGeneratingImage.value = false; // Now handled by composable
 
     if (tagStore.stashedSessionState) {
-      console.log('[TagCloud] New dream loaded/session changed. Clearing any stashed session.')
       // No need to restore, just clear. The new dream/session takes precedence.
       tagStore.stashedSessionState = null
       tagStore.viewingSnapshotImageId = null
     }
 
-    // Directly reset viewport for new sessions - no timeouts
-    // skipPrompt.value = true;
-    // setTimeout(() => {
-    // skipPrompt.value = false;
-    // }, 1000);
-    // Reset the flag in the next tick after potential state changes have settled
-    // nextTick(() => {
-    // skipPrompt.value = false;
-    // });
-    console.log('[TagCloud] New dream loaded/session changed. Resetting viewport.')
     // Apply viewport for the newly loaded dream's focused zone
-    nextTick(() => {
-      if (!forceGraphRef.value) return
+    // Use a retry mechanism to wait for ForceGraph to be ready
+    const applyViewportWhenReady = () => {
+      if (!forceGraphRef.value) {
+        setTimeout(applyViewportWhenReady, 50)
+        return
+      }
+      
       const savedViewport = tagStore.getZoneViewport(tagStore.focusedZone)
       if (isValidViewport(savedViewport)) {
         forceGraphRef.value.applyViewport(savedViewport)
       } else {
         forceGraphRef.value.applyViewport()
       }
+    }
+    
+    nextTick(() => {
+      applyViewportWhenReady()
     })
   }
 )
@@ -654,11 +644,9 @@ async function switchToZone(newZone: string, oldZone?: string) {
     const currentViewport = forceGraphRef.value.getCurrentViewport()
     if (currentViewport) {
       tagStore.saveZoneViewport(currentOldZone, currentViewport)
-      console.log(`Saved viewport for ${currentOldZone}:`, currentViewport)
     }
   }
 
-  console.log(`Switching from ${currentOldZone} to ${newZone}`)
   tagStore.setFocusedZone(newZone)
 
   // Wait for the zone change to be processed
@@ -669,7 +657,6 @@ async function switchToZone(newZone: string, oldZone?: string) {
     try {
       const savedViewport = tagStore.getZoneViewport(newZone)
       if (savedViewport) {
-        console.log(`Applying saved viewport for ${newZone}:`, savedViewport)
         // Validate the saved viewport
         if (isValidViewport(savedViewport)) {
           forceGraphRef.value.applyViewport(savedViewport)
@@ -678,7 +665,6 @@ async function switchToZone(newZone: string, oldZone?: string) {
           forceGraphRef.value.applyViewport()
         }
       } else {
-        console.log(`No saved viewport for ${newZone}, applying default.`)
         forceGraphRef.value.applyViewport()
       }
     } catch (err) {
@@ -714,17 +700,15 @@ function isValidViewport(viewport: ViewportState | null | undefined): boolean {
 
 // Helper function to construct dream data payload
 function getDreamDataPayload() {
-  console.log(`[SAVE] === STARTING getDreamDataPayload ===`)
-  console.log(`[SAVE] Original tagStore.tags length: ${tagStore.tags.length}`)
 
-  // Check current state of tags in store
-  tagStore.tags.forEach((tag, index) => {
-    if (tag.isTransformed) {
-      console.log(
-        `[SAVE] BEFORE mapping - Tag ${index} (${tag.id}): isTransformed=${tag.isTransformed}, text="${tag.text}", originalText="${tag.originalText}"`
-      )
+  // CRITICAL: Capture current viewport before saving to ensure coordinates are preserved
+  if (forceGraphRef.value) {
+    const currentViewport = forceGraphRef.value.getCurrentViewport()
+    if (currentViewport) {
+      tagStore.saveZoneViewport(tagStore.focusedZone, currentViewport)
     }
-  })
+  }
+
 
   // Create a proper deep clone that preserves all properties
   const plainTags = tagStore.tags.map((tag, index) => {
@@ -744,22 +728,10 @@ function getDreamDataPayload() {
       originalText: tag.originalText || undefined,
     }
 
-    if (tag.isTransformed) {
-      console.log(
-        `[SAVE] AFTER mapping - Tag ${index} (${tag.id}):`,
-        JSON.stringify(mapped, null, 2)
-      )
-    }
-
     return mapped
   })
 
-  // Log transformation states for debugging
-  const transformedTags = plainTags.filter((tag) => tag.isTransformed)
-  console.log(`[SAVE] Total transformed tags in payload: ${transformedTags.length}`)
-  if (transformedTags.length > 0) {
-    console.log(`[SAVE] Transformed tags details:`, transformedTags)
-  }
+
 
   const payload = {
     focusedZone: focusedZone.value,
@@ -768,12 +740,6 @@ function getDreamDataPayload() {
     imageUrl: tagStore.currentImageUrl,
     zoneViewports: tagStore.getAllZoneViewportsObject(),
   }
-
-  console.log(`[SAVE] === FINAL PAYLOAD ===`)
-  console.log(`[SAVE] Payload tags length: ${payload.tags.length}`)
-  console.log(
-    `[SAVE] Payload transformed tags: ${payload.tags.filter((t) => t.isTransformed).length}`
-  )
 
   return payload
 }
@@ -808,6 +774,8 @@ watch(
     // skipPrompt.value = false;
   }
 )
+
+
 
 // Handle request to view a snapshot from the strip
 const handleSnapshotRequestFromStrip = (image: {
@@ -894,7 +862,6 @@ async function handleGenerateImageClick() {
   }
 
   if (tagStore.stashedSessionState) {
-    console.log('[TagCloud] Generating image while viewing snapshot. Clearing stashed session.')
     tagStore.stashedSessionState = null
     tagStore.viewingSnapshotImageId = null
   }
@@ -1019,7 +986,6 @@ function handleNodeTextUpdated({ id, text }: { id: string; text: string }) {
     return
   }
   if (tagStore.stashedSessionState) {
-    console.log('[TagCloud] Node text updated while viewing snapshot. Clearing stashed session.')
     tagStore.stashedSessionState = null // Clear stash
     tagStore.viewingSnapshotImageId = null // Clear viewing ID
   }
@@ -1076,9 +1042,6 @@ async function handleNodeContextMenu(payload: {
   action: string
   nodeId: string
 }) {
-  console.log(
-    `[TagCloud] Context menu selection '${payload.category} -> ${payload.action}' for node '${payload.nodeId}'`
-  )
 
   if (isViewingSnapshot.value) {
     toast.add({
@@ -1095,7 +1058,6 @@ async function handleNodeContextMenu(payload: {
   }
 
   if (tagStore.stashedSessionState) {
-    console.log('[TagCloud] Context menu action while viewing snapshot. Clearing stashed session.')
     tagStore.stashedSessionState = null
     tagStore.viewingSnapshotImageId = null
   }

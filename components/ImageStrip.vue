@@ -70,7 +70,7 @@
         <!-- Conditional Messages with a simple fade transition -->
         <transition name="fade" mode="out-in">
           <div
-            v-if="props.dreamId && pending && images.length === 0"
+            v-if="props.dreamId && pending && images.length === 0 && !props.isGeneratingImage"
             key="loading-initial"
             class="loading-message central-message"
           >
@@ -173,7 +173,6 @@ const fetchImages = async (idToFetch: number | null) => {
     }
   } catch (err: any) {
     if (err.name === 'AbortError') {
-      console.log('Image fetch aborted for dreamId:', idToFetch)
       // If this aborted fetch was for the current dreamId, pending should reflect that.
       if (props.dreamId === idToFetch) pending.value = false
       return
