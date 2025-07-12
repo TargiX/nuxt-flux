@@ -16,6 +16,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const userId = session.user.id
+  console.log('Session user ID:', userId, typeof userId)
 
   // Handle GET request - fetch user preferences
   if (event.node.req.method === 'GET') {

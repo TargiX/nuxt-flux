@@ -43,6 +43,17 @@ export async function getUserFavoriteModels(userId: string): Promise<string[]> {
  * Toggle model favorite status
  */
 export async function toggleModelFavorite(userId: string, modelId: string): Promise<ModelPreference> {
+  // Verify user exists
+  const user = await prisma.user.findUnique({
+    where: { id: userId }
+  })
+  
+  if (!user) {
+    throw new Error(`User with ID ${userId} does not exist`)
+  }
+  
+  console.log('User found:', user.id, user.email)
+
   // Check if preference already exists
   const existing = await prisma.userModelPreference.findUnique({
     where: {
