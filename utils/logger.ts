@@ -1,7 +1,7 @@
 // utils/logger.ts
 // A simple logger utility for structured and gated logging
 
-const isDev = process.env.NODE_ENV !== 'production'
+const isDev = process.env.NODE_ENV !== 'production' || true
 
 const logger = {
   debug: (...args: any[]) => {
