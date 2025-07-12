@@ -302,7 +302,7 @@ export const useTagStore = defineStore('tags', () => {
     await nextTick()
     tags.value = reconstructedTags
     await nextTick()
-
+    await refreshAppearances()
     // Delay setting isRestoringSession to false to allow watchers to complete
     // The TagCloud viewport watcher needs time to apply the loaded viewport
     setTimeout(() => {

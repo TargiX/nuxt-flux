@@ -107,8 +107,7 @@ const __dirname  = _dirname(__filename);`,
     css: {
       preprocessorOptions: {
         scss: {
-          additionalData: '@use "~/assets/scss/variables.scss";',
-          api: 'modern-compiler',
+          additionalData: '@use "~/assets/scss/variables.scss" as v;',
         },
       },
     },
