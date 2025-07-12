@@ -52,6 +52,22 @@ html {
   --p-tieredmenu-submenu-icon-active-color: #ffffff;
   --p-tieredmenu-separator-border-color: #444;
 
+  // Select Dark Theme Variables
+  --p-select-background: #2a2a2a;
+  --p-select-border-color: #444;
+  --p-select-color: #e2e8f0;
+  --p-select-border-radius: 8px;
+  --p-select-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --p-select-transition-duration: 0.2s;
+  --p-select-overlay-background: #2a2a2a;
+  --p-select-overlay-border-color: #444;
+  --p-select-overlay-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --p-select-option-focus-background: #383838;
+  --p-select-option-color: #e2e8f0;
+  --p-select-option-focus-color: #ffffff;
+  --p-select-option-padding: 10px 16px;
+  --p-select-option-border-radius: 4px;
+
   --p-tag-font-size: 0.775rem;
 
     /* Base Dialog Styles */
@@ -316,4 +332,40 @@ body {
 // Ensure all TieredMenu panels have proper z-index
 .p-tieredmenu-panel {
   z-index: 10001 !important;
+}
+
+// Select Global Dark Theme Styling
+.p-select-overlay {
+  background: var(--p-select-overlay-background) !important;
+  border: 1px solid var(--p-select-overlay-border-color) !important;
+  border-radius: var(--p-select-border-radius) !important;
+  box-shadow: var(--p-select-overlay-shadow) !important;
+  backdrop-filter: blur(10px) !important;
+
+  .p-select-list {
+    background: transparent !important;
+  }
+
+  .p-select-option {
+    color: var(--p-select-option-color) !important;
+    background: transparent !important;
+    padding: var(--p-select-option-padding) !important;
+    border-radius: var(--p-select-option-border-radius) !important;
+    transition: all var(--p-select-transition-duration) ease !important;
+
+    &:hover, &:focus {
+      background: var(--p-select-option-focus-background) !important;
+      color: var(--p-select-option-focus-color) !important;
+    }
+
+    &.p-focus {
+      background: var(--p-select-option-focus-background) !important;
+      color: var(--p-select-option-focus-color) !important;
+    }
+
+    &.p-highlight {
+      background: var(--p-select-option-focus-background) !important;
+      color: var(--p-select-option-focus-color) !important;
+    }
+  }
 }

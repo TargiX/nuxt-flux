@@ -1,12 +1,12 @@
 <template>
   <div class="model-picker-container">
-    <Dropdown
+    <Select
       v-model="selectedModel"
       :options="modelOptions"
       option-label="label"
       option-value="value"
       placeholder="Select Model"
-      class="model-picker-dropdown"
+      class="model-picker-select"
       :class="{ 'model-picker-compact': compact }"
       @change="handleModelChange"
     >
@@ -19,16 +19,16 @@
         <span v-else class="text-sm opacity-75">Select Model</span>
       </template>
       <template #option="{ option }">
-        <div class="flex items-center gap-2 p-2 group">
-          <i :class="option.icon" class="text-sm"/>
-          <div class="flex flex-col flex-1">
-            <span class="font-medium">{{ option.label }}</span>
-            <span class="text-xs opacity-75">{{ option.description }}</span>
+        <div class="flex items-center p-2 group w-full">
+          <i :class="option.icon" class="text-sm flex-shrink-0"/>
+          <div class="flex flex-col flex-1 mx-2 min-w-0">
+            <span class="font-medium truncate">{{ option.label }}</span>
+            <span class="text-xs opacity-75 truncate">{{ option.description }}</span>
           </div>
-          <!-- Favorite star button -->
+          <!-- Favorite star button - fixed position -->
           <button
             :class="[
-              'p-1 rounded transition-colors',
+              'p-1 rounded transition-colors flex-shrink-0 w-6 h-6 flex items-center justify-center',
               isFavorite(option.value) 
                 ? 'text-yellow-500 hover:text-yellow-600' 
                 : 'text-gray-400 hover:text-yellow-500 opacity-0 group-hover:opacity-100'
@@ -40,13 +40,13 @@
           </button>
         </div>
       </template>
-    </Dropdown>
+    </Select>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
-import Dropdown from 'primevue/dropdown'
+import Select from 'primevue/select'
 import { getModelDisplayOptions } from '~/services/modelConfigService'
 import { useModelPreferences } from '~/composables/useModelPreferences'
 
@@ -131,11 +131,9 @@ onMounted(async () => {
   gap: 0.5rem;
 }
 
-.model-picker-dropdown {
+.model-picker-select {
   min-width: 200px;
-  .p-select-label {
-    padding: 0;
-  }
+  
   &.model-picker-compact {
     min-width: 150px;
   }

@@ -84,8 +84,8 @@
     <!-- Bottom Left: Prompt Area -->
     <div class="prompt-area-container glass-card">
       <div class="prompt-header flex justify-between items-start w-full">
-        <div class="flex items-center gap-3">
-          <p class="!mb-1">Prompt model:</p>
+        <div class="flex items-center ">
+          <p class="!mb-0 opacity-75 text-sm">Prompt model:</p>
           <div v-if="isInitializingModel" class="loading-model-text">
             Loading model preferences...
           </div>
@@ -97,8 +97,8 @@
             @change="handleModelChange"
           />
         </div>
-        <div class="flex items-center gap-3">
-          <p class="!mb-1">Image model:</p>
+        <div class="flex items-center ">
+          <p class="!mb-0 opacity-75 text-sm">Image model:</p>
           <div v-if="isInitializingModel" class="loading-model-text">
             Loading model preferences...
           </div>
@@ -157,7 +157,7 @@
           />
         </div>
       </div>
-      <div class="prompt-box w-full max-h-[100px] overflow-y-auto">
+      <div class="prompt-box w-full max-h-[100px] overflow-y-auto pt-3">
         <Textarea
           v-if="isManualMode"
           v-model="manualPrompt"
@@ -1398,83 +1398,36 @@ function handleModelChange(modelId: string) {
   font-style: italic;
 }
 
-.subtle-model-picker :deep(.model-picker-dropdown) {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-  min-width: auto !important;
+/* Subtle model picker styling for closed state */
+.subtle-model-picker :deep(.p-select) {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  height: auto;
+  min-height: auto;
 }
 
-.subtle-model-picker :deep(.p-dropdown) {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-  height: auto !important;
-  min-height: auto !important;
+.subtle-model-picker :deep(.p-select-label) {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 0.875rem;
+  line-height: 1.2;
+  height: auto;
 }
 
-.subtle-model-picker :deep(.p-dropdown .p-dropdown-label) {
-  background: transparent !important;
-  border: none !important;
-  padding: 0 !important;
-  color: white !important;
-  font-size: 0.875rem !important;
-  line-height: 1.2 !important;
-  height: auto !important;
+.subtle-model-picker :deep(.p-select-dropdown) {
+  background: transparent;
+  border: none;
+  width: auto;
+  padding: 0 0 0 0.5rem;
+  height: auto;
 }
 
-.subtle-model-picker :deep(.p-dropdown .p-dropdown-label span) {
-  color: white !important;
-}
-
-.subtle-model-picker :deep(.p-dropdown .p-dropdown-label .pi-star-fill) {
-  color: #fbbf24 !important;
-}
-
-.subtle-model-picker :deep(.p-dropdown .p-dropdown-trigger) {
-  background: transparent !important;
-  border: none !important;
-  color: white !important;
-  width: auto !important;
-  padding: 0 0 0 0.5rem !important;
-  height: auto !important;
-}
-
-.subtle-model-picker :deep(.p-dropdown:not(.p-disabled):hover) {
-  border: none !important;
-  box-shadow: none !important;
-}
-
-.subtle-model-picker :deep(.p-dropdown:not(.p-disabled).p-focus) {
-  border: none !important;
-  box-shadow: none !important;
-}
-
-/* Ensure dropdown panel maintains dark theme */
-.subtle-model-picker :deep(.p-dropdown-panel) {
-  background: rgba(30, 30, 30, 0.95) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  backdrop-filter: blur(10px) !important;
-}
-
-.subtle-model-picker :deep(.p-dropdown-items) {
-  background: transparent !important;
-}
-
-.subtle-model-picker :deep(.p-dropdown-item) {
-  color: white !important;
-  background: transparent !important;
-}
-
-.subtle-model-picker :deep(.p-dropdown-item:hover) {
-  background: rgba(255, 255, 255, 0.1) !important;
-  color: white !important;
-}
-
-.subtle-model-picker :deep(.p-dropdown-item.p-focus) {
-  background: rgba(255, 255, 255, 0.1) !important;
-  color: white !important;
+.subtle-model-picker :deep(.p-select:not(.p-disabled):hover),
+.subtle-model-picker :deep(.p-select:not(.p-disabled).p-focus) {
+  border: none;
+  box-shadow: none;
 }
 </style>
