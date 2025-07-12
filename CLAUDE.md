@@ -99,3 +99,18 @@ Requires `.env.local` or `.env.production` with:
 - NextAuth secrets
 
 Use environment-specific commands for development and database operations.
+
+## Configuration Management
+
+### Configuration Creation Guidelines
+- Always use environment-specific configuration files (`.env.local`, `.env.production`)
+- Separate sensitive credentials from application configuration
+- Use strongly typed environment variable validation
+- Implement secure credential rotation and management strategies
+
+### Best Practices for Configuration
+- Store configuration in encrypted secrets management system
+- Never commit sensitive credentials to version control
+- Use runtime environment variable validation
+- Implement different configuration strategies for local, staging, and production environments
+- Leverage Nuxt runtime configuration for dynamic settings

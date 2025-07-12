@@ -44,6 +44,8 @@ export default defineEventHandler(async (event) => {
       isFavorite?: boolean
     }>(event)
 
+    console.log('POST request received:', { userId, modelId, action, isFavorite })
+
     if (!modelId) {
       throw createError({ statusCode: 400, statusMessage: 'modelId is required' })
     }
@@ -64,7 +66,17 @@ export default defineEventHandler(async (event) => {
       return { preference: result }
     } catch (error) {
       console.error('Error updating model preference:', error)
-      throw createError({ statusCode: 500, statusMessage: 'Failed to update model preference' })
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        userId,
+        modelId,
+        action
+      })
+      throw createError({ 
+        statusCode: 500, 
+        statusMessage: `Failed to update model preference: ${error instanceof Error ? error.message : 'Unknown error'}` 
+      })
     }
   }
 
