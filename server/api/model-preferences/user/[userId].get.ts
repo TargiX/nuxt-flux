@@ -1,12 +1,20 @@
 import { getUserPreferredModelForNewDream } from '~/services/modelPreferenceService'
+import { getServerSession } from '#auth'
 
 export default defineEventHandler(async (event) => {
+  // Check authentication
+  const session = await getServerSession(event)
+  if (!session?.user?.id) {
+    throw createError({ statusCode: 401, statusMessage: 'Authentication required' })
+  }
+
   const userId = getRouterParam(event, 'userId')
   
-  if (!userId) {
+  // Ensure the user can only access their own preferences
+  if (userId !== session.user.id) {
     throw createError({
-      statusCode: 400,
-      statusMessage: 'User ID is required'
+      statusCode: 403,
+      statusMessage: 'Access denied'
     })
   }
 

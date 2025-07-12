@@ -1,6 +1,13 @@
 import { getDreamLastUsedModel } from '~/services/modelPreferenceService'
+import { getServerSession } from '#auth'
 
 export default defineEventHandler(async (event) => {
+  // Check authentication
+  const session = await getServerSession(event)
+  if (!session?.user?.id) {
+    throw createError({ statusCode: 401, statusMessage: 'Authentication required' })
+  }
+
   const dreamId = getRouterParam(event, 'dreamId')
   
   if (!dreamId) {
