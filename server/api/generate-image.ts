@@ -11,9 +11,10 @@ interface GenerateImageBody {
   aspectRatio?: string
   options?: ModelGenerationOptions
   selectedTagAliases?: string[]
+  selectedTagsData?: Array<{ alias: string; text: string }>
 }
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async (event: H3Event) => {
   try {
     const {
       prompt,
@@ -21,6 +22,7 @@ export default defineEventHandler(async (event) => {
       aspectRatio,
       options = {},
       selectedTagAliases = [],
+      selectedTagsData = [],
     } = await readBody<GenerateImageBody>(event)
 
     if (!prompt) {
@@ -28,7 +30,6 @@ export default defineEventHandler(async (event) => {
     }
 
     // Merge aspect ratio into options if provided
-
     if (aspectRatio) {
       options.aspect_ratio = aspectRatio as '1:1' | '3:4' | '4:3' | '9:16' | '16:9'
     }
@@ -37,8 +38,14 @@ export default defineEventHandler(async (event) => {
     const result = await generateImage(prompt, modelId, options)
 
     // --- Asynchronous Icon Generation (Fire-and-Forget) ---
-    if (selectedTagAliases.length > 0) {
-      triggerIconGeneration(selectedTagAliases, event).catch((err) => {
+    if (selectedTagsData.length > 0) {
+      triggerIconGeneration(selectedTagsData, event).catch((err) => {
+        logger.error('Error in background icon generation process:', err)
+      })
+    } else if (selectedTagAliases.length > 0) {
+      // Fallback for backward compatibility
+      const fallbackTagsData = selectedTagAliases.map(alias => ({ alias, text: alias.replace(/-/g, ' ') }))
+      triggerIconGeneration(fallbackTagsData, event).catch((err) => {
         logger.error('Error in background icon generation process:', err)
       })
     }
@@ -48,7 +55,7 @@ export default defineEventHandler(async (event) => {
       metadata: result.metadata,
     }
   } catch (error: unknown) {
-    console.error('Error in generate-image API:', error)
+    logger.error('Error in generate-image API:', error)
 
     // Check if it's an H3Error
     if (typeof error === 'object' && error !== null && 'statusCode' in error) {
@@ -71,10 +78,11 @@ export default defineEventHandler(async (event) => {
   }
 })
 
-async function triggerIconGeneration(aliases: string[], event: H3Event) {
-  logger.info(`[GenerateImage] Starting icon generation check for aliases: ${aliases.join(', ')}`)
+async function triggerIconGeneration(tagsData: Array<{ alias: string; text: string }>, event: H3Event) {
+  const aliases = tagsData.map(tag => tag.alias)
+  
   // 1. Find which tags already have icons
-  const existingAppearances = await prisma.TagAppearance.findMany({
+  const existingAppearances = await prisma.tagAppearance.findMany({
     where: {
       id: { in: aliases },
     },
@@ -90,33 +98,27 @@ async function triggerIconGeneration(aliases: string[], event: H3Event) {
   )
 
   // 2. Determine which tags need icons
-  const aliasesToGenerate = aliases.filter((alias) => !existingAliases.has(alias))
+  const tagsToGenerate = tagsData.filter((tag) => !existingAliases.has(tag.alias))
 
-  if (aliasesToGenerate.length === 0) {
-    logger.info('[GenerateImage] No new icons need to be generated.')
+  if (tagsToGenerate.length === 0) {
+    logger.info('[GenerateImage] No new tag icons need to be generated.')
     return
   }
-
-  logger.info(
-    `[GenerateImage] Triggering icon generation for ${
-      aliasesToGenerate.length
-    } new aliases: ${aliasesToGenerate.join(', ')}`
-  )
 
   // 3. Trigger generation for each one by calling the internal API
   const baseUrl = event.node.req.headers.host
   const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http'
 
-  for (const alias of aliasesToGenerate) {
+  for (const tag of tagsToGenerate) {
     const url = `${protocol}://${baseUrl}/api/internal/tags/generate-icon`
-    logger.info(`[GenerateImage] Firing POST request to ${url} for alias: ${alias}`)
+    logger.info(`[GenerateImage] Firing POST request to ${url} for alias: ${tag.alias} with text: ${tag.text}`)
     // We don't await here to make it fire-and-forget
     fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ alias }),
+      body: JSON.stringify({ alias: tag.alias, displayText: tag.text }),
     }).catch((err) => {
-      logger.error(`[GenerateImage] Failed to trigger icon generation for tag '${alias}':`, err)
+      logger.error(`[GenerateImage] Failed to trigger icon generation for tag '${tag.alias}':`, err)
     })
   }
 }

@@ -90,6 +90,28 @@ export async function toggleTag(
         tag.isLoading = true
         const ancestorChain = getAncestorChain(tag.id, updatedTags)
         const newTags = await generateRelatedTags(tag, updatedTags, ancestorChain)
+        
+        // Apply any existing tag appearances to newly generated tags
+        try {
+          const response = await fetch('/api/tags/appearances')
+          if (response.ok) {
+            const appearances: { id: string; imageUrl: string }[] = await response.json()
+            const appearanceMap = new Map(appearances.map((a) => [a.id, a.imageUrl]))
+            
+            for (const newTag of newTags) {
+              if (appearanceMap.has(newTag.alias)) {
+                const imageUrl = appearanceMap.get(newTag.alias)
+                if (imageUrl) {
+                  newTag.imageUrl = imageUrl
+                  console.log(`[TagSelection] Applied image URL to newly generated tag: ${newTag.alias}`)
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error('[TagSelection] Failed to fetch appearances for new tags:', error)
+        }
+        
         tag.children = [...(tag.children || []), ...newTags]
         updatedTags = [...updatedTags, ...newTags]
         // Distribute children in a circle after adding new ones
@@ -155,6 +177,27 @@ export async function generateConceptTags(
     // Build a pseudo-parent tag with concept emphasis for generation
     const conceptTag = { ...tag, text: `${category} - ${action}` }
     const newTags = await generateRelatedTags(conceptTag, updatedTags, ancestorChain)
+
+    // Apply any existing tag appearances to newly generated tags
+    try {
+      const response = await fetch('/api/tags/appearances')
+      if (response.ok) {
+        const appearances: { id: string; imageUrl: string }[] = await response.json()
+        const appearanceMap = new Map(appearances.map((a) => [a.id, a.imageUrl]))
+        
+        for (const newTag of newTags) {
+          if (appearanceMap.has(newTag.alias)) {
+            const imageUrl = appearanceMap.get(newTag.alias)
+            if (imageUrl) {
+              newTag.imageUrl = imageUrl
+              console.log(`[TagSelection] Applied image URL to newly generated concept tag: ${newTag.alias}`)
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[TagSelection] Failed to fetch appearances for new concept tags:', error)
+    }
 
     tag.children = [...(tag.children || []), ...newTags]
     updatedTags = [...updatedTags, ...newTags]
@@ -277,6 +320,27 @@ export async function generateConceptTagsForTransformed(
 
     // Generate tags based on the transformed concept
     const newTags = await generateRelatedTags(transformedTag, updatedTags, ancestorChain)
+
+    // Apply any existing tag appearances to newly generated tags
+    try {
+      const response = await fetch('/api/tags/appearances')
+      if (response.ok) {
+        const appearances: { id: string; imageUrl: string }[] = await response.json()
+        const appearanceMap = new Map(appearances.map((a) => [a.id, a.imageUrl]))
+        
+        for (const newTag of newTags) {
+          if (appearanceMap.has(newTag.alias)) {
+            const imageUrl = appearanceMap.get(newTag.alias)
+            if (imageUrl) {
+              newTag.imageUrl = imageUrl
+              console.log(`[TagSelection] Applied image URL to newly generated transformed tag: ${newTag.alias}`)
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[TagSelection] Failed to fetch appearances for new transformed tags:', error)
+    }
 
     transformedTag.children = [...newTags]
     updatedTags = [...updatedTags, ...newTags]

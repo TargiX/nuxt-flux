@@ -5,15 +5,17 @@ import logger from '~/utils/logger'
 
 /**
  * Generates and saves an icon for a given tag if it doesn't already exist.
- * @param tagName The name of the tag (e.g., "Mythical Creatures").
+ * @param tagAlias The alias of the tag (e.g., "mythical-creatures").
+ * @param displayText The display text of the tag (e.g., "Mythical Creatures"). If not provided, uses tagAlias.
  * @returns An object indicating success and the URL of the new icon or a message.
  * @throws An error if any step of the process fails.
  */
 export async function generateIconForTag(
-  tagName: string
+  tagAlias: string,
+  displayText?: string
 ): Promise<{ success: true; imageUrl?: string; message?: string }> {
-  const tagAlias = tagName.toLowerCase().replace(/\s+/g, '-')
-  logger.info(`[TagIcon] Starting generation process for tag: "${tagName}" (alias: ${tagAlias})`)
+  const promptText = displayText || tagAlias.replace(/-/g, ' ')
+  logger.info(`[TagIcon] Starting generation process for alias: "${tagAlias}" with display text: "${promptText}"`)
 
   // 1. Check if an appearance already exists
   const existingAppearance = await prisma.tagAppearance.findUnique({
@@ -25,8 +27,8 @@ export async function generateIconForTag(
     return { success: true, message: 'Icon already exists for this tag.' }
   }
 
-  // 2. Generate a specialized prompt
-  const prompt = `a minimalist vector icon for '${tagName}', vibrant colors, on a dark background, clean design, high contrast`
+  // 2. Generate a specialized prompt using the display text
+  const prompt = `a minimalist vector icon for '${promptText}', vibrant colors, on a dark background, clean design, high contrast`
   logger.info(`[TagIcon] Generating image for alias "${tagAlias}" with prompt: "${prompt}"`)
 
   // 3. Generate the image

@@ -54,6 +54,19 @@ export const useTagStore = defineStore('tags', () => {
   // ------------------------------------
   let initialTagsState: Tag[] = []
 
+  // Helper function to apply image URLs to tags recursively
+  const applyImageUrlsToTags = (tagsToProcess: Tag[], appearanceMap: Map<string, string>) => {
+    for (const tag of tagsToProcess) {
+      if (appearanceMap.has(tag.alias)) {
+        tag.imageUrl = appearanceMap.get(tag.alias)
+        logger.info(`[TagStore] Applied image URL to tag: ${tag.alias}`)
+      }
+      if (tag.children && tag.children.length > 0) {
+        applyImageUrlsToTags(tag.children, appearanceMap)
+      }
+    }
+  }
+
   async function initializeStore() {
     console.log('[TagStore] Initializing...')
     const baseTags = initializeTags()
@@ -68,21 +81,7 @@ export const useTagStore = defineStore('tags', () => {
       logger.info(`[TagStore] Fetched ${appearances.length} tag appearances.`)
 
       const appearanceMap = new Map(appearances.map((a: TagAppearance) => [a.id, a.imageUrl]))
-
-      // Function to recursively apply image URLs
-      const applyImageUrls = (tagsToProcess: Tag[]) => {
-        for (const tag of tagsToProcess) {
-          if (appearanceMap.has(tag.alias)) {
-            tag.imageUrl = appearanceMap.get(tag.alias)
-            logger.info(`[TagStore] Applied image URL to tag: ${tag.alias}`)
-          }
-          if (tag.children && tag.children.length > 0) {
-            applyImageUrls(tag.children)
-          }
-        }
-      }
-
-      applyImageUrls(baseTags)
+      applyImageUrlsToTags(baseTags, appearanceMap)
       logger.info('[TagStore] Finished merging tag appearances.')
     } catch (error) {
       logger.error('[TagStore] Error fetching or merging tag appearances:', error)
@@ -91,6 +90,25 @@ export const useTagStore = defineStore('tags', () => {
 
     tags.value = baseTags
     initialTagsState = JSON.parse(JSON.stringify(tags.value)) // Store initial state for reset
+  }
+
+  // Function to refresh tag appearances from the API and apply to current tags
+  async function refreshAppearances() {
+    try {
+      logger.info('[TagStore] Refreshing tag appearances from /api/tags/appearances...')
+      const response = await fetch('/api/tags/appearances')
+      if (!response.ok) {
+        throw new Error(`Failed to fetch tag appearances. Status: ${response.status}`)
+      }
+      const appearances: TagAppearance[] = await response.json()
+      logger.info(`[TagStore] Fetched ${appearances.length} tag appearances for refresh.`)
+
+      const appearanceMap = new Map(appearances.map((a: TagAppearance) => [a.id, a.imageUrl]))
+      applyImageUrlsToTags(tags.value, appearanceMap)
+      logger.info('[TagStore] Finished refreshing tag appearances.')
+    } catch (error) {
+      logger.error('[TagStore] Error refreshing tag appearances:', error)
+    }
   }
 
   // Add session ID at the top with existing state
@@ -612,6 +630,7 @@ export const useTagStore = defineStore('tags', () => {
     restoreStashedSession,
     setPendingSnapshot,
     consumePendingSnapshot,
+    refreshAppearances,
     reset,
   }
 })

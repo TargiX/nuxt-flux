@@ -6,6 +6,7 @@ import { saveGeneratedImage } from '~/services/imageService'
 import type { GeneratedImageData } from '~/services/imageService'
 import type { Tag } from '~/types/tag'
 import { useErrorTracking } from '~/composables/useErrorTracking'
+import logger from '~/utils/logger'
 
 // It would be best if DreamImage type is defined in a shared types file
 // For now, let's define a compatible structure here or assume GeneratedImageData is close enough
@@ -74,8 +75,8 @@ export function useImageGeneration() {
     let newImageFromDb: ReturnedDreamImage | null = null
 
     try {
-      const selectedTagAliases = currentTags.filter((t) => t.selected).map((t) => t.alias)
-      const imageUrl = await generateImageFromPrompt(promptText, modelId, selectedTagAliases)
+      const selectedTagsData = currentTags.filter((t) => t.selected).map((t) => ({ alias: t.alias, text: t.text }))
+      const imageUrl = await generateImageFromPrompt(promptText, modelId, selectedTagsData)
       const generationTime = Date.now() - startTime
 
       // Track performance
@@ -138,6 +139,12 @@ export function useImageGeneration() {
             life: 5000,
           })
         }
+
+        // Refresh tag appearances after image generation to pick up any newly generated tag icons
+        // This is done asynchronously without blocking the main flow
+        tagStore.refreshAppearances().catch((error) => {
+          logger.error('[ImageGeneration] Failed to refresh tag appearances after image generation:', error)
+        })
       }
     } catch (error: any) {
       const generationTime = Date.now() - startTime

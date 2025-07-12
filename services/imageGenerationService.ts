@@ -18,7 +18,7 @@ interface ImageApiResponse {
 export async function generateImageFromPrompt(
   promptText: string,
   modelId: string = 'gemini-flash',
-  selectedTagAliases: string[] = []
+  selectedTagsData: Array<{ alias: string; text: string }> = []
 ): Promise<string | null> {
   if (!promptText || promptText.trim().length === 0) {
     console.warn('generateImageFromPrompt called with empty prompt.')
@@ -37,7 +37,7 @@ export async function generateImageFromPrompt(
       body: JSON.stringify({
         prompt: promptText,
         modelId: modelId,
-        selectedTagAliases,
+        selectedTagsData,
       }),
     })
 

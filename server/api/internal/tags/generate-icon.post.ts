@@ -4,12 +4,13 @@ import logger from '~/utils/logger'
 
 interface RequestBody {
   alias: string
+  displayText?: string
 }
 
 export default defineEventHandler(async (event) => {
   try {
-    const { alias } = await readBody<RequestBody>(event)
-    logger.info(`[Internal TagIcon API] Received request to generate icon for alias: "${alias}"`)
+    const { alias, displayText } = await readBody<RequestBody>(event)
+    logger.info(`[Internal TagIcon API] Received request to generate icon for alias: "${alias}" with display text: "${displayText || 'not provided'}"`)
 
     if (!alias) {
       logger.warn('[Internal TagIcon API] Request received with missing alias.')
@@ -20,7 +21,7 @@ export default defineEventHandler(async (event) => {
     }
 
     // No need to await, let it run in the background
-    generateIconForTag(alias).catch((err) => {
+    generateIconForTag(alias, displayText).catch((err) => {
       logger.error(`[Internal TagIcon API] Background generation failed for tag '${alias}':`, err)
     })
 
