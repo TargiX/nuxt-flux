@@ -37,7 +37,7 @@ export interface ModelGenerationOptions {
   steps?: number
   guidance?: number
   seed?: number
-  aspect_ratio?: string
+  aspect_ratio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9'
   person_generation?: 'ALLOW_ADULT' | 'BLOCK_PERSON'
   safety_filter_level?: 'BLOCK_ONLY_HIGH' | 'BLOCK_MEDIUM_AND_HIGH' | 'BLOCK_MOST'
   number_of_images?: number

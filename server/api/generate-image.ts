@@ -1,3 +1,4 @@
+import type { H3Event } from 'h3'
 import { defineEventHandler, readBody, createError } from 'h3'
 import { generateImage } from '~/server/services/aiImageGenerator'
 import { generateIconForTag } from '~/server/services/tagAppearanceService'
@@ -7,6 +8,7 @@ import type { ModelGenerationOptions } from '~/types/models'
 interface GenerateImageBody {
   prompt: string
   modelId?: string
+  aspectRatio?: string
   options?: ModelGenerationOptions
   selectedTagAliases?: string[]
 }
@@ -16,6 +18,7 @@ export default defineEventHandler(async (event) => {
     const {
       prompt,
       modelId = 'gemini-flash',
+      aspectRatio,
       options = {},
       selectedTagAliases = [],
     } = await readBody<GenerateImageBody>(event)
@@ -24,12 +27,18 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, statusMessage: 'Missing prompt text in request body' })
     }
 
+    // Merge aspect ratio into options if provided
+
+    if (aspectRatio) {
+      options.aspect_ratio = aspectRatio as '1:1' | '3:4' | '4:3' | '9:16' | '16:9'
+    }
+
     // --- Main Image Generation ---
     const result = await generateImage(prompt, modelId, options)
 
     // --- Asynchronous Icon Generation (Fire-and-Forget) ---
     if (selectedTagAliases.length > 0) {
-      triggerIconGeneration(selectedTagAliases).catch((err) => {
+      triggerIconGeneration(selectedTagAliases, event).catch((err) => {
         console.error('Error in background icon generation process:', err)
       })
     }
@@ -62,7 +71,7 @@ export default defineEventHandler(async (event) => {
   }
 })
 
-async function triggerIconGeneration(aliases: string[]) {
+async function triggerIconGeneration(aliases: string[], event: H3Event) {
   // 1. Find which tags already have icons
   const existingAppearances = await prisma.tagAppearance.findMany({
     where: {

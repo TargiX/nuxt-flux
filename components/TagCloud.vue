@@ -187,7 +187,16 @@
             </div>
           </Tag>
         </div>
-        <div class="flex gap-2">
+        <div class="flex items-center gap-2">
+          <div v-if="!isViewingSnapshot" class="flex items-center gap-1">
+            <label id="aspect-ratio-label" class="text-sm opacity-75">Aspect:</label>
+            <Select
+              v-model="selectedAspectRatio"
+              :options="aspectRatioOptions"
+              class="aspect-ratio-selector subtle-select"
+              aria-labelledby="aspect-ratio-label"
+            />
+          </div>
           <Button
             v-if="!isViewingSnapshot"
             v-tooltip.top="'Save session'"
@@ -286,7 +295,7 @@
   </div>
   <ImageViewerModal
     v-model="viewerVisible"
-    :images="viewerImages"
+    :images="viewerImages as any"
     :start-index="viewerStartIndex"
     context="dream-session"
   />
@@ -317,6 +326,8 @@ import ProgressSpinner from 'primevue/progressspinner'
 import { useRoute } from 'vue-router'
 import type { Dream } from '~/types/dream'
 import { getDefaultModel } from '~/services/modelConfigService'
+import Select from 'primevue/select'
+import type { Session } from '@auth/core/types'
 
 const tagStore = useTagStore()
 const toast = useToast()
@@ -341,9 +352,8 @@ const {
 const forceGraphRef = ref<InstanceType<typeof ForceGraph> | null>(null)
 const imageStripRef = ref<InstanceType<typeof ImageStrip> | null>(null)
 const viewerVisible = ref(false)
-const viewerImages = ref<any[]>([])
+const viewerImages = ref<Dream['images']>([])
 const viewerStartIndex = ref(0)
-
 
 const localGraphNodes = computed(() => (tagStore.isRestoringSession ? [] : tagStore.graphNodes))
 const localGraphLinks = computed(() => tagStore.graphLinks)
@@ -396,6 +406,9 @@ const isGeneratingPrompt = ref(false)
 const selectedModel = ref(getDefaultModel())
 const isInitializingModel = ref(true)
 
+const selectedAspectRatio = ref('1:1')
+const aspectRatioOptions = ref(['1:1', '3:4', '4:3', '9:16', '16:9'])
+
 // Initialize model based on user preferences and dream state
 async function initializeSelectedModel() {
   try {
@@ -415,7 +428,7 @@ async function initializeSelectedModel() {
     
     // For new dreams or if no last used model, get user's preferred model
     console.log('Fetching session...')
-    const session = await $fetch('/api/auth/session')
+    const session = await $fetch<Session>('/api/auth/session')
     console.log('Session data:', session)
     if (session?.user?.id) {
       console.log('Fetching preferred model for user:', session.user.id)
@@ -488,7 +501,7 @@ watch(selectedZone, (newZone, oldZone) => {
   }
 })
 
-function debounce<T extends (...args: any[]) => void>(
+function debounce<T extends (...args: unknown[]) => void>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
@@ -788,7 +801,7 @@ function getDreamDataPayload() {
 
 
   // Create a proper deep clone that preserves all properties
-  const plainTags = tagStore.tags.map((tag, index) => {
+  const plainTags = tagStore.tags.map((tag) => {
     const mapped = {
       id: tag.id,
       text: tag.text,
@@ -859,9 +872,9 @@ const handleSnapshotRequestFromStrip = (image: {
   id: number
   imageUrl: string
   promptText?: string
-  graphState?: any
+  graphState?: Record<string, unknown>
 }) => {
-  if (image && image.imageUrl) {
+  if (image && image.imageUrl && image.graphState) {
     if (tagStore.viewingSnapshotImageId === image.id) {
       toast.add({
         severity: 'info',
@@ -1429,5 +1442,19 @@ function handleModelChange(modelId: string) {
 .subtle-model-picker :deep(.p-select:not(.p-disabled).p-focus) {
   border: none;
   box-shadow: none;
+}
+.aspect-ratio-selector {
+  width: 80px; /* Adjust width as needed */
+}
+
+.subtle-select :deep(.p-select) {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.subtle-select :deep(.p-select-label) {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
 }
 </style>

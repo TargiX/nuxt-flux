@@ -1,39 +1,31 @@
 import { defineEventHandler, readBody, createError } from 'h3'
 import { generateIconForTag } from '~/server/services/tagAppearanceService'
-import { z } from 'zod'
 
-const RequestBodySchema = z.object({
-  tagName: z.string(),
-})
+interface RequestBody {
+  alias: string
+}
 
 export default defineEventHandler(async (event) => {
-  const body = await readBody(event)
-
-  const validation = RequestBodySchema.safeParse(body)
-  if (!validation.success) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Invalid request body.',
-      data: validation.error.errors,
-    })
-  }
-
-  const { tagName } = validation.data
-
   try {
-    const result = await generateIconForTag(tagName)
-    return result
-  } catch (error) {
-    console.error(`Failed to generate icon for tag "${tagName}":`, error)
-    if (error instanceof Error) {
+    const { alias } = await readBody<RequestBody>(event)
+
+    if (!alias) {
       throw createError({
-        statusCode: 500,
-        statusMessage: `Failed to generate icon: ${error.message}`,
+        statusCode: 400,
+        statusMessage: 'Tag alias is required.',
       })
     }
-    throw createError({
-      statusCode: 500,
-      statusMessage: 'An unknown error occurred while generating the tag icon.',
+
+    // No need to await, let it run in the background
+    generateIconForTag(alias).catch((err) => {
+      console.error(`[Internal API] Failed to generate icon for tag '${alias}':`, err)
     })
+
+    return { success: true, message: `Icon generation triggered for ${alias}.` }
+  } catch (error: unknown) {
+    console.error('[Internal API] Error triggering icon generation:', error)
+    // Don't rethrow to the client that triggered this,
+    // as it's a background process. Just log it.
+    return { success: false, message: 'Failed to trigger icon generation.' }
   }
 })
