@@ -80,6 +80,15 @@ import { useForceSimulation } from '~/composables/useForceSimulation'
 import type { GraphNode as BaseGraphNode, GraphLink } from '~/types/graph'
 import NodeContextMenu from './NodeContextMenu.vue'
 
+// Toggle verbose logging here to avoid heavy console output when DevTools are open
+const DEBUG_LOGS = false
+const debug = (...args: any[]) => {
+  if (DEBUG_LOGS) console.log(...args)
+}
+const debugTrace = (...args: any[]) => {
+  if (DEBUG_LOGS) console.trace(...args)
+}
+
 // Extend the base GraphNode type to include the optional imageUrl
 interface GraphNode extends BaseGraphNode {
   imageUrl?: string
@@ -212,8 +221,8 @@ watch(
       })
 
       if (hasChanges) {
-        console.log('Graph content changed, triggering update')
-        console.log(
+        debug('Graph content changed, triggering update')
+        debug(
           'Changed nodes:',
           newValues.filter((newNode, index) => {
             const oldNode = oldValues[index]
@@ -231,10 +240,10 @@ watch(
       // Length changed or first run - but only if not already handled by length watcher
       if (oldValues && newValues && newValues.length !== oldValues.length) {
         // This case is already handled by the length watcher above, skip it
-        console.log('Graph structure length change already handled by length watcher')
+        debug('Graph structure length change already handled by length watcher')
         return
       }
-      console.log('Graph structure changed (first run or content-only change)')
+      debug('Graph structure changed (first run or content-only change)')
       graphVersion.value++
     }
   },
@@ -292,7 +301,7 @@ function initializeGraph() {
 
   // Guard against double initialization
   if (svg && simulation) {
-    console.log('Graph already initialized, skipping initializeGraph')
+    debug('Graph already initialized, skipping initializeGraph')
     return
   }
 
@@ -419,7 +428,7 @@ function updateGraph() {
 
   // If graph hasn't been initialized yet, initialize it instead of updating
   if (!svg || !simulation) {
-    console.log('Graph not initialized, calling initializeGraph instead')
+    debug('Graph not initialized, calling initializeGraph instead')
     initializeGraph()
     return
   }
@@ -485,7 +494,7 @@ function updateNodes() {
       .on('click', (event: MouseEvent, d: GraphNode) => {
         const targetEl = event.target as Element
         if (targetEl.tagName.toLowerCase() === 'input') return // Click on active editor input
-        console.log('Node clicked:', d.id)
+        debug('Node clicked:', d.id)
         emit('nodeClick', d.id)
         updateNodeSelection(d.id)
         if (svg) {
@@ -503,7 +512,7 @@ function updateNodes() {
         event.preventDefault()
         contextMenuNodeId.value = d.id
         if (contextMenu.value) contextMenu.value.show(event, d.text)
-        console.log('Node right-clicked:', d.id)
+        debug('Node right-clicked:', d.id)
       })
   }
 
@@ -612,12 +621,12 @@ function saveNodePositions() {
     x: node.x,
     y: node.y,
   }))
-  console.log('Emitting updated positions:', updatedPositions)
+  debug('Emitting updated positions:', updatedPositions)
   emit('nodePositionsUpdated', updatedPositions)
 }
 
 function updateTextForNode(nodeId: string, newText: string) {
-  console.log('[ForceGraph] Emitting nodeTextUpdated:', { id: nodeId, text: newText })
+  debug('[ForceGraph] Emitting nodeTextUpdated:', { id: nodeId, text: newText })
   emit('nodeTextUpdated', { id: nodeId, text: newText })
 }
 
@@ -627,7 +636,7 @@ function updateVisualElements() {
 }
 
 function handleContextMenuAction(payload: { category: string; action: string; nodeId: string }) {
-  console.log(`Context menu action '${payload.action}' on node '${payload.nodeId}'`)
+  debug(`Context menu action '${payload.action}' on node '${payload.nodeId}'`)
   emit('menuAction', payload) // Emit the full payload
   if (contextMenu.value) {
     contextMenu.value.hide()
@@ -695,10 +704,10 @@ defineExpose<ForceGraphExposed>({
   applyViewport: (state?: ViewportState, duration?: number) => {
     // If state is undefined, always apply the default viewport with initial zoom scale
     if (!state) {
-      console.log('ForceGraph applying default viewport with initial zoom scale')
-      console.trace('Default viewport call stack')
+      debug('ForceGraph applying default viewport with initial zoom scale')
+      debugTrace('Default viewport call stack')
     } else {
-      console.log(
+      debug(
         `ForceGraph applying viewport: custom (${state.x.toFixed(2)},${state.y.toFixed(
           2
         )},${state.k.toFixed(2)})`
@@ -712,8 +721,8 @@ defineExpose<ForceGraphExposed>({
     if (svg) centerOnNodeFn(svg, node)
   },
   resetAndCenter: () => {
-    console.log('ForceGraph resetAndCenter called - performing full reset')
-    console.trace('resetAndCenter call stack')
+    debug('ForceGraph resetAndCenter called - performing full reset')
+    debugTrace('resetAndCenter call stack')
     if (!svg || !simulation || !container.value) return
 
     // Get container dimensions
