@@ -1,0 +1,180 @@
+{
+  "tasks": [
+    {
+      "id": "b249865d-9839-49e7-99bf-0c88c217a67a",
+      "name": "Backend: Create Reusable Image Generation Service",
+      "description": "Refactor the core image generation logic from `server/api/generate-image.ts` into a new reusable service at `server/services/aiImageGenerator.ts`. This service will encapsulate getting model/provider configs, credentials, and calling the AI provider adapter. The existing API endpoint will be updated to use this new service.",
+      "status": "pending",
+      "dependencies": [],
+      "createdAt": "2025-07-11T03:42:09.755Z",
+      "updatedAt": "2025-07-11T03:42:09.755Z",
+      "relatedFiles": [
+        {
+          "path": "server/services/aiImageGenerator.ts",
+          "type": "CREATE",
+          "description": "New reusable service for image generation."
+        },
+        {
+          "path": "server/api/generate-image.ts",
+          "type": "TO_MODIFY",
+          "description": "Refactor to use the new service."
+        }
+      ],
+      "implementationGuide": "1. Create a new file `server/services/aiImageGenerator.ts`. 2. Define a function, e.g., `generateImage`, that accepts `prompt` and `modelId`. 3. Move the logic for getting provider config, credentials, and calling the `createProviderAdapter` from `server/api/generate-image.ts` into this new function. 4. The function should return the image generation result. 5. Update `server/api/generate-image.ts` to import and call this new service function.",
+      "verificationCriteria": "The image generation functionality through the `/api/generate-image` endpoint must work exactly as before the refactoring. The new service should correctly handle all the logic previously in the endpoint.",
+      "analysisResult": "The high-level goal is to implement a system that automatically generates, saves, and displays icon-style images for tags that don't have one. This process will be triggered in the background when a user performs an image generation using those tags. The core of the implementation involves adding a new `TagAppearance` database model to associate tags with image URLs, creating backend services to handle the icon generation and storage, and updating the frontend to fetch and display these images within the force-directed graph. The generation will be asynchronous to avoid impacting the user's main workflow."
+    },
+    {
+      "id": "30874bdd-7330-4ae0-96ba-172ff51b651e",
+      "name": "Backend: Update Database Schema for Tag Appearances",
+      "description": "Add a new `TagAppearance` model to `prisma/schema.prisma` to store image URLs for tags. The model should have an `id` (String, the tag alias) and an `imageUrl` (String). After updating the schema, run `pnpm prisma migrate dev --name add_tag_appearance` and `pnpm prisma generate` to apply the changes.",
+      "status": "pending",
+      "dependencies": [],
+      "createdAt": "2025-07-11T03:42:09.755Z",
+      "updatedAt": "2025-07-11T03:42:09.755Z",
+      "relatedFiles": [
+        {
+          "path": "prisma/schema.prisma",
+          "type": "TO_MODIFY",
+          "description": "Add the new TagAppearance model."
+        }
+      ],
+      "implementationGuide": "1. Open `prisma/schema.prisma`. 2. Add `model TagAppearance { id String @id @unique \n imageUrl String }`. 3. Run `pnpm prisma migrate dev --name add_tag_appearance` in the terminal. 4. Run `pnpm prisma generate`.",
+      "verificationCriteria": "The `TagAppearance` table must be successfully created in the database, and the Prisma client must be updated to include it.",
+      "analysisResult": "The high-level goal is to implement a system that automatically generates, saves, and displays icon-style images for tags that don't have one. This process will be triggered in the background when a user performs an image generation using those tags. The core of the implementation involves adding a new `TagAppearance` database model to associate tags with image URLs, creating backend services to handle the icon generation and storage, and updating the frontend to fetch and display these images within the force-directed graph. The generation will be asynchronous to avoid impacting the user's main workflow."
+    },
+    {
+      "id": "4617d240-7572-4069-a6ef-0462b5d166ec",
+      "name": "Backend: Implement Tag Icon Generation Logic and API",
+      "description": "Create two new API endpoints. First, a `GET /api/tags/appearances` endpoint to fetch all records from the `TagAppearance` table. Second, a `POST /api/internal/tags/generate-icon` (internal, as it will be called from the server) that takes a `tagName`, generates a specialized prompt for an icon, uses the new `aiImageGenerator` service to create an image, uploads the image to get a URL (using `server/utils/storage.ts`), and saves the result to the `TagAppearance` table.",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "b249865d-9839-49e7-99bf-0c88c217a67a"
+        },
+        {
+          "taskId": "30874bdd-7330-4ae0-96ba-172ff51b651e"
+        }
+      ],
+      "createdAt": "2025-07-11T03:42:09.755Z",
+      "updatedAt": "2025-07-11T03:42:09.755Z",
+      "relatedFiles": [
+        {
+          "path": "server/api/tags/appearances.get.ts",
+          "type": "CREATE",
+          "description": "Endpoint to fetch all tag appearances."
+        },
+        {
+          "path": "server/api/internal/tags/generate-icon.post.ts",
+          "type": "CREATE",
+          "description": "Internal endpoint to generate and save a tag icon."
+        },
+        {
+          "path": "server/utils/storage.ts",
+          "type": "REFERENCE",
+          "description": "Reference for uploading images."
+        }
+      ],
+      "implementationGuide": "1. Create `server/api/tags/appearances.get.ts` to `findMany` on the `tagAppearance` model. 2. Create `server/api/internal/tags/generate-icon.post.ts`. 3. In the new endpoint, check if an appearance already exists for the given `tagName`. 4. If not, create a prompt like 'a vector icon for...'. 5. Call the `aiImageGenerator` service. 6. Upload the returned base64 image using the utility in `server/utils/storage.ts` to get a public URL. 7. Save a new `TagAppearance` record.",
+      "verificationCriteria": "The `GET` endpoint must return all saved tag appearances. The `POST` endpoint must successfully generate an image, upload it, and create a new record in the `TagAppearance` table.",
+      "analysisResult": "The high-level goal is to implement a system that automatically generates, saves, and displays icon-style images for tags that don't have one. This process will be triggered in the background when a user performs an image generation using those tags. The core of the implementation involves adding a new `TagAppearance` database model to associate tags with image URLs, creating backend services to handle the icon generation and storage, and updating the frontend to fetch and display these images within the force-directed graph. The generation will be asynchronous to avoid impacting the user's main workflow."
+    },
+    {
+      "id": "5b57b7b0-1dff-4dba-a29f-3e70c99a9e09",
+      "name": "Backend: Trigger Icon Generation from Main API",
+      "description": "Modify the existing `POST /api/generate-image` endpoint. It should now accept an array of selected tag aliases in the request body. After successfully generating the main image, it will asynchronously (fire-and-forget) call the logic from `/api/internal/tags/generate-icon` for each selected tag that does not already have an appearance record.",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "4617d240-7572-4069-a6ef-0462b5d166ec"
+        }
+      ],
+      "createdAt": "2025-07-11T03:42:09.755Z",
+      "updatedAt": "2025-07-11T03:42:09.755Z",
+      "relatedFiles": [
+        {
+          "path": "server/api/generate-image.ts",
+          "type": "TO_MODIFY",
+          "description": "Add logic to trigger icon generation."
+        }
+      ],
+      "implementationGuide": "1. Modify the `readBody` in `server/api/generate-image.ts` to accept `selectedTagAliases: string[]`. 2. After the main image is generated, fetch all existing `TagAppearance` records. 3. Filter `selectedTagAliases` to find which ones are missing an appearance. 4. For each missing alias, call the `generate-icon` logic asynchronously (without `await`).",
+      "verificationCriteria": "When calling `/api/generate-image` with tag aliases, the icon generation process should be triggered for tags that don't have images, without blocking the response for the main generated image.",
+      "analysisResult": "The high-level goal is to implement a system that automatically generates, saves, and displays icon-style images for tags that don't have one. This process will be triggered in the background when a user performs an image generation using those tags. The core of the implementation involves adding a new `TagAppearance` database model to associate tags with image URLs, creating backend services to handle the icon generation and storage, and updating the frontend to fetch and display these images within the force-directed graph. The generation will be asynchronous to avoid impacting the user's main workflow."
+    },
+    {
+      "id": "4a0ad78b-8946-42f8-8c8e-cfcb6ba7ad26",
+      "name": "Frontend: Fetch and Merge Tag Appearances",
+      "description": "Modify the `Tag` interface in `types/tag.ts` to include an optional `imageUrl` property. Update the `tagStore` (`store/tagStore.ts`) to fetch data from the new `GET /api/tags/appearances` endpoint during initialization. Merge the fetched `imageUrl`s into the tag objects based on the tag's alias.",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "4617d240-7572-4069-a6ef-0462b5d166ec"
+        }
+      ],
+      "createdAt": "2025-07-11T03:42:09.755Z",
+      "updatedAt": "2025-07-11T03:42:09.755Z",
+      "relatedFiles": [
+        {
+          "path": "types/tag.ts",
+          "type": "TO_MODIFY",
+          "description": "Add imageUrl to Tag interface."
+        },
+        {
+          "path": "store/tagStore.ts",
+          "type": "TO_MODIFY",
+          "description": "Fetch and merge tag appearance data."
+        }
+      ],
+      "implementationGuide": "1. Add `imageUrl?: string;` to the `Tag` interface in `types/tag.ts`. 2. In `store/tagStore.ts`, likely within the `initializeTags` part or on store setup, add a `fetch` call to `/api/tags/appearances`. 3. After fetching, loop through the tags in the store and the fetched appearances. If a `tag.alias` matches an `appearance.id`, set `tag.imageUrl = appearance.imageUrl`.",
+      "verificationCriteria": "On application load, the `tagStore` must contain tags that have `imageUrl` properties populated from the backend.",
+      "analysisResult": "The high-level goal is to implement a system that automatically generates, saves, and displays icon-style images for tags that don't have one. This process will be triggered in the background when a user performs an image generation using those tags. The core of the implementation involves adding a new `TagAppearance` database model to associate tags with image URLs, creating backend services to handle the icon generation and storage, and updating the frontend to fetch and display these images within the force-directed graph. The generation will be asynchronous to avoid impacting the user's main workflow."
+    },
+    {
+      "id": "e81947e5-054d-4b5e-963e-835fb5ee34fb",
+      "name": "Frontend: Display Tag Images in Graph",
+      "description": "Update the `ForceGraph.vue` component. In the node rendering logic, check if a `tag` has an `imageUrl`. If it does, render an `<image>` SVG element instead of the text label. If not, render the text label as before. Ensure the image is properly sized and positioned within the node circle.",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "4a0ad78b-8946-42f8-8c8e-cfcb6ba7ad26"
+        }
+      ],
+      "createdAt": "2025-07-11T03:42:09.755Z",
+      "updatedAt": "2025-07-11T03:42:09.755Z",
+      "relatedFiles": [
+        {
+          "path": "components/ForceGraph.vue",
+          "type": "TO_MODIFY",
+          "description": "Update D3 logic to render images for nodes."
+        }
+      ],
+      "implementationGuide": "1. In `ForceGraph.vue`, locate the d3 `.join('g')` section for nodes. 2. Inside the `each` or update selection, check for `d.imageUrl`. 3. If it exists, append an `svg:image` element. Set its `href`, `x`, `y`, `width`, and `height` attributes. You may need to adjust the x/y to center the image. Make sure to remove any existing text element for that node. 4. If `imageUrl` does not exist, ensure the `svg:text` element is rendered as before and any old image element is removed.",
+      "verificationCriteria": "Tags with an `imageUrl` must be displayed as an image in the force graph, while others continue to display as text.",
+      "analysisResult": "The high-level goal is to implement a system that automatically generates, saves, and displays icon-style images for tags that don't have one. This process will be triggered in the background when a user performs an image generation using those tags. The core of the implementation involves adding a new `TagAppearance` database model to associate tags with image URLs, creating backend services to handle the icon generation and storage, and updating the frontend to fetch and display these images within the force-directed graph. The generation will be asynchronous to avoid impacting the user's main workflow."
+    },
+    {
+      "id": "562eacd5-0869-4013-b1a7-154ba60ee403",
+      "name": "Frontend: Pass Selected Tags to Generation API",
+      "description": "Update the frontend code that calls the `/api/generate-image` endpoint (likely in `composables/useImageGeneration.ts`). The request body must now include the list of selected tag aliases.",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "5b57b7b0-1dff-4dba-a29f-3e70c99a9e09"
+        }
+      ],
+      "createdAt": "2025-07-11T03:42:09.755Z",
+      "updatedAt": "2025-07-11T03:42:09.755Z",
+      "relatedFiles": [
+        {
+          "path": "composables/useImageGeneration.ts",
+          "type": "TO_MODIFY",
+          "description": "Add selected tag aliases to the image generation request body."
+        }
+      ],
+      "implementationGuide": "1. Locate the `fetch` call to `/api/generate-image`. This is likely in `useImageGeneration.ts`'s `generateImage` function. 2. In the `body` of the `JSON.stringify`, add a new key `selectedTagAliases` and populate it with an array of aliases from the currently selected tags in the `tagStore`.",
+      "verificationCriteria": "The network request to `/api/generate-image` must contain a `selectedTagAliases` array in its JSON payload.",
+      "analysisResult": "The high-level goal is to implement a system that automatically generates, saves, and displays icon-style images for tags that don't have one. This process will be triggered in the background when a user performs an image generation using those tags. The core of the implementation involves adding a new `TagAppearance` database model to associate tags with image URLs, creating backend services to handle the icon generation and storage, and updating the frontend to fetch and display these images within the force-directed graph. The generation will be asynchronous to avoid impacting the user's main workflow."
+    }
+  ]
+}

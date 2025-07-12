@@ -2,7 +2,8 @@ import { ref } from 'vue'
 import { useTagStore } from '~/store/tagStore'
 import { useToast } from 'primevue/usetoast'
 import { generateImageFromPrompt } from '~/services/imageGenerationService'
-import { saveGeneratedImage, type GeneratedImageData } from '~/services/imageService'
+import { saveGeneratedImage } from '~/services/imageService'
+import type { GeneratedImageData } from '~/services/imageService'
 import type { Tag } from '~/types/tag'
 import { useErrorTracking } from '~/composables/useErrorTracking'
 
@@ -32,7 +33,8 @@ export function useImageGeneration() {
     promptText: string,
     currentDreamId: number | null,
     focusedZoneValue: string, // Pass as value
-    currentTags: Tag[] // Pass as value
+    currentTags: Tag[], // Pass as value
+    modelId: string = 'gemini-flash' // Add model ID parameter
   ): Promise<ReturnedDreamImage | null> {
     // Modified return type
     if (!promptText) {
@@ -72,7 +74,8 @@ export function useImageGeneration() {
     let newImageFromDb: ReturnedDreamImage | null = null
 
     try {
-      const imageUrl = await generateImageFromPrompt(promptText)
+      const selectedTagAliases = currentTags.filter((t) => t.selected).map((t) => t.alias)
+      const imageUrl = await generateImageFromPrompt(promptText, modelId, selectedTagAliases)
       const generationTime = Date.now() - startTime
 
       // Track performance
