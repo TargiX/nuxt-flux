@@ -32,7 +32,7 @@ export async function generateIconForTag(
   console.log(`[TagIcon] Generating image for alias "${tagAlias}" with prompt: "${prompt}"`)
 
   // 3. Generate the image
-  const generationResult = await generateImage(prompt, 'gemini-flash', { size: '256x256' })
+  const generationResult = await generateImage(prompt, 'gemini-2.0-flash-preview-image-generation', { size: '256x256' })
   if (!generationResult.imageBase64) {
     console.error(
       `[TagIcon] Image generation failed for alias "${tagAlias}". No base64 data returned.`

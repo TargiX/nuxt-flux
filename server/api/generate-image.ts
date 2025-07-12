@@ -19,7 +19,7 @@ export default defineEventHandler(async (event: H3Event) => {
   try {
     const {
       prompt,
-      modelId = 'gemini-flash',
+      modelId = 'ggemini-2.0-flash-preview-image-generation',
       aspectRatio,
       options = {},
       selectedTagAliases = [],
