@@ -1,7 +1,6 @@
-
 import { defineEventHandler, readBody, createError } from 'h3'
 import { generateImage } from '~/server/services/aiImageGenerator'
-// import { generateIconForTag } from '~/server/services/tagAppearanceService'
+import { generateIconForTag } from '~/server/services/tagAppearanceService'
 import prisma from '~/server/utils/db'
 import type { ModelGenerationOptions } from '~/types/models'
 
@@ -29,11 +28,11 @@ export default defineEventHandler(async (event) => {
     const result = await generateImage(prompt, modelId, options)
 
     // --- Asynchronous Icon Generation (Fire-and-Forget) ---
-    // if (selectedTagAliases.length > 0) {
-    //   triggerIconGeneration(selectedTagAliases).catch((err) => {
-    //     console.error('Error in background icon generation process:', err)
-    //   })
-    // }
+    if (selectedTagAliases.length > 0) {
+      triggerIconGeneration(selectedTagAliases).catch((err) => {
+        console.error('Error in background icon generation process:', err)
+      })
+    }
 
     return {
       imageBase64: result.imageBase64,
