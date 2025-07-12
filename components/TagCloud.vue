@@ -84,7 +84,32 @@
     <!-- Bottom Left: Prompt Area -->
     <div class="prompt-area-container glass-card">
       <div class="prompt-header flex justify-between items-start w-full">
-        <h2>Generated Prompt:</h2>
+        <div class="flex items-center gap-3">
+          <p class="!mb-1">Prompt model:</p>
+          <div v-if="isInitializingModel" class="loading-model-text">
+            Loading model preferences...
+          </div>
+          <ModelPicker
+            v-else
+            v-model="selectedModel"
+            color="rgb(167 239 250)"
+            class="subtle-model-picker"
+            @change="handleModelChange"
+          />
+        </div>
+        <div class="flex items-center gap-3">
+          <p class="!mb-1">Image model:</p>
+          <div v-if="isInitializingModel" class="loading-model-text">
+            Loading model preferences...
+          </div>
+          <ModelPicker
+            v-else
+            v-model="selectedModel"
+            color="rgb(219 153 255)"
+            class="subtle-model-picker"
+            @change="handleModelChange"
+          />
+        </div>
         <div class="flex items-center gap-2">
           <Button
             v-if="isViewingSnapshot"
@@ -235,17 +260,6 @@
           </Button>
         </div>
       </div>
-      <!-- Model Picker Row -->
-      <div v-if="!isViewingSnapshot" class="flex justify-between items-center w-full mt-2">
-        <div class="text-sm text-gray-400">
-          AI Model:
-        </div>
-        <ModelPicker
-          v-model="selectedModel"
-          compact
-          @change="handleModelChange"
-        />
-      </div>
     </div>
 
     <!-- Bottom Right: Vertical Image Strip -->
@@ -380,32 +394,47 @@ const manualPrompt = ref('')
 // const isImageCooldown = ref(false) // REMOVED - Use from composable
 const isGeneratingPrompt = ref(false)
 const selectedModel = ref(getDefaultModel())
+const isInitializingModel = ref(true)
 
 // Initialize model based on user preferences and dream state
 async function initializeSelectedModel() {
   try {
     const currentDreamId = tagStore.loadedDreamId
+    console.log('Initializing model, currentDreamId:', currentDreamId)
     
     if (currentDreamId) {
       // Try to get the last used model for this dream
       const response = await $fetch(`/api/model-preferences/dream/${currentDreamId}`)
+      console.log('Dream model response:', response)
       if (response.success && response.lastUsedModel) {
         selectedModel.value = response.lastUsedModel
+        console.log('Selected dream model:', response.lastUsedModel)
         return
       }
     }
     
     // For new dreams or if no last used model, get user's preferred model
-    const { data: session } = await $fetch('/api/auth/session')
+    console.log('Fetching session...')
+    const session = await $fetch('/api/auth/session')
+    console.log('Session data:', session)
     if (session?.user?.id) {
+      console.log('Fetching preferred model for user:', session.user.id)
       const response = await $fetch(`/api/model-preferences/user/${session.user.id}`)
+      console.log('User preferred model response:', response)
       if (response.success && response.preferredModel) {
         selectedModel.value = response.preferredModel
+        console.log('Selected preferred model:', response.preferredModel)
+      } else {
+        console.log('No preferred model found, keeping default:', selectedModel.value)
       }
+    } else {
+      console.log('No session or user ID found:', session)
     }
   } catch (error) {
     console.error('Failed to initialize selected model:', error)
     // Keep default model on error
+  } finally {
+    isInitializingModel.value = false
   }
 }
 
@@ -1361,5 +1390,91 @@ function handleModelChange(modelId: string) {
 .image-preview-view {
   flex-grow: 1;
   min-height: 0;
+}
+
+.loading-model-text {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.875rem;
+  font-style: italic;
+}
+
+.subtle-model-picker :deep(.model-picker-dropdown) {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  min-width: auto !important;
+}
+
+.subtle-model-picker :deep(.p-dropdown) {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  height: auto !important;
+  min-height: auto !important;
+}
+
+.subtle-model-picker :deep(.p-dropdown .p-dropdown-label) {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  color: white !important;
+  font-size: 0.875rem !important;
+  line-height: 1.2 !important;
+  height: auto !important;
+}
+
+.subtle-model-picker :deep(.p-dropdown .p-dropdown-label span) {
+  color: white !important;
+}
+
+.subtle-model-picker :deep(.p-dropdown .p-dropdown-label .pi-star-fill) {
+  color: #fbbf24 !important;
+}
+
+.subtle-model-picker :deep(.p-dropdown .p-dropdown-trigger) {
+  background: transparent !important;
+  border: none !important;
+  color: white !important;
+  width: auto !important;
+  padding: 0 0 0 0.5rem !important;
+  height: auto !important;
+}
+
+.subtle-model-picker :deep(.p-dropdown:not(.p-disabled):hover) {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.subtle-model-picker :deep(.p-dropdown:not(.p-disabled).p-focus) {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Ensure dropdown panel maintains dark theme */
+.subtle-model-picker :deep(.p-dropdown-panel) {
+  background: rgba(30, 30, 30, 0.95) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+.subtle-model-picker :deep(.p-dropdown-items) {
+  background: transparent !important;
+}
+
+.subtle-model-picker :deep(.p-dropdown-item) {
+  color: white !important;
+  background: transparent !important;
+}
+
+.subtle-model-picker :deep(.p-dropdown-item:hover) {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: white !important;
+}
+
+.subtle-model-picker :deep(.p-dropdown-item.p-focus) {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: white !important;
 }
 </style>

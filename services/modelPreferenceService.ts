@@ -49,7 +49,12 @@ export async function toggleModelFavorite(userId: string, modelId: string): Prom
   })
   
   if (!user) {
-    throw new Error(`User with ID ${userId} does not exist`)
+    // List all users in database for debugging
+    const allUsers = await prisma.user.findMany({
+      select: { id: true, email: true, name: true }
+    })
+    console.log('All users in database:', allUsers)
+    throw new Error(`User with ID ${userId} does not exist. Database has ${allUsers.length} users.`)
   }
   
   console.log('User found:', user.id, user.email)
@@ -62,6 +67,19 @@ export async function toggleModelFavorite(userId: string, modelId: string): Prom
   })
 
   if (existing) {
+    // If toggling to favorite, unfavorite all others first
+    if (!existing.isFavorite) {
+      await prisma.userModelPreference.updateMany({
+        where: {
+          userId,
+          isFavorite: true
+        },
+        data: {
+          isFavorite: false
+        }
+      })
+    }
+
     // Toggle existing preference
     const updated = await prisma.userModelPreference.update({
       where: {
@@ -79,6 +97,17 @@ export async function toggleModelFavorite(userId: string, modelId: string): Prom
     })
     return updated
   } else {
+    // Unfavorite all existing favorites first
+    await prisma.userModelPreference.updateMany({
+      where: {
+        userId,
+        isFavorite: true
+      },
+      data: {
+        isFavorite: false
+      }
+    })
+
     // Create new preference as favorite
     const created = await prisma.userModelPreference.create({
       data: {

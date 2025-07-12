@@ -47,21 +47,24 @@ export const useModelPreferences = () => {
 
       const updatedPreference = response.preference
 
-      // Update local state
-      const existingIndex = preferences.value.findIndex(p => p.modelId === modelId)
-      if (existingIndex >= 0) {
-        preferences.value[existingIndex] = updatedPreference
-      } else {
-        preferences.value.push(updatedPreference)
-      }
-
-      // Update favorites list
-      if (updatedPreference.isFavorite) {
-        if (!favoriteModels.value.includes(modelId)) {
-          favoriteModels.value.push(modelId)
+      // Since we only allow one favorite, refresh the entire favorites list
+      await fetchPreferences(true) // Refresh favorites only
+      
+      // Also update full preferences if we have them
+      if (preferences.value.length > 0) {
+        const existingIndex = preferences.value.findIndex(p => p.modelId === modelId)
+        if (existingIndex >= 0) {
+          preferences.value[existingIndex] = updatedPreference
+        } else {
+          preferences.value.push(updatedPreference)
         }
-      } else {
-        favoriteModels.value = favoriteModels.value.filter(id => id !== modelId)
+        
+        // Update other preferences that might have been unfavorited
+        preferences.value.forEach(pref => {
+          if (pref.modelId !== modelId && updatedPreference.isFavorite) {
+            pref.isFavorite = false
+          }
+        })
       }
 
       return updatedPreference

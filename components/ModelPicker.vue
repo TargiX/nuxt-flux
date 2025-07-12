@@ -12,22 +12,21 @@
     >
       <template #value="{ value }">
         <div v-if="value" class="flex items-center gap-2">
-          <i :class="getProviderIcon(value)" class="text-sm"></i>
-          <span class="text-sm">{{ getModelDisplayName(value) }}</span>
-          <i v-if="isFavorite(value)" class="pi pi-star-fill text-yellow-500 text-xs" title="Favorite model"></i>
+          <i :class="getProviderIcon(value)" class="text-sm"/>
+          <span :style="{ color: color }" class="text-sm text-white">{{ getModelDisplayName(value) }}</span>
+          <i v-if="isFavorite(value)" class="pi pi-star-fill text-yellow-500 text-xs" title="Favorite model"/>
         </div>
         <span v-else class="text-sm opacity-75">Select Model</span>
       </template>
       <template #option="{ option }">
         <div class="flex items-center gap-2 p-2 group">
-          <i :class="option.icon" class="text-sm"></i>
+          <i :class="option.icon" class="text-sm"/>
           <div class="flex flex-col flex-1">
             <span class="font-medium">{{ option.label }}</span>
             <span class="text-xs opacity-75">{{ option.description }}</span>
           </div>
           <!-- Favorite star button -->
           <button
-            @click.stop="toggleFavorite(option.value)"
             :class="[
               'p-1 rounded transition-colors',
               isFavorite(option.value) 
@@ -35,8 +34,9 @@
                 : 'text-gray-400 hover:text-yellow-500 opacity-0 group-hover:opacity-100'
             ]"
             :title="isFavorite(option.value) ? 'Remove from favorites' : 'Add to favorites'"
+            @click.stop="toggleFavorite(option.value)"
           >
-            <i :class="isFavorite(option.value) ? 'pi pi-star-fill' : 'pi pi-star'" class="text-sm"></i>
+            <i :class="isFavorite(option.value) ? 'pi pi-star-fill' : 'pi pi-star'" class="text-sm"/>
           </button>
         </div>
       </template>
@@ -61,6 +61,7 @@ interface ModelOption {
 interface Props {
   modelValue: string
   compact?: boolean
+  color?: string
 }
 
 interface Emits {
@@ -132,7 +133,9 @@ onMounted(async () => {
 
 .model-picker-dropdown {
   min-width: 200px;
-  
+  .p-select-label {
+    padding: 0;
+  }
   &.model-picker-compact {
     min-width: 150px;
   }
