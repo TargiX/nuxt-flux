@@ -1,6 +1,6 @@
 import { defineEventHandler, readBody, createError } from 'h3'
 import { generateIconForTag } from '~/server/services/tagAppearanceService'
-import logger from '~/utils/logger'
+// Using console.* for logging
 
 interface RequestBody {
   alias: string
@@ -10,10 +10,12 @@ interface RequestBody {
 export default defineEventHandler(async (event) => {
   try {
     const { alias, displayText } = await readBody<RequestBody>(event)
-    logger.info(`[Internal TagIcon API] Received request to generate icon for alias: "${alias}" with display text: "${displayText || 'not provided'}"`)
+    console.log(
+      `[Internal TagIcon API] Received request to generate icon for alias: "${alias}" with display text: "${displayText || 'not provided'}"`
+    )
 
     if (!alias) {
-      logger.warn('[Internal TagIcon API] Request received with missing alias.')
+      console.warn('[Internal TagIcon API] Request received with missing alias.')
       throw createError({
         statusCode: 400,
         statusMessage: 'Tag alias is required.',
@@ -21,14 +23,14 @@ export default defineEventHandler(async (event) => {
     }
 
     // No need to await, let it run in the background
-    generateIconForTag(alias, displayText).catch((err) => {
-      logger.error(`[Internal TagIcon API] Background generation failed for tag '${alias}':`, err)
+    generateIconForTag(alias, displayText).catch((err: unknown) => {
+      console.error(`Background generation failed for tag '${alias}':`, err)
     })
 
-    logger.info(`[Internal TagIcon API] Triggered background generation for alias: "${alias}"`)
+    console.log(`[Internal TagIcon API] Triggered background generation for alias: "${alias}"`)
     return { success: true, message: `Icon generation triggered for ${alias}.` }
   } catch (error: unknown) {
-    logger.error('[Internal TagIcon API] Error triggering icon generation:', error)
+    console.error('Error triggering icon generation:', error)
     // Don't rethrow to the client that triggered this,
     // as it's a background process. Just log it.
     return { success: false, message: 'Failed to trigger icon generation.' }

@@ -3,7 +3,7 @@ import { defineEventHandler, readBody, createError } from 'h3'
 import { generateImage } from '~/server/services/aiImageGenerator'
 import { generateIconForTag } from '~/server/services/tagAppearanceService'
 import type { ModelGenerationOptions } from '~/types/models'
-import logger from '~/utils/logger'
+// Using console.* for logging
 
 interface GenerateImageBody {
   prompt: string
@@ -40,13 +40,13 @@ export default defineEventHandler(async (event: H3Event) => {
     // --- Asynchronous Icon Generation (Fire-and-Forget) ---
     if (selectedTagsData.length > 0) {
       triggerIconGeneration(selectedTagsData).catch((err) => {
-        logger.error('Error in background icon generation process:', err)
+        console.error('Error in background icon generation process:', err)
       })
     } else if (selectedTagAliases.length > 0) {
       // Fallback for backward compatibility
       const fallbackTagsData = selectedTagAliases.map(alias => ({ alias, text: alias.replace(/-/g, ' ') }))
       triggerIconGeneration(fallbackTagsData).catch((err) => {
-        logger.error('Error in background icon generation process:', err)
+        console.error('Error in background icon generation process:', err)
       })
     }
 
@@ -55,7 +55,7 @@ export default defineEventHandler(async (event: H3Event) => {
       metadata: result.metadata,
     }
   } catch (error: unknown) {
-    logger.error('Error in generate-image API:', error)
+    console.error('Error in generate-image API:', error)
 
     // Check if it's an H3Error
     if (typeof error === 'object' && error !== null && 'statusCode' in error) {
@@ -80,31 +80,31 @@ export default defineEventHandler(async (event: H3Event) => {
 
 async function triggerIconGeneration(tagsData: Array<{ alias: string; text: string }>) {
   if (!tagsData || tagsData.length === 0) {
-    logger.info('[GenerateImage] No tags data provided for icon generation.')
+    console.log('[GenerateImage] No tags data provided for icon generation.')
     return
   }
 
   for (const { alias, text } of tagsData) {
-    logger.info(
+    console.log(
       `[GenerateImage] Triggering icon generation for alias: "${alias}" with text: "${text}"`
     )
     // Fire-and-forget direct service call
     generateIconForTag(alias, text)
       .then((res: { success: true; imageUrl?: string; message?: string }) => {
         if (res.success) {
-          logger.info(
+          console.log(
             `[GenerateImage] Icon generation succeeded for '${alias}'. ${
               res.imageUrl ? `URL: ${res.imageUrl}` : res.message
             }`
           )
         } else {
-          logger.warn(
+          console.warn(
             `[GenerateImage] Icon generation for '${alias}' returned success=false. Message: ${res.message}`
           )
         }
       })
       .catch((err: unknown) => {
-        logger.error(
+        console.error(
           `[GenerateImage] Failed to generate icon for tag '${alias}':`,
           err
         )
