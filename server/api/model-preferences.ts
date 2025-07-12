@@ -1,5 +1,6 @@
 import { defineEventHandler, readBody, createError, getQuery } from 'h3'
 import { getServerSession } from '#auth'
+import { authOptions } from '~/server/api/auth/[...]'
 import { 
   getUserModelPreferences, 
   getUserFavoriteModels, 
@@ -9,7 +10,7 @@ import {
 
 export default defineEventHandler(async (event) => {
   // Get user session
-  const session = await getServerSession(event)
+  const session = await getServerSession(event, authOptions)
   if (!session?.user?.id) {
     throw createError({ statusCode: 401, statusMessage: 'Authentication required' })
   }
