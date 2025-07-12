@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setup, $fetch } from '@nuxt/test-utils'
 
+import prisma from '~/server/utils/db'
+
 // Mock dependencies
 vi.mock('~/server/utils/db', () => ({
   default: {
@@ -9,8 +11,6 @@ vi.mock('~/server/utils/db', () => ({
     },
   },
 }))
-
-import prisma from '~/server/utils/db'
 
 describe('POST /api/auth/check-email', () => {
   setup({ server: true })

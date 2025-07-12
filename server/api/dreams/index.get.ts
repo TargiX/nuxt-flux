@@ -1,5 +1,6 @@
 import prisma from '~/server/utils/db'
-import { defineEventHandler, createError, H3Event } from 'h3'
+import type { H3Event } from 'h3';
+import { defineEventHandler, createError } from 'h3'
 import { getServerSession } from '#auth'
 import { authOptions } from '~/server/api/auth/[...]' // Path from server root
 

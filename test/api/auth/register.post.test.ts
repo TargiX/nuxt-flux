@@ -2,6 +2,8 @@ import { describe, it, expect, vi } from 'vitest'
 import { setup, $fetch } from '@nuxt/test-utils'
 import { hash } from 'bcrypt'
 
+import prisma from '~/server/utils/db'
+
 // Mock the prisma client
 vi.mock('~/server/utils/db', () => ({
   default: {
@@ -11,8 +13,6 @@ vi.mock('~/server/utils/db', () => ({
     },
   },
 }))
-
-import prisma from '~/server/utils/db'
 
 describe('POST /api/auth/register', () => {
   setup({

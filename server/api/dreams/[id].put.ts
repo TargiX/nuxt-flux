@@ -1,5 +1,6 @@
 import prisma from '~/server/utils/db'
-import { defineEventHandler, readBody, createError, H3Event } from 'h3'
+import type { H3Event } from 'h3';
+import { defineEventHandler, readBody, createError } from 'h3'
 import { z } from 'zod'
 import logger from '~/utils/logger'
 import { getServerSession } from '#auth'

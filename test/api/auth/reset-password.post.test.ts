@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
 import { setup, $fetch } from '@nuxt/test-utils'
 import bcrypt from 'bcrypt'
 
+import prisma from '~/server/utils/db'
+
 // Mock dependencies
 vi.mock('~/server/utils/db', () => ({
   default: {
@@ -14,8 +16,6 @@ vi.mock('~/server/utils/db', () => ({
     },
   },
 }))
-
-import prisma from '~/server/utils/db'
 
 describe('POST /api/auth/reset-password', () => {
   setup({ server: true })

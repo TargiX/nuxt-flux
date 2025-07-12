@@ -11,7 +11,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
   }
 
   /* ── Server-Side Rendering (SSR) ──────────────────────────────── */
-  if (process.server) {
+  if (import.meta.server) {
     // On SSR, useAuth() attempts to load session from cookie.
     // If no session is found (session.value is null) and status isn't already 'authenticated',
     // then redirect to login.

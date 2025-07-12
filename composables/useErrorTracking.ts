@@ -103,7 +103,7 @@ export const useErrorTracking = () => {
     })
 
     // Log in development
-    if (process.dev) {
+    if (import.meta.dev) {
       console.log('[User Action]', { action, category, data })
     }
   }

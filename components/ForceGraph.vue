@@ -110,6 +110,7 @@ const contextMenuNodeId = ref<string | null>(null)
 // Add this after the existing refs at the top of the script
 let currentHoveredNodeId: string | null = null
 let hoverThrottleTimeout: number | null = null
+let hoverControlsGroup: d3.Selection<SVGGElement, unknown, null, undefined> | null = null
 
 // Compute responsive container style
 const containerStyle = computed(() => {
@@ -266,6 +267,12 @@ onBeforeUnmount(() => {
     clearTimeout(hoverThrottleTimeout)
     hoverThrottleTimeout = null
   }
+  
+  // Cleanup hover controls
+  if (hoverControlsGroup) {
+    hoverControlsGroup.selectAll('*').remove()
+    hoverControlsGroup = null
+  }
 
   // Cleanup simulation and SVG to prevent memory leaks
   if (simulation) {
@@ -338,6 +345,7 @@ function initializeGraph() {
   const g = svg.append('g').attr('class', 'zoom-group')
   linkGroup = g.append('g').attr('class', 'links')
   nodeGroup = g.append('g').attr('class', 'nodes')
+  hoverControlsGroup = g.append('g').attr('class', 'hover-controls').style('pointer-events', 'none')
 
   if (svg) {
     if (svg.select('defs').empty()) svg.append('defs')
@@ -372,6 +380,9 @@ function initializeGraph() {
           .attr('y1', (d) => (d.source as GraphNode).y || 0)
           .attr('x2', (d) => (d.target as GraphNode).x || 0)
           .attr('y2', (d) => (d.target as GraphNode).y || 0)
+
+        // Update hover controls position
+        updateHoverControlsPosition()
 
         const svgEl = svg
         if (svgEl) {
@@ -536,16 +547,10 @@ function updateNodes() {
         if (hoverThrottleTimeout) clearTimeout(hoverThrottleTimeout)
         hoverThrottleTimeout = window.setTimeout(() => {
           clearAllHoverStates()
-          if (!d.selected && !d.isLoading) {
+          if (d.selected && !d.isLoading) {
             currentHoveredNodeId = d.id
-            manageNodeVisualsAndText(
-              d3.select(this),
-              false,
-              { updateTextForNode },
-              true,
-              svg!,
-              null
-            )
+            // Show hover controls for selected nodes only
+            createHoverControls(d)
           }
           hoverThrottleTimeout = null
         }, 50)
@@ -556,10 +561,7 @@ function updateNodes() {
           clearTimeout(hoverThrottleTimeout)
           hoverThrottleTimeout = null
         }
-        if (currentHoveredNodeId === d.id && !d.selected && !d.isLoading) {
-          currentHoveredNodeId = null
-          manageNodeVisualsAndText(d3.select(this), false, { updateTextForNode }, false, svg!, null)
-        }
+        // Don't hide controls here - let the controls' own mouseleave handle it
       })
   }
 
@@ -576,14 +578,171 @@ function clearAllHoverStates() {
     clearTimeout(hoverThrottleTimeout)
     hoverThrottleTimeout = null
   }
-  const previouslyHoveredNodeId = currentHoveredNodeId
   currentHoveredNodeId = null
 
-  nodeGroup.selectAll<SVGGElement, GraphNode>('g.node').each(function (d) {
-    if (d.id === previouslyHoveredNodeId || (!d.selected && !d.isLoading)) {
-      manageNodeVisualsAndText(d3.select(this), false, { updateTextForNode }, false, svg!, null)
-    }
+  // Hide hover controls
+  hideHoverControls()
+
+  // No need to update node visuals since we're only showing controls on selected nodes
+}
+
+function createHoverControls(node: GraphNode) {
+  if (!hoverControlsGroup || props.isReadOnly) return
+
+  // Clear any existing hover controls
+  hideHoverControls()
+
+  const nodeRadius = node.size / 2
+  const controlsGroup = hoverControlsGroup
+    .append('g')
+    .attr('class', 'node-hover-controls')
+    .attr('transform', `translate(${node.x || 0}, ${node.y || 0})`)
+
+  // Add mouseleave event to the entire controls group
+  controlsGroup.on('mouseleave', () => {
+    hideHoverControls()
+    currentHoveredNodeId = null
   })
+
+  // Create left semicircle (delete) - vertical split
+  const leftArc = d3.arc()
+    .innerRadius(0)
+    .outerRadius(nodeRadius + 8)
+    .startAngle(-Math.PI)
+    .endAngle(0)
+
+  // Create right semicircle (bypass) - vertical split
+  const rightArc = d3.arc()
+    .innerRadius(0)
+    .outerRadius(nodeRadius + 8)
+    .startAngle(0)
+    .endAngle(Math.PI)
+
+  // Left semicircle (delete) - purple-grey scheme
+  const deleteHalf = controlsGroup
+    .append('path')
+    .attr('d', leftArc)
+    .attr('fill', 'rgba(107, 114, 128, 0.9)') // Grey
+    .attr('stroke', 'rgba(255, 255, 255, 0.8)')
+    .attr('stroke-width', 2)
+    .style('cursor', 'pointer')
+    .style('pointer-events', 'all')
+
+  // Right semicircle (bypass) - purple-grey scheme  
+  const bypassHalf = controlsGroup
+    .append('path')
+    .attr('d', rightArc)
+    .attr('fill', 'rgba(139, 92, 246, 0.9)') // Purple
+    .attr('stroke', 'rgba(255, 255, 255, 0.8)')
+    .attr('stroke-width', 2)
+    .style('cursor', 'pointer')
+    .style('pointer-events', 'all')
+
+  // Add vertical divider line
+  controlsGroup
+    .append('line')
+    .attr('x1', 0)
+    .attr('y1', -(nodeRadius + 8))
+    .attr('x2', 0)
+    .attr('y2', nodeRadius + 8)
+    .attr('stroke', 'rgba(255, 255, 255, 0.8)')
+    .attr('stroke-width', 2)
+    .style('pointer-events', 'none')
+
+  // Add delete icon (×) - positioned in left semicircle
+  controlsGroup
+    .append('text')
+    .attr('x', -(nodeRadius + 8) / 2)
+    .attr('y', 0)
+    .attr('text-anchor', 'middle')
+    .attr('dominant-baseline', 'central')
+    .attr('fill', 'white')
+    .attr('font-size', `${Math.max(12, nodeRadius * 0.8)}px`)
+    .attr('font-weight', 'bold')
+    .text('×')
+    .style('pointer-events', 'none')
+
+  // Add bypass icon - two-stage visual (empty/filled circle)
+  const bypassIconGroup = controlsGroup
+    .append('g')
+    .attr('transform', `translate(${(nodeRadius + 8) / 2}, 0)`)
+    .style('pointer-events', 'none')
+
+  const iconRadius = Math.max(4, nodeRadius * 0.25)
+  
+  // Outer circle (always visible)
+  bypassIconGroup
+    .append('circle')
+    .attr('r', iconRadius)
+    .attr('fill', 'none')
+    .attr('stroke', 'white')
+    .attr('stroke-width', 1.5)
+
+  // Inner filled circle (visible when NOT bypassed - shows action to bypass)
+  bypassIconGroup
+    .append('circle')
+    .attr('r', iconRadius * 0.6)
+    .attr('fill', node.bypassed ? 'none' : 'white')
+    .attr('class', 'bypass-inner-circle')
+
+  // Add click handlers
+  deleteHalf.on('click', (event: MouseEvent) => {
+    event.stopPropagation()
+    handleNodeDelete(node.id)
+  })
+
+  bypassHalf.on('click', (event: MouseEvent) => {
+    event.stopPropagation()
+    handleNodeBypass(node.id)
+  })
+
+  // Show immediately without animation to avoid flying from 0,0
+  controlsGroup.style('opacity', 1)
+}
+
+function hideHoverControls() {
+  if (!hoverControlsGroup) return
+
+  hoverControlsGroup
+    .selectAll('.node-hover-controls')
+    .remove()
+}
+
+function updateHoverControlsPosition() {
+  if (!hoverControlsGroup || !currentHoveredNodeId) return
+  
+  const hoveredNode = props.nodes.find(n => n.id === currentHoveredNodeId)
+  if (!hoveredNode) return
+
+  hoverControlsGroup
+    .selectAll('.node-hover-controls')
+    .attr('transform', `translate(${hoveredNode.x || 0}, ${hoveredNode.y || 0})`)
+}
+
+function handleNodeDelete(nodeId: string) {
+  console.log('Delete node:', nodeId)
+  emit('menuAction', { category: 'delete', action: 'delete', nodeId })
+  hideHoverControls()
+}
+
+function handleNodeBypass(nodeId: string) {
+  console.log('Toggle bypass for node:', nodeId)
+  emit('menuAction', { category: 'bypass', action: 'toggle_bypass', nodeId })
+  hideHoverControls()
+}
+
+function updateBypassIcon(nodeId: string) {
+  if (!hoverControlsGroup) return
+  
+  // Find the node to get its current bypass state
+  const node = props.nodes.find(n => n.id === nodeId)
+  if (!node) return
+  
+  // Update the inner circle fill based on bypass state (shows action, not current state)
+  hoverControlsGroup
+    .selectAll('.node-hover-controls')
+    .select('.bypass-inner-circle')
+    .attr('fill', node.bypassed ? 'none' : 'white')
 }
 
 function updateNodeSelection(id: string) {
@@ -688,6 +847,7 @@ interface ForceGraphExposed {
   resetAndCenter: () => void
   triggerUpdate: () => void // Add method to manually trigger updates
   centerAndPinNodeById: (id: string) => void
+  updateBypassIcon: (nodeId: string) => void
 }
 
 defineExpose<ForceGraphExposed>({
@@ -777,6 +937,7 @@ defineExpose<ForceGraphExposed>({
       node.fy = null
     }, 750)
   },
+  updateBypassIcon,
 })
 </script>
 

@@ -16,6 +16,7 @@ export interface GraphNode extends SimulationNodeDatum {
   y?: number
   isLoading?: boolean
   imageUrl?: string
+  bypassed?: boolean
 }
 
 /**

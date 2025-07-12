@@ -1,5 +1,5 @@
 import { S3Client, PutObjectCommand, ObjectCannedACL } from '@aws-sdk/client-s3'
-import { Buffer } from 'node:buffer'
+import type { Buffer } from 'node:buffer'
 import { v4 as uuidv4 } from 'uuid'
 
 const HETZNER_S3_ENDPOINT = process.env.HETZNER_S3_ENDPOINT

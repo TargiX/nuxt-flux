@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setup, $fetch } from '@nuxt/test-utils'
 import { mailer } from '~/server/utils/mail'
 
+import prisma from '~/server/utils/db'
+
 // Mock dependencies
 vi.mock('~/server/utils/db', () => ({
   default: {
@@ -20,8 +22,6 @@ vi.mock('~/server/utils/mail', () => ({
     sendPasswordResetEmail: vi.fn(),
   },
 }))
-
-import prisma from '~/server/utils/db'
 
 describe('POST /api/auth/forgot-password', () => {
   setup({ server: true })

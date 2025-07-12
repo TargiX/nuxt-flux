@@ -223,6 +223,11 @@ export function useNodeStyling() {
       return 'rgba(255, 255, 255, 0.4)'
     }
 
+    // Bypassed nodes - very transparent and dull appearance
+    if (node.bypassed) {
+      return 'rgba(120, 120, 120, 0.3)'
+    }
+
     // Unselected nodes - solid custom color
     if (!node.selected) {
       return '#565571'
@@ -286,13 +291,19 @@ export function useNodeStyling() {
       })
       .attr('stroke', (d) => {
         if (d.isLoading) return 'rgba(255, 255, 255, 0.8)'
+        if (d.bypassed) return 'rgba(139, 92, 246, 0.3)' // Purple stroke for bypassed, very transparent
         if (d.selected) return '#fff'
         return isHover ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.3)'
       })
       .attr('stroke-width', (d) => {
         if (d.isLoading) return 2
+        if (d.bypassed) return 1 // Thinner stroke for bypassed nodes to make them less prominent
         if (d.selected) return 2
         return isHover ? 2 : 1
+      })
+      .style('opacity', (d) => {
+        if (d.bypassed) return 0.3 // Make bypassed nodes very transparent
+        return 1
       })
       .attr('r', (d) => {
         const baseRadius = d.size / 2

@@ -478,7 +478,7 @@ const isSavingDisabled = computed(() => {
 
 const generatedPrompt = computed(() => {
   const allSelectedTags = tagStore.tags
-    .filter((tag) => tag.selected)
+    .filter((tag) => tag.selected && !tag.bypassed)
     .map((tag) => tag.text)
     .sort()
   return allSelectedTags.join(', ')
@@ -1127,6 +1127,61 @@ async function handleDownloadImage() {
   }
 }
 
+// Handler for bypassing a node (excluding from prompts)
+function handleNodeBypass(nodeId: string) {
+  const tag = tagStore.tags.find(t => t.id === nodeId)
+  if (!tag) return
+
+  tag.bypassed = !tag.bypassed
+  tagStore.hasUnsavedChanges = true
+  
+  toast.add({
+    severity: 'info',
+    summary: tag.bypassed ? 'Tag Bypassed' : 'Tag Unbypass',
+    detail: tag.bypassed 
+      ? `"${tag.text}" will be excluded from prompts` 
+      : `"${tag.text}" will be included in prompts`,
+    life: 3000,
+  })
+
+  // Trigger immediate visual update of the node
+  nextTick(() => {
+    if (forceGraphRef.value) {
+      forceGraphRef.value.triggerUpdate()
+      // Also update hover controls if they're currently visible for this node
+      forceGraphRef.value.updateBypassIcon?.(nodeId)
+    }
+  })
+
+  // Refresh prompt generation
+  triggerPromptGeneration()
+}
+
+// Handler for deleting a node
+async function handleNodeDelete(nodeId: string) {
+  const tag = tagStore.tags.find(t => t.id === nodeId)
+  if (!tag) return
+
+  confirm.require({
+    message: `Are you sure you want to delete "${tag.text}" and all its children?`,
+    header: 'Delete Tag',
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: 'Delete',
+    rejectLabel: 'Cancel',
+    acceptClass: 'p-button-danger',
+    rejectClass: 'p-button-secondary',
+    accept: async () => {
+      await removeTag(tag)
+      toast.add({
+        severity: 'success',
+        summary: 'Tag Deleted',
+        detail: `"${tag.text}" and its children have been removed`,
+        life: 3000,
+      })
+    }
+  })
+}
+
 // New handler for context menu concept selections
 async function handleNodeContextMenu(payload: {
   category: string
@@ -1151,6 +1206,18 @@ async function handleNodeContextMenu(payload: {
   if (tagStore.stashedSessionState) {
     tagStore.stashedSessionState = null
     tagStore.viewingSnapshotImageId = null
+  }
+
+  // Handle bypass action
+  if (payload.category === 'bypass' && payload.action === 'toggle_bypass') {
+    handleNodeBypass(payload.nodeId)
+    return
+  }
+
+  // Handle delete action
+  if (payload.category === 'delete' && payload.action === 'delete') {
+    handleNodeDelete(payload.nodeId)
+    return
   }
 
   try {
