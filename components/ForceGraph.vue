@@ -69,16 +69,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, computed, onBeforeUnmount, nextTick } from 'vue'
+import { ref, onMounted, watch, computed, onBeforeUnmount } from 'vue'
 import * as d3 from 'd3'
 import 'd3-transition' // Ensure transition support is available
 import { useZoom  } from '~/composables/useZoom'
-import type {ViewportState} from '~/composables/useZoom';
+import type { ViewportState } from '~/composables/useZoom'
 import { useNodeStyling } from '~/composables/useNodeStyling'
 import { useLinkStyling } from '~/composables/useLinkStyling'
 import { useForceSimulation } from '~/composables/useForceSimulation'
-import type { GraphNode, GraphLink } from '~/types/graph'
+import type { GraphNode as BaseGraphNode, GraphLink } from '~/types/graph'
 import NodeContextMenu from './NodeContextMenu.vue'
+
+// Extend the base GraphNode type to include the optional imageUrl
+interface GraphNode extends BaseGraphNode {
+  imageUrl?: string
+}
 
 const props = defineProps<{
   width: number
@@ -97,7 +102,7 @@ let nodeGroup: d3.Selection<SVGGElement, unknown, null, undefined> | null = null
 let simulation: d3.Simulation<GraphNode, GraphLink> | null = null
 
 // Add this ref to track reset state
-const isResetting = ref(false)
+// const isResetting = ref(false)
 
 const contextMenu = ref<InstanceType<typeof NodeContextMenu> | null>(null)
 const contextMenuNodeId = ref<string | null>(null)
