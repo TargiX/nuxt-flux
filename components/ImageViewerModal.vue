@@ -2,6 +2,8 @@
   <Dialog
     v-model:visible="visibleInternal"
     modal
+    dismissable-mask
+    close-on-escape
     :header="selectedImage?.promptText?.trim().substring(0, 200) + '...' || 'Image Details'"
     :style="{ width: '90vw', maxWidth: '1200px' }"
     content-class="p-0"

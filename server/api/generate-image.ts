@@ -1,7 +1,7 @@
 import type { H3Event } from 'h3'
 import { defineEventHandler, readBody, createError } from 'h3'
 import { generateImage } from '~/server/services/aiImageGenerator'
-import prisma from '~/server/utils/db'
+import { generateIconForTag } from '~/server/services/tagAppearanceService'
 import type { ModelGenerationOptions } from '~/types/models'
 import logger from '~/utils/logger'
 
@@ -39,13 +39,13 @@ export default defineEventHandler(async (event: H3Event) => {
 
     // --- Asynchronous Icon Generation (Fire-and-Forget) ---
     if (selectedTagsData.length > 0) {
-      triggerIconGeneration(selectedTagsData, event).catch((err) => {
+      triggerIconGeneration(selectedTagsData).catch((err) => {
         logger.error('Error in background icon generation process:', err)
       })
     } else if (selectedTagAliases.length > 0) {
       // Fallback for backward compatibility
       const fallbackTagsData = selectedTagAliases.map(alias => ({ alias, text: alias.replace(/-/g, ' ') }))
-      triggerIconGeneration(fallbackTagsData, event).catch((err) => {
+      triggerIconGeneration(fallbackTagsData).catch((err) => {
         logger.error('Error in background icon generation process:', err)
       })
     }
@@ -78,47 +78,36 @@ export default defineEventHandler(async (event: H3Event) => {
   }
 })
 
-async function triggerIconGeneration(tagsData: Array<{ alias: string; text: string }>, event: H3Event) {
-  const aliases = tagsData.map(tag => tag.alias)
-  
-  // 1. Find which tags already have icons
-  const existingAppearances = await prisma.tagAppearance.findMany({
-    where: {
-      id: { in: aliases },
-    },
-    select: {
-      id: true, // Select only the ID for efficiency
-    },
-  })
-  const existingAliases = new Set(existingAppearances.map((a: { id: string }) => a.id))
-  logger.info(
-    `[GenerateImage] Found ${existingAliases.size} existing icons for aliases: ${Array.from(
-      existingAliases
-    ).join(', ')}`
-  )
-
-  // 2. Determine which tags need icons
-  const tagsToGenerate = tagsData.filter((tag) => !existingAliases.has(tag.alias))
-
-  if (tagsToGenerate.length === 0) {
-    logger.info('[GenerateImage] No new tag icons need to be generated.')
+async function triggerIconGeneration(tagsData: Array<{ alias: string; text: string }>) {
+  if (!tagsData || tagsData.length === 0) {
+    logger.info('[GenerateImage] No tags data provided for icon generation.')
     return
   }
 
-  // 3. Trigger generation for each one by calling the internal API
-  const baseUrl = event.node.req.headers.host
-  const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http'
-
-  for (const tag of tagsToGenerate) {
-    const url = `${protocol}://${baseUrl}/api/internal/tags/generate-icon`
-    logger.info(`[GenerateImage] Firing POST request to ${url} for alias: ${tag.alias} with text: ${tag.text}`)
-    // We don't await here to make it fire-and-forget
-    fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ alias: tag.alias, displayText: tag.text }),
-    }).catch((err) => {
-      logger.error(`[GenerateImage] Failed to trigger icon generation for tag '${tag.alias}':`, err)
-    })
+  for (const { alias, text } of tagsData) {
+    logger.info(
+      `[GenerateImage] Triggering icon generation for alias: "${alias}" with text: "${text}"`
+    )
+    // Fire-and-forget direct service call
+    generateIconForTag(alias, text)
+      .then((res: { success: true; imageUrl?: string; message?: string }) => {
+        if (res.success) {
+          logger.info(
+            `[GenerateImage] Icon generation succeeded for '${alias}'. ${
+              res.imageUrl ? `URL: ${res.imageUrl}` : res.message
+            }`
+          )
+        } else {
+          logger.warn(
+            `[GenerateImage] Icon generation for '${alias}' returned success=false. Message: ${res.message}`
+          )
+        }
+      })
+      .catch((err: unknown) => {
+        logger.error(
+          `[GenerateImage] Failed to generate icon for tag '${alias}':`,
+          err
+        )
+      })
   }
 }
