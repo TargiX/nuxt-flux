@@ -4,7 +4,7 @@ import * as d3 from 'd3'
 
 // Helper to check if currently editing
 let currentlyEditingNodeId: string | null = null
-let activeInput: HTMLInputElement | null = null
+let _activeInput: HTMLInputElement | null = null
 // Track if we've initialized the event handlers
 // let eventHandlersInitialized = false; // No longer needed here
 
@@ -265,7 +265,7 @@ export function useNodeStyling() {
     selection: Selection<any, GraphNode, any, any>,
     isHover = false,
     // svg is needed for createNodeGradients if called, but applyNodeStyle itself won't use it directly for DOM manipulation
-    svg?: Selection<any, unknown, null, undefined> | null
+    _svg?: Selection<any, unknown, null, undefined> | null
     // textUpdateCallback is removed as this function no longer manages text element creation or their listeners
   ) => {
     // createNodeGradients might still be relevant if called before any styling relies on new gradients
@@ -319,18 +319,18 @@ export function useNodeStyling() {
       nodeGroup
         .selectAll('.node-text') // Assumes .node-text elements exist if there's text
         .attr('font-size', d.selected ? '11px' : '10px')
-        .attr('fill', (textData: unknown) => {
+        .attr('fill', (_textData: unknown) => {
           // textData here is the line string, but d (GraphNode) is in closure
           if (d.isLoading) return 'rgba(255, 255, 255, 0.6)'
           if (d.selected) return 'rgba(255, 255, 255, 0.95)'
           return 'rgba(255, 255, 255, 0.8)'
         })
-        .attr('font-weight', (textData: unknown) => {
+        .attr('font-weight', (_textData: unknown) => {
           if (d.selected) return '700'
           if (d.isLoading) return '500' // Less emphasis for loading text vs selected
           return '500'
         })
-        .attr('text-shadow', (textData: unknown) => {
+        .attr('text-shadow', (_textData: unknown) => {
           if (d.selected) return '0 0 6px rgba(255, 255, 255, 0.9)'
           return '0 0 4px rgba(255, 255, 255, 0.7)'
         })
@@ -350,7 +350,7 @@ export function useNodeStyling() {
   }
 
   function startTextEdit(
-    event: any,
+    _event: any,
     d: GraphNode,
     nodeElement: SVGGElement,
     textElementsToHide: d3.Selection<SVGTextElement, unknown, any, any>[],
@@ -425,7 +425,7 @@ export function useNodeStyling() {
       .style('margin-right', '-1px')
       .style('outline', 'none')
       .node() as HTMLInputElement
-    activeInput = input
+    _activeInput = input
     input.focus()
     input.select()
 
@@ -518,7 +518,7 @@ export function useNodeStyling() {
       cleanupEdit(foreignObject, originalTextElements)
     } catch (error) {
       currentlyEditingNodeId = null // Ensure reset even on error
-      activeInput = null
+      _activeInput = null
     } finally {
       isCleaningUp = false
     }
@@ -535,7 +535,7 @@ export function useNodeStyling() {
       cleanupEdit(foreignObject, originalTextElements)
     } catch (error) {
       currentlyEditingNodeId = null // Ensure reset even on error
-      activeInput = null
+      _activeInput = null
     } finally {
       isCleaningUp = false
     }
@@ -564,7 +564,7 @@ export function useNodeStyling() {
       console.warn('Error restoring text elements:', error)
     }
     currentlyEditingNodeId = null
-    activeInput = null
+    _activeInput = null
   }
 
   /**
@@ -619,7 +619,21 @@ export function useNodeStyling() {
           .attr('class', 'node-circle')
           .attr('r', nodeData.size / 2)
 
-        if (nodeData.zone === 'Subject' && !nodeData.parentId) {
+        if (nodeData.imageUrl) {
+          nodeGroup
+            .append('image')
+            .attr('class', 'tag-node-image')
+            .attr('xlink:href', nodeData.imageUrl)
+            .attr('x', -nodeData.size / 2)
+            .attr('y', -nodeData.size / 2)
+            .attr('width', nodeData.size)
+            .attr('height', nodeData.size)
+            .attr('clip-path', `circle(${nodeData.size / 2}px at center)`)
+            .on('error', function () {
+              // Handle broken image links by hiding the image
+              d3.select(this).style('display', 'none')
+            })
+        } else if (nodeData.zone === 'Subject' && !nodeData.parentId) {
           nodeGroup
             .append('image')
             .attr('xlink:href', getSubjectImagePath(nodeData.text))
@@ -632,45 +646,45 @@ export function useNodeStyling() {
               // Handle broken image links
               d3.select(this).style('display', 'none')
             })
+        } else {
+          const textLines = formatNodeText(nodeData.text)
+          const textElementsForThisNode: d3.Selection<SVGTextElement, unknown, any, any>[] = []
+          textLines.forEach((line, i) => {
+            const yPos = nodeData.size / 2 + 8 + i * 14
+            const textElement = nodeGroup
+              .append('text')
+              .attr('class', 'node-text')
+              .attr('x', 0)
+              .attr('y', yPos)
+              .attr('text-anchor', 'middle')
+              .attr('dominant-baseline', 'hanging')
+              .attr('font-size', '10px') // Initial, applyNodeStyle might change based on selection
+              .attr('fill', 'rgba(255, 255, 255, 0.8)')
+              .attr('font-weight', '500')
+              .attr('text-shadow', '0 0 4px rgba(255, 255, 255, 0.7)')
+              .style('cursor', nodeData.isLoading ? 'default' : 'text')
+              .style('pointer-events', nodeData.isLoading ? 'none' : 'auto')
+              .style('user-select', 'none')
+              .style('paint-order', 'stroke fill')
+              .style('stroke', 'transparent') // For invisible clickable area
+              .style('stroke-width', '6px') // For invisible clickable area
+              .attr('data-node-id', nodeData.id)
+              .text(line)
+            textElementsForThisNode.push(textElement)
+            if (!nodeData.isLoading) {
+              textElement.on('click.textEdit', function (event) {
+                event.stopPropagation()
+                startTextEdit(
+                  event,
+                  nodeData,
+                  nodeGroup.node() as SVGGElement,
+                  textElementsForThisNode,
+                  callbacks.updateTextForNode
+                )
+              })
+            }
+          })
         }
-
-        const textLines = formatNodeText(nodeData.text)
-        const textElementsForThisNode: d3.Selection<SVGTextElement, unknown, any, any>[] = []
-        textLines.forEach((line, i) => {
-          const yPos = nodeData.size / 2 + 8 + i * 14
-          const textElement = nodeGroup
-            .append('text')
-            .attr('class', 'node-text')
-            .attr('x', 0)
-            .attr('y', yPos)
-            .attr('text-anchor', 'middle')
-            .attr('dominant-baseline', 'hanging')
-            .attr('font-size', '10px') // Initial, applyNodeStyle might change based on selection
-            .attr('fill', 'rgba(255, 255, 255, 0.8)')
-            .attr('font-weight', '500')
-            .attr('text-shadow', '0 0 4px rgba(255, 255, 255, 0.7)')
-            .style('cursor', nodeData.isLoading ? 'default' : 'text')
-            .style('pointer-events', nodeData.isLoading ? 'none' : 'auto')
-            .style('user-select', 'none')
-            .style('paint-order', 'stroke fill')
-            .style('stroke', 'transparent') // For invisible clickable area
-            .style('stroke-width', '6px') // For invisible clickable area
-            .attr('data-node-id', nodeData.id)
-            .text(line)
-          textElementsForThisNode.push(textElement)
-          if (!nodeData.isLoading) {
-            textElement.on('click.textEdit', function (event) {
-              event.stopPropagation()
-              startTextEdit(
-                event,
-                nodeData,
-                nodeGroup.node() as SVGGElement,
-                textElementsForThisNode,
-                callbacks.updateTextForNode
-              )
-            })
-          }
-        })
 
         if (nodeData.isLoading) {
           const spinnerGroup = nodeGroup
@@ -718,9 +732,29 @@ export function useNodeStyling() {
       selection.each(function (nodeData) {
         const nodeGroup = d3.select(this)
 
-        // 1. Apply visual styles to existing circle and text elements
-        // This is done after the main if/else block now, so it applies to both enter and update.
-        // applyNodeStyle(nodeGroup, isHover, svg); // Moved to the end of the main function
+        // Manage dynamic tag image
+        const tagImage = nodeGroup.select('.tag-node-image')
+        if (nodeData.imageUrl) {
+          nodeGroup.selectAll('.node-text, .subject-node-image').remove() // Remove text/subject image if we have a tag image
+          if (tagImage.empty()) {
+            nodeGroup
+              .append('image')
+              .attr('class', 'tag-node-image')
+              .attr('xlink:href', nodeData.imageUrl)
+              .attr('x', -nodeData.size / 2)
+              .attr('y', -nodeData.size / 2)
+              .attr('width', nodeData.size)
+              .attr('height', nodeData.size)
+              .attr('clip-path', `circle(${nodeData.size / 2}px at center)`)
+              .on('error', function () {
+                d3.select(this).style('display', 'none')
+              })
+          } else {
+            tagImage.attr('xlink:href', nodeData.imageUrl).style('display', null) // Update existing
+          }
+        } else {
+          tagImage.remove() // Remove tag image if no longer present in data
+        }
 
         // 2. Manage Loading Indicator
         if (nodeData.isLoading) {
@@ -769,7 +803,7 @@ export function useNodeStyling() {
 
         // 3. Handle Text Updates
         // Avoid re-rendering text if node is currently being edited to prevent editor removal
-        if (currentlyEditingNodeId !== nodeData.id) {
+        if (currentlyEditingNodeId !== nodeData.id && !nodeData.imageUrl) {
           const newTextLines = formatNodeText(nodeData.text)
           const textElementsJoin = nodeGroup
             .selectAll<SVGTextElement, string>('.node-text') // Specify types for clarity

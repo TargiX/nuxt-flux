@@ -133,7 +133,7 @@ const {
   applyViewport: applyViewportFn,
 } = useZoom()
 
-const { createNodeGradients, getNodeGradient, getNodeGlowFilter } = useNodeStyling()
+const { manageNodeVisualsAndText, createNodeGradients } = useNodeStyling()
 
 const { createLinkGradient, createUniqueGradient, updateGradientPositions, applyLinkStyle } =
   useLinkStyling()
@@ -433,8 +433,7 @@ function updateGraph() {
   simulation = updateSimulation(simulation, props.nodes, props.links, width, height)
 
   updateLinks()
-  // Render nodes with correct parameters
-  updateNodes(nodeGroup!, props.nodes, simulation!)
+  updateNodes()
 
   const selectedParent = props.nodes.find((n) => n.selected && !n.parentId)
   setTimeout(() => {
@@ -473,130 +472,102 @@ function updateLinks() {
   link.exit().remove()
 }
 
+function updateNodes() {
+  if (!nodeGroup || !simulation || !svg) return
 
+  const node = nodeGroup.selectAll<SVGGElement, GraphNode>('g.node').data(props.nodes, (d) => d.id)
 
-function updateNodes(
-  nodeGroup: d3.Selection<SVGGElement, unknown, null, undefined>,
-  nodes: GraphNode[],
-  simulation: d3.Simulation<GraphNode, GraphLink>
-) {
-  if (!nodeGroup) return
+  const nodeEnter = node.enter().append('g').attr('class', 'node')
 
-  const node = nodeGroup
-    .selectAll<SVGGElement, GraphNode>('g.node')
-    .data(nodes, (d) => d.id)
-    .join(
-      (enter) => {
-        const g = enter.append('g').attr('class', 'node')
-
-        g.append('circle')
-          .attr('r', (d) => d.size / 2)
-          .attr('fill', (d) => getNodeGradient(d))
-          .attr('filter', (d) => getNodeGlowFilter(d))
-
-        // Conditionally append image or text
-        g.each(function (d) {
-          const group = d3.select(this)
-          if (d.imageUrl) {
-            group
-              .append('image')
-              .attr('href', d.imageUrl)
-              .attr('width', d.size)
-              .attr('height', d.size)
-              .attr('x', -d.size / 2)
-              .attr('y', -d.size / 2)
-              .attr('clip-path', `circle(${d.size / 2}px at center)`)
-          } else {
-            group
-              .append('text')
-              .attr('dy', '.35em')
-              .attr('text-anchor', 'middle')
-              .style('font-size', (d) => `${d.size / 4}px`)
-              .text((d) => d.text)
-          }
-        })
-
-        return g
-      },
-      (update) => {
-        update
-          .select('circle')
-          .attr('r', (d) => d.size / 2)
-          .attr('fill', (d) => getNodeGradient(d))
-          .attr('filter', (d) => getNodeGlowFilter(d))
-
-        // Handle updates for both image and text
-        update.each(function (d) {
-          const group = d3.select(this)
-          const image = group.select('image')
-          const text = group.select('text')
-
-          if (d.imageUrl) {
-            text.remove()
-            if (image.empty()) {
-              group
-                .append('image')
-                .attr('href', d.imageUrl)
-                .attr('width', d.size)
-                .attr('height', d.size)
-                .attr('x', -d.size / 2)
-                .attr('y', -d.size / 2)
-                .attr('clip-path', `circle(${d.size / 2}px at center)`)
-            } else {
-              image
-                .attr('href', d.imageUrl)
-                .attr('width', d.size)
-                .attr('height', d.size)
-                .attr('x', -d.size / 2)
-                .attr('y', -d.size / 2)
-            }
-          } else {
-            image.remove()
-            if (text.empty()) {
-              group
-                .append('text')
-                .attr('dy', '.35em')
-                .attr('text-anchor', 'middle')
-                .style('font-size', (d) => `${d.size / 4}px`)
-                .text((d) => d.text)
-            } else {
-              text.text((d) => d.text)
-            }
-          }
-        })
-
-        return update
-      },
-      (exit) => exit.remove()
-    )
-    .call(createDragBehavior(simulation))
-    .on('click', (event, d) => {
-      handleNodeClick(event, d)
-    })
-
-  simulation.on('tick', () => {
-    node.attr('transform', (d) => `translate(${d.x},${d.y})`)
-    // Update link gradient positions on each tick
-    updateGradientPositions()
-  })
-}
-
-function handleNodeClick(event: MouseEvent, d: GraphNode) {
-  const targetEl = event.target as Element
-  if (targetEl.tagName.toLowerCase() === 'input') return // Click on active editor input
-  console.log('Node clicked:', d.id)
-  emit('nodeClick', d.id)
-  updateNodeSelection(d.id)
-  if (svg) {
-    d.fx = d.x
-    d.fy = d.y
-    centerOnNodeFn(svg, d)
-    setTimeout(() => {
-      d.fx = null
-      d.fy = null
-    }, 750)
+  if (!props.isReadOnly) {
+    nodeEnter
+      .call(createDragBehavior(simulation))
+      .on('click', (event: MouseEvent, d: GraphNode) => {
+        const targetEl = event.target as Element
+        if (targetEl.tagName.toLowerCase() === 'input') return // Click on active editor input
+        console.log('Node clicked:', d.id)
+        emit('nodeClick', d.id)
+        updateNodeSelection(d.id)
+        if (svg) {
+          d.fx = d.x
+          d.fy = d.y
+          centerOnNodeFn(svg, d)
+          setTimeout(() => {
+            d.fx = null
+            d.fy = null
+          }, 750)
+        }
+        if (contextMenu.value) contextMenu.value.hide()
+      })
+      .on('contextmenu', (event: MouseEvent, d: GraphNode) => {
+        event.preventDefault()
+        contextMenuNodeId.value = d.id
+        if (contextMenu.value) contextMenu.value.show(event, d.text)
+        console.log('Node right-clicked:', d.id)
+      })
   }
-  if (contextMenu.value) contextMenu.value.hide()
+
+  nodeEnter.each(function (d) {
+    // `this` is the <g class='node'> element
+    manageNodeVisualsAndText(d3.select(this), true, { updateTextForNode }, false, svg!, null)
+  })
+
+  node.exit().remove()
+
+  const nodeMerge = nodeEnter.merge(node as any)
+
+  nodeMerge.each(function (d) {
+    // `this` is the <g class='node'> element
+    const isCurrentlyHovered = currentHoveredNodeId === d.id && !d.selected && !d.isLoading
+    manageNodeVisualsAndText(
+      d3.select(this),
+      false,
+      { updateTextForNode },
+      isCurrentlyHovered,
+      svg!,
+      null
+    )
+  })
+
+  if (!props.isReadOnly) {
+    nodeMerge
+      .on('mouseenter', function (event: MouseEvent, d: GraphNode) {
+        if (event.target !== this) return
+        if (hoverThrottleTimeout) clearTimeout(hoverThrottleTimeout)
+        hoverThrottleTimeout = window.setTimeout(() => {
+          clearAllHoverStates()
+          if (!d.selected && !d.isLoading) {
+            currentHoveredNodeId = d.id
+            manageNodeVisualsAndText(
+              d3.select(this),
+              false,
+              { updateTextForNode },
+              true,
+              svg!,
+              null
+            )
+          }
+          hoverThrottleTimeout = null
+        }, 50)
+      })
+      .on('mouseleave', function (event: MouseEvent, d: GraphNode) {
+        if (event.target !== this) return
+        if (hoverThrottleTimeout) {
+          clearTimeout(hoverThrottleTimeout)
+          hoverThrottleTimeout = null
+        }
+        if (currentHoveredNodeId === d.id && !d.selected && !d.isLoading) {
+          currentHoveredNodeId = null
+          manageNodeVisualsAndText(d3.select(this), false, { updateTextForNode }, false, svg!, null)
+        }
+      })
+  }
+
+  if (svg) {
+    svg.on('mouseleave', () => {
+      clearAllHoverStates()
+    })
+  }
 }
 
 function clearAllHoverStates() {
@@ -610,7 +581,7 @@ function clearAllHoverStates() {
 
   nodeGroup.selectAll<SVGGElement, GraphNode>('g.node').each(function (d) {
     if (d.id === previouslyHoveredNodeId || (!d.selected && !d.isLoading)) {
-      // manageNodeVisualsAndText(d3.select(this), false, { updateTextForNode }, false, svg!, null)
+      manageNodeVisualsAndText(d3.select(this), false, { updateTextForNode }, false, svg!, null)
     }
   })
 }
