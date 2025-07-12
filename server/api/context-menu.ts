@@ -1,5 +1,5 @@
 import { defineEventHandler, readBody, createError } from 'h3'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { GoogleGenAI } from '@google/genai'
 
 export default defineEventHandler(async (event) => {
   if (event.node.req.method !== 'POST') {
@@ -55,22 +55,24 @@ RULES:
 Return ONLY valid JSON, no other text:
 [{"category":"Category Name","items":["Specific Item 1","Specific Item 2","Specific Item 3"]}]`
 
-  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash-lite',
-    generationConfig: {
-      temperature: 0.8, // Balanced creativity
-      topK: 40,
-      topP: 0.9,
-      maxOutputTokens: 1000,
-    },
-  })
+  const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY })
 
   try {
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    const result = await ai.models.generateContent({
+      model: 'gemini-2.0-flash-lite',
+      contents: prompt,
+      config: {
+        temperature: 0.8, // Balanced creativity
+        topK: 40,
+        topP: 0.9,
+        maxOutputTokens: 1000,
+      }
     })
-    const raw = result.response.text()
+    const raw = result.text
+    if (!raw) {
+      throw createError({ statusCode: 500, statusMessage: 'No response received from AI' })
+    }
+    
     console.log(`[Context Menu API] Raw response for "${sanitizedText}":`, raw)
 
     // Clean the response more thoroughly
@@ -116,10 +118,9 @@ Return ONLY valid JSON, no other text:
     }
 
     return { categories }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`[Context Menu API] Error for "${sanitizedText}":`, error)
-    const message =
-      error.response?.data?.error?.message || error.message || 'Failed to generate context menu'
+    const message = error instanceof Error ? error.message : 'Failed to generate context menu'
     throw createError({ statusCode: 500, statusMessage: `ContextMenu Error: ${message}` })
   }
 })

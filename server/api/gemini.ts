@@ -1,6 +1,6 @@
 // ~/nuxt-flux/server/api/gemini.ts
 import { defineEventHandler, readBody, createError } from 'h3'
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai'
+import { GoogleGenAI } from '@google/genai'
 
 export default defineEventHandler(async (event) => {
   // 1) Get API Key from runtime config
@@ -29,34 +29,22 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Missing prompt text in request body' })
   }
 
-  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
-  const model = genAI.getGenerativeModel({
-    model: modelName,
-    // Optional: Add safety settings if needed
-    // safetySettings: [
-    //   { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-    //   { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-    //   { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-    //   { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-    // ],
-  })
+  const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY })
 
-  // 4) Prepare generation configuration
-  const generationConfig = {
-    temperature,
-    maxOutputTokens,
-    // topP: 0.95, // Optional: Add other config as needed
-    // topK: 64,   // Optional: Add other config as needed
-  }
-
-  // 5) Call the Generative AI model
+  // 4) Call the new Generative AI model
   try {
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig,
+    const result = await ai.models.generateContent({
+      model: modelName,
+      contents: prompt,
+      config: {
+        temperature,
+        maxOutputTokens,
+        // topP: 0.95, // Optional: Add other config as needed
+        // topK: 64,   // Optional: Add other config as needed
+      }
     })
 
-    const responseText = result.response.text()
+    const responseText = result.text
     return { generatedText: responseText } // Return the generated text
   } catch (error: any) {
     console.error('Error calling Gemini API:', error)

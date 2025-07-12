@@ -1,5 +1,5 @@
 import { defineEventHandler, readBody, createError } from 'h3'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { GoogleGenAI } from '@google/genai'
 
 export default defineEventHandler(async (event) => {
   // Only allow POST requests
@@ -30,26 +30,23 @@ export default defineEventHandler(async (event) => {
   // Construct the image generation prompt server-side
   const generationPrompt = `You are creating an image prompt based on the following tags: ${tagsString}. You should create a prompt that closely matches these tags, formatted for an image generator, with no extra words before or after.`
 
-  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash-lite',
-  })
+  const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY })
 
   try {
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: generationPrompt }] }],
-      generationConfig: {
+    const result = await ai.models.generateContent({
+      model: 'gemini-2.0-flash-lite',
+      contents: generationPrompt,
+      config: {
         temperature: 0.5,
         maxOutputTokens: 1000,
-      },
+      }
     })
 
-    const responseText = result.response.text()
+    const responseText = result.text
     return { generatedText: responseText }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in /api/prompt:', error)
-    const message =
-      error.response?.data?.error?.message || error.message || 'Failed to generate prompt'
+    const message = error instanceof Error ? error.message : 'Failed to generate prompt'
     throw createError({ statusCode: 500, statusMessage: `Prompt API Error: ${message}` })
   }
 })

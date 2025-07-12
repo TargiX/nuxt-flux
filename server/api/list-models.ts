@@ -1,5 +1,5 @@
 import { defineEventHandler, createError } from 'h3'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { GoogleGenAI } from '@google/genai'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -9,21 +9,21 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 500, statusMessage: 'Missing Gemini API Key' })
     }
 
-    // Initialize Google Generative AI
-    const genAI = new GoogleGenerativeAI(runtimeConfig.GEMINI_API_KEY)
+    // Initialize Google GenAI
+    const ai = new GoogleGenAI({ apiKey: runtimeConfig.GEMINI_API_KEY })
     
-    // List all available models
-    const models = await genAI.listModels()
+    // List all available models using new SDK
+    const models = await ai.models.list()
     
     // Filter models and categorize them
     const availableModels = models.map(model => ({
       name: model.name,
-      displayName: model.displayName,
-      description: model.description,
-      supportedGenerationMethods: model.supportedGenerationMethods,
-      inputTokenLimit: model.inputTokenLimit,
-      outputTokenLimit: model.outputTokenLimit,
-      version: model.version
+      displayName: model.displayName || model.name,
+      description: model.description || '',
+      supportedGenerationMethods: model.supportedGenerationMethods || [],
+      inputTokenLimit: model.inputTokenLimit || 0,
+      outputTokenLimit: model.outputTokenLimit || 0,
+      version: model.version || ''
     }))
 
     // Separate by generation methods

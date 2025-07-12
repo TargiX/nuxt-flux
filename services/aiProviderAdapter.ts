@@ -75,103 +75,67 @@ export class GoogleAIAdapter extends AIProviderAdapter {
     startTime: number
   ): Promise<ModelGenerationResponse> {
     try {
-      // Use the existing GoogleGenerativeAI package - try Imagen models through generateContent
-      const { GoogleGenerativeAI } = await import('@google/generative-ai')
-      const genAI = new GoogleGenerativeAI(credentials.apiKey)
+      // Use the new @google/genai package for Imagen models
+      const { GoogleGenAI } = await import('@google/genai')
+      const ai = new GoogleGenAI({ apiKey: credentials.apiKey })
 
-      // Map model IDs to actual Imagen model names
+      // Map model IDs to actual Imagen model names (use exact model names)
       const imagenModelMap: Record<string, string> = {
-        'imagen-4-generate': 'imagen-4.0-generate-preview-06-06',
-        'imagen-4-fast': 'imagen-4.0-fast-generate-preview-06-06',
-        'imagen-4-ultra': 'imagen-4.0-ultra-generate-preview-06-06',
-        'imagen-3-generate': 'imagen-3.0-generate-002',
-        'imagen-3-fast': 'imagen-3.0-fast-generate-001'
+        'imagen-4.0-generate-preview-06-06': 'imagen-4.0-generate-preview-06-06',
+        'imagen-4.0-ultra-generate-preview-06-06': 'imagen-4.0-ultra-generate-preview-06-06',
+        'imagen-3.0-generate-002': 'imagen-3.0-generate-002'
       }
 
       const actualModelName = imagenModelMap[request.modelId] || request.modelId
 
+      console.log(`Attempting to generate image with model: ${actualModelName}`)
+
       try {
-        // Try using the model directly through GoogleGenerativeAI first
-        const model = genAI.getGenerativeModel({ model: actualModelName })
-
-        const generationConfig = {
-          temperature: request.options?.temperature || 0.4,
-          maxOutputTokens: modelConfig.maxTokens || 2048,
-          responseModalities: ['Image'] as any
-        }
-
-        const result = await model.generateContent({
-          contents: [{ role: 'user', parts: [{ text: request.prompt }] }],
-          generationConfig
-        })
-
-        const response = result.response as any
-        
-        if (response?.candidates?.[0]?.content?.parts) {
-          for (const part of response.candidates[0].content.parts) {
-            if (part.inlineData) {
-              const generationTime = Date.now() - startTime
-              return this.createSuccessResponse(
-                `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`,
-                request.modelId,
-                generationTime,
-                modelConfig.costPerImage
-              )
-            }
+        // Use the new generateImages method from the new SDK
+        const response = await ai.models.generateImages({
+          model: actualModelName,
+          prompt: request.prompt,
+          config: {
+            number_of_images: 1,
+            output_mime_type: request.options?.format === 'png' ? 'image/png' : 'image/jpeg',
+            person_generation: 'ALLOW_ADULT',
+            aspect_ratio: request.options?.size || '1:1',
+            safety_filter_level: 'BLOCK_ONLY_HIGH',
+            ...(request.options?.seed && { seed: request.options.seed })
           }
-        }
-
-        // If no image found in standard response, fall back to direct API
-        throw new Error('No image in generateContent response, trying direct API')
-
-      } catch (generateContentError) {
-        // Fallback to direct REST API for Imagen models
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${actualModelName}:generateImage?key=${credentials.apiKey}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            prompt: request.prompt,
-            config: {
-              number_of_images: 1,
-              output_mime_type: request.options?.format === 'png' ? 'image/png' : 'image/jpeg',
-              person_generation: 'ALLOW_ADULT',
-              aspect_ratio: request.options?.size || '1:1',
-              safety_filter_level: 'BLOCK_ONLY_HIGH',
-              ...(request.options?.seed && { seed: request.options.seed })
-            }
-          })
         })
 
-        if (!response.ok) {
-          const errorText = await response.text()
-          return this.createErrorResponse(`Imagen API error: ${response.status} - ${errorText}`)
+        console.log('Imagen API response received:', response)
+
+        if (response.images && response.images.length > 0) {
+          const imageData = response.images[0].image_bytes || response.images[0].bytes_base64_encoded
+          const mimeType = request.options?.format === 'png' ? 'image/png' : 'image/jpeg'
+
+          if (!imageData) {
+            return this.createErrorResponse('No image data found in Imagen response')
+          }
+
+          const generationTime = Date.now() - startTime
+          return this.createSuccessResponse(
+            `data:${mimeType};base64,${imageData}`,
+            request.modelId,
+            generationTime,
+            modelConfig.costPerImage
+          )
         }
 
-        const result = await response.json()
+        return this.createErrorResponse('No images generated by Imagen model')
 
-        if (!result.generated_images || result.generated_images.length === 0) {
-          return this.createErrorResponse('No images generated by Imagen model')
-        }
-
-        const generatedImage = result.generated_images[0]
-        const imageData = generatedImage.image_bytes || generatedImage.image?.image_bytes
-        const mimeType = request.options?.format === 'png' ? 'image/png' : 'image/jpeg'
-
-        if (!imageData) {
-          return this.createErrorResponse('No image data found in Imagen response')
-        }
-
-        const generationTime = Date.now() - startTime
-        return this.createSuccessResponse(
-          `data:${mimeType};base64,${imageData}`,
-          request.modelId,
-          generationTime,
-          modelConfig.costPerImage
+      } catch (apiError: any) {
+        console.error('Imagen API error:', apiError)
+        
+        // If the new SDK method doesn't work, try alternative approach
+        return this.createErrorResponse(
+          `Imagen API error: ${apiError.message || apiError.toString()}. Model ${actualModelName} may not be available through this API.`
         )
       }
     } catch (error: any) {
+      console.error('Imagen generation failed:', error)
       return this.createErrorResponse(error.message || 'Imagen generation failed')
     }
   }
@@ -183,34 +147,32 @@ export class GoogleAIAdapter extends AIProviderAdapter {
     startTime: number
   ): Promise<ModelGenerationResponse> {
     try {
-      const { GoogleGenerativeAI } = await import('@google/generative-ai')
-      const genAI = new GoogleGenerativeAI(credentials.apiKey)
+      const { GoogleGenAI } = await import('@google/genai')
+      const ai = new GoogleGenAI({ apiKey: credentials.apiKey })
       
       // Map model IDs to actual Google model names
       const googleModelMap: Record<string, string> = {
-        'gemini-flash': 'gemini-2.0-flash-exp-image-generation',
-        'gemini-flash-preview': 'gemini-2.0-flash-preview-image-generation',
-        'gemini-pro': 'gemini-1.5-pro-latest'
+        'gemini-2.0-flash-preview-image-generation': 'gemini-2.0-flash-preview-image-generation'
       }
 
       const actualModelName = googleModelMap[request.modelId] || request.modelId
-      const model = genAI.getGenerativeModel({ model: actualModelName })
 
-      const generationConfig = {
-        temperature: request.options?.temperature || 0.4,
-        maxOutputTokens: modelConfig.maxTokens || 2048,
-        responseModalities: ['Text', 'Image'] as any
-      }
+      console.log(`Attempting to generate image with Gemini model: ${actualModelName}`)
 
-      const result = await model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: request.prompt }] }],
-        generationConfig
+      const result = await ai.models.generateContent({
+        model: actualModelName,
+        contents: request.prompt,
+        config: {
+          temperature: request.options?.temperature || 0.4,
+          maxOutputTokens: modelConfig.maxTokens || 2048,
+          responseModalities: ['Image', 'Text']  // Must include both for Gemini image models
+        }
       })
 
-      const response = result.response as any
+      console.log('Gemini API response received:', result)
       
-      if (response?.candidates?.[0]?.content?.parts) {
-        for (const part of response.candidates[0].content.parts) {
+      if (result.candidates?.[0]?.content?.parts) {
+        for (const part of result.candidates[0].content.parts) {
           if (part.inlineData) {
             const generationTime = Date.now() - startTime
             return this.createSuccessResponse(
@@ -223,8 +185,9 @@ export class GoogleAIAdapter extends AIProviderAdapter {
         }
       }
 
-      return this.createErrorResponse('No image data found in Google AI response')
+      return this.createErrorResponse('No image data found in Gemini response')
     } catch (error: any) {
+      console.error('Gemini generation failed:', error)
       return this.createErrorResponse(error.message || 'Gemini generation failed')
     }
   }

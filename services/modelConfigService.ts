@@ -58,26 +58,13 @@ export const AI_PROVIDERS: Record<string, AIProvider> = {
   }
 }
 
-// Define Model Configurations
+// Define Model Configurations - Only actual available image generation models
 export const MODEL_CONFIGS: Record<string, ModelConfig> = {
-  // Google Gemini Models (GenerativeAI client)
-  'gemini-flash': {
-    id: 'gemini-flash',
-    name: 'Gemini 2.0 Flash Image Generation',
-    description: 'Fast Google AI image generation (experimental)',
-    provider: AI_PROVIDERS.google,
-    endpoint: '/v1/generateImage',
-    maxTokens: 8192,
-    supportsStylePrompts: true,
-    costPerImage: 0.02,
-    avgGenerationTime: 5000,
-    supportedSizes: ['512x512', '1024x1024'],
-    supportedFormats: ['png', 'jpeg']
-  },
-  'gemini-flash-preview': {
-    id: 'gemini-flash-preview',
+  // Google Gemini Models (can generate images with Text+Image output)
+  'gemini-2.0-flash-preview-image-generation': {
+    id: 'gemini-2.0-flash-preview-image-generation',
     name: 'Gemini 2.0 Flash Preview Image Generation',
-    description: 'Preview version of Gemini 2.0 Flash image generation',
+    description: 'Conversational image generation and editing',
     provider: AI_PROVIDERS.google,
     endpoint: '/v1/generateImage',
     maxTokens: 8192,
@@ -86,26 +73,13 @@ export const MODEL_CONFIGS: Record<string, ModelConfig> = {
     avgGenerationTime: 5000,
     supportedSizes: ['512x512', '1024x1024'],
     supportedFormats: ['png', 'jpeg']
-  },
-  'gemini-pro': {
-    id: 'gemini-pro',
-    name: 'Gemini 1.5 Pro (Multi-modal)',
-    description: 'High-quality Google AI model with image capabilities',
-    provider: AI_PROVIDERS.google,
-    endpoint: '/v1/generateImage',
-    maxTokens: 2048000,
-    supportsStylePrompts: true,
-    costPerImage: 0.05,
-    avgGenerationTime: 8000,
-    supportedSizes: ['512x512', '1024x1024', '1536x1536'],
-    supportedFormats: ['png', 'jpeg', 'webp']
   },
 
-  // Google Imagen Models (genai client)
-  'imagen-4-generate': {
-    id: 'imagen-4-generate',
+  // Google Imagen Models (pure image generation)
+  'imagen-4.0-generate-preview-06-06': {
+    id: 'imagen-4.0-generate-preview-06-06',
     name: 'Imagen 4.0 Generate',
-    description: 'Google\'s latest high-quality image generation model',
+    description: 'Our most up-to-date image generation model',
     provider: AI_PROVIDERS.google,
     endpoint: '/v1/generateImage',
     maxTokens: 2048,
@@ -115,21 +89,8 @@ export const MODEL_CONFIGS: Record<string, ModelConfig> = {
     supportedSizes: ['1:1', '16:9', '9:16', '4:3', '3:4'],
     supportedFormats: ['jpeg', 'png']
   },
-  'imagen-4-fast': {
-    id: 'imagen-4-fast',
-    name: 'Imagen 4.0 Fast',
-    description: 'Fast version of Imagen 4.0 for quick generation',
-    provider: AI_PROVIDERS.google,
-    endpoint: '/v1/generateImage',
-    maxTokens: 2048,
-    supportsStylePrompts: true,
-    costPerImage: 0.08,
-    avgGenerationTime: 8000,
-    supportedSizes: ['1:1', '16:9', '9:16', '4:3', '3:4'],
-    supportedFormats: ['jpeg', 'png']
-  },
-  'imagen-4-ultra': {
-    id: 'imagen-4-ultra',
+  'imagen-4.0-ultra-generate-preview-06-06': {
+    id: 'imagen-4.0-ultra-generate-preview-06-06',
     name: 'Imagen 4.0 Ultra',
     description: 'Ultra high-quality version of Imagen 4.0',
     provider: AI_PROVIDERS.google,
@@ -141,29 +102,16 @@ export const MODEL_CONFIGS: Record<string, ModelConfig> = {
     supportedSizes: ['1:1', '16:9', '9:16', '4:3', '3:4'],
     supportedFormats: ['jpeg', 'png']
   },
-  'imagen-3-generate': {
-    id: 'imagen-3-generate',
+  'imagen-3.0-generate-002': {
+    id: 'imagen-3.0-generate-002',
     name: 'Imagen 3.0 Generate',
-    description: 'Google\'s previous generation high-quality image model',
+    description: 'High quality image generation model',
     provider: AI_PROVIDERS.google,
     endpoint: '/v1/generateImage',
     maxTokens: 2048,
     supportsStylePrompts: true,
     costPerImage: 0.10,
     avgGenerationTime: 12000,
-    supportedSizes: ['1:1', '16:9', '9:16', '4:3', '3:4'],
-    supportedFormats: ['jpeg', 'png']
-  },
-  'imagen-3-fast': {
-    id: 'imagen-3-fast',
-    name: 'Imagen 3.0 Fast',
-    description: 'Fast version of Imagen 3.0 for quick generation',
-    provider: AI_PROVIDERS.google,
-    endpoint: '/v1/generateImage',
-    maxTokens: 2048,
-    supportsStylePrompts: true,
-    costPerImage: 0.06,
-    avgGenerationTime: 6000,
     supportedSizes: ['1:1', '16:9', '9:16', '4:3', '3:4'],
     supportedFormats: ['jpeg', 'png']
   },
@@ -322,6 +270,6 @@ export function isModelAvailable(modelId: string): boolean {
 }
 
 export function getDefaultModel(): string {
-  // Return the current default (Gemini Flash)
-  return 'gemini-flash'
+  // Return the current default (Gemini 2.0 Flash Preview Image Generation)
+  return 'gemini-2.0-flash-preview-image-generation'
 }

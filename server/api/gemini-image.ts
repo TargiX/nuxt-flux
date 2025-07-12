@@ -1,5 +1,5 @@
 import { defineEventHandler, readBody, createError } from 'h3'
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai'
+import { GoogleGenAI } from '@google/genai'
 
 // Define specific response/candidate types for clarity
 interface InlineDataPart {
@@ -37,32 +37,21 @@ export default defineEventHandler(async (event) => {
   }
 
   // 3) Initialize the Generative AI client
-  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash-exp-image-generation', // Use the dedicated image model
-    // Optional: Add safety settings specific to image generation if needed
-    // safetySettings: [
-    //   { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-    //   // ... other safety settings ...
-    // ],
-  })
-
-  // 4) Prepare generation configuration - *Crucially include responseModalities*
-  const generationConfig = {
-    // You might want different defaults for images, e.g., temperature
-    temperature: 0.4, // Example: Slightly lower temp for more predictable images
-    maxOutputTokens: 2048, // Example: Potentially allow more tokens if needed
-    responseModalities: ['Text', 'Image'] as any, // Ensure Image modality is requested
-  }
+  const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY })
 
   // 5) Call the Generative AI model
   try {
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig,
+    const result = await ai.models.generateContent({
+      model: 'gemini-2.0-flash-exp',
+      contents: prompt,
+      config: {
+        temperature: 0.4, // Example: Slightly lower temp for more predictable images
+        maxOutputTokens: 2048, // Example: Potentially allow more tokens if needed
+        responseModalities: ['Image', 'Text'], // Must include both for Gemini image models
+      }
     })
 
-    const response = result.response as GeminiImageApiResponse
+    const response = result as GeminiImageApiResponse
 
     // 6) Parse the response to find the image data
     if (response && response.candidates && response.candidates.length > 0) {
